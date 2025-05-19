@@ -1189,9 +1189,11 @@ def addNewImagesToAgent(infrapool) {
     docker pull registry.tld/conjur:${TAG_SHA}
     docker pull registry.tld/conjur-ubi:${TAG_SHA}
     docker pull registry.tld/conjur-test:${TAG_SHA}
+    docker pull registry.tld/conjur-source:${TAG_SHA}
     docker tag registry.tld/conjur:${TAG_SHA} conjur:${TAG_SHA}
     docker tag registry.tld/conjur-ubi:${TAG_SHA} conjur-ubi:${TAG_SHA}
     docker tag registry.tld/conjur-test:${TAG_SHA} conjur-test:${TAG_SHA}
+    docker tag registry.tld/conjur-source:${TAG_SHA} conjur-source:${TAG_SHA}
   """
 }
 

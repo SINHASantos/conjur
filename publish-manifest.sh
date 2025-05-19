@@ -85,11 +85,13 @@ if [[ "${PUBLISH_INTERNAL}" = true ]]; then
   prepare_manifest "registry.tld/conjur" "${VERSION}-${LOCAL_TAG}"
   prepare_manifest "registry.tld/conjur-test" "${VERSION}-${LOCAL_TAG}"
   prepare_manifest "registry.tld/conjur-ubi" "${VERSION}-${LOCAL_TAG}"
+  prepare_manifest "registry.tld/conjur-source" "${VERSION}-${LOCAL_TAG}"
 
   # Create manifests for SHA only tagged images to our internal registry
   prepare_manifest "registry.tld/conjur" "${LOCAL_TAG}"
   prepare_manifest "registry.tld/conjur-test" "${LOCAL_TAG}"
   prepare_manifest "registry.tld/conjur-ubi" "${LOCAL_TAG}"
+  prepare_manifest "registry.tld/conjur-source" "${LOCAL_TAG}"
 fi
 
 if [[ "${PUBLISH_EDGE}" = true ]]; then
@@ -99,10 +101,12 @@ if [[ "${PUBLISH_EDGE}" = true ]]; then
   echo "Creating multi-arch manifest for ${VERSION} in registry.tld..."
   prepare_manifest "registry.tld/${IMAGE_NAME}" "${VERSION}"
   prepare_manifest "registry.tld/conjur-ubi" "${VERSION}"
+  prepare_manifest "registry.tld/conjur-source" "${VERSION}"
 
   # Push manifest to internal registry
   prepare_manifest "registry.tld/${IMAGE_NAME}" "edge"
   prepare_manifest "registry.tld/conjur-ubi" "edge"
+  prepare_manifest "registry.tld/conjur-source" "edge"
 
   # Publish manifests to dockerhub
   if [[ "${DOCKERHUB}" = true ]]; then

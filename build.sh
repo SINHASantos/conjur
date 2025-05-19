@@ -64,6 +64,13 @@ git rev-parse HEAD > conjur_git_commit
 
 arch=$(get_machine_architecture)
 
+# Update Gemfile.lock for any unpinned dependencies
+docker run --rm \
+  -v "$(pwd):$(pwd)" \
+  --workdir "$(pwd)" \
+  cyberark/ubuntu-ruby-builder:latest \
+  sh -c "bundle plugin install bundler-override && bundle lock"
+
 # We want to build an image:
 # 1. Always, when we're developing locally
 if [[ $jenkins = false ]]; then
@@ -93,4 +100,10 @@ if image_doesnt_exist "conjur-ubi:$TAG"; then
   docker build --platform "$arch" --pull --build-arg "VERSION=$TAG" --tag "conjur-ubi:$TAG" --file Dockerfile.ubi .
   # Avoid flattening RH image for now, otherwise it fails to pass RH's preflight scan
   # flatten "conjur-ubi:$TAG"
+fi
+
+if image_doesnt_exist "conjur-source:$TAG"; then
+  echo "Building image conjur-source:$TAG container"
+  docker build --platform "$arch" --pull --tag "conjur-source:$TAG" --file Dockerfile.source .
+  flatten "conjur-source:$TAG"
 fi

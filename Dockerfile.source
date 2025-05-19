@@ -1,12 +1,11 @@
 # kics-scan disable=fd54f200-402c-4333-a5a4-36ef6709af2f
 FROM cyberark/ubuntu-ruby-builder:latest AS builder
 
-ENV CONJUR_HOME=/opt/conjur-server
+ARG CONJUR_HOME=/src/opt/conjur/possum
 
 WORKDIR ${CONJUR_HOME}
 
-COPY Gemfile Gemfile.lock ./
-COPY ./gems/ ./gems/
+COPY . .
 
 RUN bundle config set --local without 'test development' && \
     bundle config set --local deployment true && \
@@ -21,29 +20,26 @@ RUN bundle config set --local without 'test development' && \
 # Cleanup any plugin data from bundle
 RUN rm -rf .bundle/plugin
 
-FROM cyberark/ubuntu-ruby-fips:latest
+FROM alpine:latest
 
-ENV PORT=80 \
-    LOG_DIR=${CONJUR_HOME}/log \
-    TMP_DIR=${CONJUR_HOME}/tmp \
-    SSL_CERT_DIRECTORY=/opt/conjur/etc/ssl \
-    RAILS_ENV=production \
-    CONJUR_HOME=/opt/conjur-server
+ARG CONJUR_HOME=/src/opt/conjur/possum
 
-ENV PATH="${PATH}:${CONJUR_HOME}/bin"
+WORKDIR /src
 
-WORKDIR ${CONJUR_HOME}
-
-# Ensure few required GID0-owned folders to run as a random UID (OpenShift requirement)
-RUN mkdir -p $TMP_DIR \
-             $LOG_DIR \
-             $SSL_CERT_DIRECTORY/ca \
-             $SSL_CERT_DIRECTORY/cert \
-             /run/authn-local
-
-COPY . .
 COPY --from=builder ${CONJUR_HOME} ${CONJUR_HOME}
 
-EXPOSE ${PORT}
+RUN mkdir -p usr/local/bin
+RUN ln -sf /opt/conjur/possum/bin/conjur-possum usr/local/bin/
 
-ENTRYPOINT [ "conjurctl" ]
+RUN mkdir -p etc/conjur/nginx.d
+COPY distrib/nginx/* etc/conjur/nginx.d/
+
+RUN mkdir -p etc/service/conjur/possum/log
+RUN ln -sf /etc/service/conjur/plugin-service etc/service/conjur/possum/run
+RUN ln -sf /etc/service/conjur/plugin-logger  etc/service/conjur/possum/log/run
+
+RUN mkdir -p opt/conjur/etc
+COPY distrib/conjur/etc/* opt/conjur/etc/
+
+RUN mkdir -p opt/conjur/possum/config
+RUN rm -r opt/conjur/possum/distrib

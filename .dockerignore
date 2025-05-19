@@ -11,10 +11,13 @@ cucumber
 !cucumber/authenticators_k8s/features
 
 *.deb
+*.rpm
 .git
 .idea
 engines/conjur_audit/spec/dummy/log
+container_logs
 coverage
+docker-debify
 demo
 dev
 docker
@@ -43,3 +46,8 @@ website.sh
 
 # Ignore vim swapfiles
 *.sw[po]
+
+# Container commit marker
+conjur_git_commit
+
+.bundle
