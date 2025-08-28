@@ -177,6 +177,8 @@ RSpec.describe(Branches::BranchService) do
       allow(service).to receive(:res_owner_id).with(account, branch.branch, branch.owner).and_return(owner_id)
       allow(service).to receive(:full_id).with(account, 'policy', 'data').and_return(policy_id)
 
+      allow(owner_service).to receive(:resource_owner_id).with(account, 'data', owner).and_return(owner_id)
+
       allow(res_service).to receive(:save_res).with(policy_id, owner_id, branch_id).and_return(policy)
       allow(role_repo).to receive(:create).with(role_id: branch_id, policy_id: policy_id).and_return(role_instance)
       allow(role_membership_repo).to receive(:create).with(

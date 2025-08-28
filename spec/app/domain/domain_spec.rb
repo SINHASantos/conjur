@@ -1,4 +1,5 @@
-# spec/domain/domain_spec.rb
+# frozen_string_literal: true
+
 require 'spec_helper'
 
 RSpec.describe(Domain) do

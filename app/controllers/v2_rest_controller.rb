@@ -6,11 +6,10 @@ class V2RestController < RestController
   include LoggingConcern
   include Validation
 
-  API_V2_HEADER='application/x.secretsmgr.v2beta+json'
-  # controller, action are handled by default
+  API_V2_HEADER = 'application/x.secretsmgr.v2beta+json'
   URL_REQUIRED_PARAMS = %i[account].freeze
   URL_REQUIRED_PARAMS_IDFR = (URL_REQUIRED_PARAMS + [:identifier]).freeze
-  URL_REQUIRED_PARAMS_PATH = (URL_REQUIRED_PARAMS + [:identifier, :kind, :id]).freeze
+  URL_REQUIRED_PARAMS_PATH = (URL_REQUIRED_PARAMS_IDFR + [:kind, :id]).freeze
 
   before_action :validate_header, :log_debug_requested
   after_action :update_response_header, :log_debug_finished
@@ -38,6 +37,7 @@ class V2RestController < RestController
 
   def permit_url_params(required_params = [], optional_params = [])
     req_params = request.parameters
+    req_params.delete(:controller)
     req_params.delete(controller_name.singularize.to_s)
     @permit_url_params ||= handle_parameters(required_params,
                                              optional_params,
@@ -56,10 +56,10 @@ class V2RestController < RestController
 
   def body_payload
     @body_payload ||= begin
-      JSON.parse(body_str, symbolize_names: true)
-    rescue JSON::ParserError => e
-      raise ApplicationController::BadRequestWithBody, "Invalid JSON body: #{e.message}"
-    end
+                        JSON.parse(body_str, symbolize_names: true)
+                      rescue JSON::ParserError => e
+                        raise ApplicationController::BadRequestWithBody, "Invalid JSON body: #{e.message}"
+                      end
   end
 
   def body_str
@@ -108,8 +108,33 @@ class V2RestController < RestController
     allowed_params = required_params.union(optional_params)
     return pwr.permit if allowed_params.empty?
 
-    required_params.each { |rp| pwr.require(rp) }
-    pwr.permit(*allowed_params)
+    pwrp = pwr.permit(*allowed_params)
+
+    required_params.each do |rpk|
+      pwrp.require(rpk)
+    end
+
+    # required_params.each do |rpk|
+    #   pwrp.require(rpk) && next if rpk.is_a?(String) or rpk.is_a?(Symbol)
+    #
+    #   if rpk.is_a?(Hash)
+    #     rpk.each do |k, v|
+    #       if v.is_a?(Array)
+    #         v.each do |vv|
+    #           r = pwr.require(k)
+    #           r.first.require(vv) unless r.empty?
+    #         end
+    #       else
+    #         pwr.require(k)&.require(v)
+    #       end
+    #     end
+    #     next
+    #   end
+    #
+    #   logger.warn("unsupported required param type #{rpk.class} for #{rpk}")
+    # end
+
+    pwrp.to_hash.deep_symbolize_keys
   rescue ActionController::UnpermittedParameters => e
     raise ApplicationController::InvalidParameter, "Unexpected parameters: #{e.params.join(', ')}"
   rescue ActionController::ParameterMissing

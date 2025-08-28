@@ -208,6 +208,11 @@ module Errors
         msg: "Account '{0-account-name}' is not defined in Conjur",
         code: "CONJ00008E"
       )
+
+      MissingAuthenticatorsPermissions = ::Util::TrackableErrorClass.new(
+        msg: "Missing permissions for authenticators branch: {0-authenticator-branch}",
+        code: "CONJ00504E"
+      )
     end
 
     module RequestBody

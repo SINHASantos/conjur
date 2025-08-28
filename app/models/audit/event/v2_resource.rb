@@ -96,7 +96,7 @@ module Audit
           past_tense_verb = "updated"
         end
 
-        resource_name_message = @resource_name.empty? ? "" : " #{@resource_name}"
+        resource_name_message = @resource_name&.empty? ? "" : " #{@resource_name}"
 
         "#{@user} successfully #{past_tense_verb} #{@resource_type}#{resource_name_message} with URI path: '#{@request_path}'#{@request_body? " and JSON object: #{@request_body}":""}"
       end
@@ -109,7 +109,7 @@ module Audit
           action = "update"
         end
 
-        resource_name_message = @resource_name.empty? ? "" : " #{@resource_name}"
+        resource_name_message = @resource_name&.empty? ? "" : " #{@resource_name}"
 
         "#{@user} failed to #{action} #{@resource_type}#{resource_name_message} with URI path: '#{@request_path}'#{@request_body? " and JSON object: #{@request_body}":""}"
       end

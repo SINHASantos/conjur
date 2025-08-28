@@ -98,7 +98,7 @@ describe(BranchesController, type: :request) do
     it "fails to create a branch with invalid annotation" do
       post_payload({ name: 'invalid-branch', branch: 'root', owner: { kind: 'user', id: 'alice' }, annotations: { '<>': 'value' } }.to_json)
       assert_response :unprocessable_entity
-      expect(JSON.parse(response.body)).to eq("code" => "422", "message" =>"<> annotation key format error '<>'")
+      expect(JSON.parse(response.body)).to eq("code" => "422", "message" =>"Invalid 'annotation name' parameter.")
     end
   end
 

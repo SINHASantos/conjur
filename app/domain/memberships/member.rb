@@ -14,13 +14,13 @@ module Memberships
     validates :id, presence: true, format: { with: USER_PATH_PATTERN, message: USER_PATH_PATTERN_MSG }, if: -> { kind == 'user' }
     validates :id, presence: true, format: { with: PATH_PATTERN, message: PATH_PATTERN_MSG }, unless: -> { kind == 'user' }
     validates :id, length: { minimum: PATH_LENGTH_MIN, maximum: PATH_LENGTH_MAX }
-    validate :validate_id
+    validate -> { validate_identifier(:id, id) }, if: -> { kind != 'user' }
 
     attr_accessor :kind, :id
 
-    def initialize(kind, id)
-      @kind = kind
-      @id = id
+    def initialize(**params)
+      @kind = params[:kind]
+      @id = params[:id]
 
       raise DomainValidationError, errors.full_messages.to_sentence if invalid?
     end
@@ -33,20 +33,9 @@ module Memberships
       super(options).except("context_for_validation", "errors")
     end
 
-    def self.from_input(input)
-      new(input[:kind],
-          input[:id])
-    end
-
     def self.from_model(membership_db)
-      new(kind(membership_db.member_id),
-          identifier(membership_db.member_id))
-    end
-
-    private
-
-    def validate_id
-      validate_identifier(@id) if @kind != 'user'
+      new(**{kind: kind(membership_db.member_id),
+             id: identifier(membership_db.member_id)})
     end
   end
 end

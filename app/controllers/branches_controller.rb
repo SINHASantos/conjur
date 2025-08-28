@@ -2,6 +2,7 @@
 
 class BranchesController < V2RestController
 
+  BRANCH_REQUIRED_PARAMS = %i[name branch].freeze
   BRANCH_OPTIONAL_PARAMS = [owner: %i[kind id], annotations: {}].freeze
 
   def initialize(
@@ -17,11 +18,13 @@ class BranchesController < V2RestController
   end
 
   def create
+    log_debug("body_str = #{body_str}")
+
     url_params = permit_create_url_params
     input = permit_create_body_params
     log_debug("url_params = #{url_params}, input = #{input}")
 
-    branch = Branches::Branch.from_input(input)
+    branch = Branches::Branch.new(**input)
     log_debug("branch = #{branch}")
 
     authorize_create_in_parent(branch)
@@ -67,13 +70,15 @@ class BranchesController < V2RestController
   end
 
   def update
+    log_debug("body_str = #{body_str}")
+
     url_params = permit_url_params(URL_REQUIRED_PARAMS_IDFR)
     input = permit_body_params([], BRANCH_OPTIONAL_PARAMS)
     log_debug("url_params = #{url_params}, input = #{input}")
 
     authorize_update(path_identifier)
 
-    branch_up = Branches::BranchUpPart.from_input(input)
+    branch_up = Branches::BranchUpPart.new(**input)
     log_debug("branch_up = #{branch_up}")
 
     check_owner_exists_if_set(branch_up)
@@ -111,7 +116,7 @@ class BranchesController < V2RestController
   end
 
   def permit_create_body_params
-    permit_body_params(%i[name branch], BRANCH_OPTIONAL_PARAMS)
+    permit_body_params(BRANCH_REQUIRED_PARAMS, BRANCH_OPTIONAL_PARAMS)
   end
 
   def authorize_create_in_parent(branch)

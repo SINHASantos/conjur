@@ -1,6 +1,6 @@
-# spec/domain/paging_spec.rb
+# frozen_string_literal: true
+
 require 'spec_helper'
-# require_relative '../../app/domain/paging'
 
 RSpec.describe(Paging) do
   describe '#initialize' do

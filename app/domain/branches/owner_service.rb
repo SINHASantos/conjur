@@ -19,12 +19,15 @@ module Branches
     def resource_owner(parent_identifier, owner)
       log_debug("parent_identifier = #{parent_identifier}, owner = #{owner}")
 
-      return Owner.new(owner.kind, owner.id) if owner.set?
+      return owner if owner.set?
 
-      Owner.new(
-        root?(parent_identifier) ? 'user' : 'policy', # kind
-        root?(parent_identifier) ? 'admin' : parent_identifier # id
-      )
+      Owner.new(**{ kind: root?(parent_identifier) ? 'user' : 'policy',
+                    id: root?(parent_identifier) ? 'admin' : parent_identifier })
+    end
+
+    def resource_owner_id(account, parent_identifier, owner)
+      res_owner = resource_owner(parent_identifier, owner)
+      full_id(account, res_owner.kind, res_owner.id)
     end
 
     def check_owner_exists(account, owner)
