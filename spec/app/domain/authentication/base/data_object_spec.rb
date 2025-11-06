@@ -19,6 +19,12 @@ RSpec.describe(Authentication::Base::DataObject) do
   let(:api_key_args) { { account: 'default' } }
   let(:api_key) { Authentication::AuthnApiKey::V2::DataObjects::Authenticator.new(**api_key_args) }
 
+  describe '.identity_path' do
+    it 'defaults to nil' do
+      expect(api_key.identity_path).to be_nil
+    end
+  end
+
   describe '.type' do
     it 'describes the child class type' do
       expect(oidc.type).to eq('authn-oidc')

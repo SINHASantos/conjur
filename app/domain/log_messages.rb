@@ -76,6 +76,16 @@ module LogMessages
       code: "CONJ00039D"
     )
 
+    ProvidedRoleID = ::Util::TrackableLogMessageClass.new(
+      msg: "Authenticator {0-identifier} using role ID provided in request",
+      code: "CONJ00053D"
+    )
+
+    DerivingRoleID = ::Util::TrackableLogMessageClass.new(
+      msg: "Authenticator {0-identifier} deriving role ID from supplied credential",
+      code: "CONJ00054D"
+    )
+
     module OAuth
 
       IdentityProviderUri = ::Util::TrackableLogMessageClass.new(
