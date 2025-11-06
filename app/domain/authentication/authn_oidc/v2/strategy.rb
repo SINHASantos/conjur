@@ -11,10 +11,12 @@ module Authentication
           authenticator:,
           oidc_client: OidcClient,
           jwt_client: JWT,
+          identity_resolver: Authentication::AuthnOidc::V2::IdentityResolver,
           logger: Rails.logger
         )
           @authenticator = authenticator
           @oidc_client = oidc_client.new(authenticator: authenticator)
+          @identity_resolver = identity_resolver
           @logger = logger
 
           @success = Responses::Success
@@ -60,7 +62,7 @@ module Authentication
                     identify_role(jwt: verified_token).bind do |identity|
                       @success.new(
                         Authentication::RoleIdentifier.new(
-                          identifier: "#{@authenticator.account}:user:#{identity}"
+                          identifier: identity
                         )
                       )
                     end
@@ -106,16 +108,8 @@ module Authentication
         end
 
         def identify_role(jwt:)
-          identity = jwt[@authenticator.claim_mapping]
-          return @success.new(identity) if identity.present?
-
-          @failure.new(
-            "Claim '#{@authenticator.claim_mapping}' was not found in the JWT token",
-            exception: Errors::Authentication::AuthnOidc::IdTokenClaimNotFoundOrEmpty.new(
-              @authenticator.claim_mapping,
-              'claim-mapping'
-            ),
-            status: :unauthorized
+          @identity_resolver.new(authenticator: @authenticator).call(
+            credential: jwt
           )
         end
 
