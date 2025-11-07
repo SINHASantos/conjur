@@ -61,8 +61,7 @@ properties([
   release.addParams(),
   // Dependencies of the project that should trigger builds
   dependencies(['conjur-enterprise/conjur-base-image',
-                'conjur-enterprise/conjur-api-ruby',
-                'conjurinc/debify'])
+                'conjur-enterprise/conjur-api-ruby'])
 ])
 
 // Performs release promotion.  No other stages will be run
@@ -1146,24 +1145,6 @@ pipeline {
               INFRAPOOL_EXECUTORV2ARM_AGENT_0.agentSh './publish-images.sh --release --arch=arm64'
               INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './publish-manifest.sh'
             }
-
-            // Create deb and rpm packages (ARM64)
-            INFRAPOOL_EXECUTORV2ARM_AGENT_0.agentSh 'echo "CONJUR_VERSION=5" >> debify.env'
-            INFRAPOOL_EXECUTORV2ARM_AGENT_0.agentSh './package.sh'
-            INFRAPOOL_EXECUTORV2ARM_AGENT_0.agentStash name: 'arm64-packages', includes: '*.deb,*.rpm', allowEmpty:true
-
-            // Create deb and rpm packages (AMD64)
-            INFRAPOOL_EXECUTORV2_AGENT_0.agentSh 'echo "CONJUR_VERSION=5" >> debify.env'
-            INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './package.sh'
-
-            // Unstash packages built in ARM64 agent
-            INFRAPOOL_EXECUTORV2_AGENT_0.agentUnstash name: 'arm64-packages'
-            // Copy assets to the release
-            INFRAPOOL_EXECUTORV2_AGENT_0.agentSh "cp *.rpm ${assetDirectory}/."
-            INFRAPOOL_EXECUTORV2_AGENT_0.agentSh "cp *.deb ${assetDirectory}/."
-
-            // Publish deb and rpm packages
-            INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './publish.sh'
           }
         }
       }

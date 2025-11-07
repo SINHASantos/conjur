@@ -13,17 +13,12 @@
 
 id_rsa*
 
-# Ignore generated debify script
-docker-debify
-
 # Ignore all logfiles and tempfiles.
 /log
 engines/conjur_audit/spec/dummy/log
 /tmp
 data_key
 dhparam.pem
-*.deb
-*.rpm
 .byebug_history
 config/database.yml
 reports
