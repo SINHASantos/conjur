@@ -62,7 +62,8 @@ module Authentication
                     identify_role(jwt: verified_token).bind do |identity|
                       @success.new(
                         Authentication::RoleIdentifier.new(
-                          identifier: identity
+                          identifier: identity,
+                          attributes: verified_token
                         )
                       )
                     end

@@ -41,7 +41,7 @@ RSpec.describe(Authentication::AuthnApiKey::V2::Strategy) do
               expect(response.success?).to eq(true)
               expect(response.result.class).to eq(Authentication::RoleIdentifier)
               expect(response.result.identifier).to eq(conjur_role_identifier)
-              expect(response.result.annotations).to eq({})
+              expect(response.result.attributes).to eq({})
             end
             context 'when role id is prefixed with user/' do
               let(:params_id) { 'user/foo-bar' }
@@ -53,7 +53,7 @@ RSpec.describe(Authentication::AuthnApiKey::V2::Strategy) do
                 expect(response.success?).to eq(true)
                 expect(response.result.class).to eq(Authentication::RoleIdentifier)
                 expect(response.result.identifier).to eq(conjur_role_identifier)
-                expect(response.result.annotations).to eq({})
+                expect(response.result.attributes).to eq({})
               end
             end
           end
@@ -122,7 +122,7 @@ RSpec.describe(Authentication::AuthnApiKey::V2::Strategy) do
               expect(response.success?).to eq(true)
               expect(response.result.class).to eq(Authentication::RoleIdentifier)
               expect(response.result.identifier).to eq(conjur_role_identifier)
-              expect(response.result.annotations).to eq({})
+              expect(response.result.attributes).to eq({})
             end
             context 'when host includes slashes' do
               let(:params_id) { 'host/foo/bar' }
@@ -134,7 +134,7 @@ RSpec.describe(Authentication::AuthnApiKey::V2::Strategy) do
                 expect(response.success?).to eq(true)
                 expect(response.result.class).to eq(Authentication::RoleIdentifier)
                 expect(response.result.identifier).to eq(conjur_role_identifier)
-                expect(response.result.annotations).to eq({})
+                expect(response.result.attributes).to eq({})
               end
             end
           end
