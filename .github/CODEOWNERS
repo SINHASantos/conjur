@@ -10,3 +10,8 @@
 
 # Changes to SECURITY.md require Security Architect approval
 SECURITY.md @cyberark/security-architects @conjurinc/security-architects @conjurdemos/security-architects @conjur-enterprise/conjur-security
+
+# Add SaaS Authenticator team as owners of authenticator implementations and APIs
+**/authentication/ @conjur-enterprise/saasy @conjur-enterprise/conjur-core @conjur-enterprise/community-and-integrations @conjur-enterprise/transition-tech
+**/authenticate_controller*.rb @conjur-enterprise/saasy @conjur-enterprise/conjur-core @conjur-enterprise/community-and-integrations @conjur-enterprise/transition-tech
+**/authenticators_v2/ @conjur-enterprise/saasy @conjur-enterprise/conjur-core @conjur-enterprise/community-and-integrations @conjur-enterprise/transition-tech
