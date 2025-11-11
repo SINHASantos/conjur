@@ -31,8 +31,11 @@ module Authentication
           )
         end
 
+        # NOTE: The `request_headers` parameter is not used in this context, but
+        # needs to be present to adhere to the interface.
+        #
         # rubocop:disable Lint/UnusedMethodArgument
-        def callback(parameters:, request_body: nil)
+        def callback(parameters:, request_body: nil, request_headers: nil)
           validate_parameters(parameters).bind do |params|
             nonce = params[:nonce]
             exchange_code_for_jwt_token(

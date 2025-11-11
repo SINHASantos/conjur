@@ -24,8 +24,11 @@ module Authentication
           @failure = Responses::Failure
         end
 
+        # NOTE: The `request_headers` parameter is not used in this context, but
+        # needs to be present to adhere to the interface.
+        #
         # rubocop:disable Lint/UnusedMethodArgument
-        def callback(parameters:, request_body: nil)
+        def callback(parameters:, request_body: nil, request_headers: nil)
           raise 'Not Implemented'
         end
         # rubocop:enable Lint/UnusedMethodArgument

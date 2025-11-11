@@ -44,7 +44,7 @@ module Authentication
       end
       # rubocop:enable Metrics/ParameterLists
 
-      def call(request_ip:, parameters:, request_body: nil)
+      def call(request_ip:, parameters:, request_body: nil, request_headers: nil)
         service_id = parameters[:service_id]
         account = parameters[:account]
         role_for_audit = nil
@@ -52,7 +52,7 @@ module Authentication
 
         response = retrieve_authenticator(service_id: service_id, account: account).bind do |authenticator|
           identified_authenticator = authenticator
-          identify_role(authenticator: authenticator, parameters: parameters, request_body: request_body).bind do |role_identifier|
+          identify_role(authenticator: authenticator, parameters: parameters, request_body: request_body, request_headers: request_headers).bind do |role_identifier|
             retrieve_role(role_identifier: role_identifier, authenticator: authenticator).bind do |role|
               role_for_audit = role.role_id
               check_usage_permitted(role: role, authenticator: authenticator).bind do |check_permitted_role|
@@ -146,10 +146,10 @@ module Authentication
         ).find(role_identifier)
       end
 
-      def identify_role(authenticator:, parameters:, request_body:)
+      def identify_role(authenticator:, parameters:, request_body:, request_headers:)
         @strategy.new(
           authenticator: authenticator
-        ).callback(parameters: parameters, request_body: request_body)
+        ).callback(parameters: parameters, request_body: request_body, request_headers: request_headers)
       end
 
       def retrieve_authenticator(service_id:, account:)
