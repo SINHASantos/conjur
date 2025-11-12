@@ -35,6 +35,8 @@ services:
       context: ../
       dockerfile: dev/Dockerfile.dev
     image: conjur-dev
+    # Alternative: use host networking (uncomment if host.docker.internal doesn't work)
+    # network_mode: host
     environment:
       CONJUR_APPLIANCE_URL: http://localhost:3000
       DATABASE_URL: postgres://postgres@pg/postgres
@@ -47,6 +49,7 @@ services:
       RAILS_ENV:
       CONJUR_LOG_LEVEL: debug
       CONJUR_AUTHN_LOGIN: admin
+      CONJUR_SAAS_AUTHENTICATOR_URL: ${CONJUR_SAAS_AUTHENTICATOR_URL:-}
 
       AUDIT_DATABASE_URL:
       # TODO: Where should we be running rspec tests from, ideally?

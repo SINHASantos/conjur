@@ -8,7 +8,7 @@ Rails.application.configure do
   # In the development environment your application's code is reloaded on
   # every request. This slows down response time but is perfect for development
   # since you don't have to restart the web server when you make code changes.
-  config.cache_classes = true
+  config.cache_classes = false
 
   # Whitelist conjur hostname for tests
   # For more information, refer to:
@@ -21,17 +21,23 @@ Rails.application.configure do
   # loading code...
   #
   config.public_file_server.enabled = true
-  config.eager_load = true
+  config.eager_load = false
   # config.assets.digest = false
 
   # Show full error reports and disable caching.
-  config.consider_all_requests_local       = false
+  config.consider_all_requests_local       = true
   config.action_controller.perform_caching = false
 
   # Use the lowest log level to ensure availability of diagnostic information
   # when problems arise.
   config.log_level = ENV['CONJUR_LOG_LEVEL'] || :debug
   config.log_formatter = Logger::Formatter::ConjurFormatter.new
+  
+  # Enable better logging for development
+  # Log to file in mounted volume for easy access from host
+  config.logger = ActiveSupport::Logger.new('/src/conjur-server/dev/conjur-dev.log')
+  config.logger.formatter = Logger::Formatter::ConjurFormatter.new
+  config.logger.level = Logger::DEBUG
 
   # Don't care if the mailer can't send.
   # config.action_mailer.raise_delivery_errors = false
