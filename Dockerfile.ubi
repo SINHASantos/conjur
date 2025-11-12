@@ -1,5 +1,8 @@
 # Ruby builder
-FROM cyberark/ubi-ruby-builder:latest as builder
+ARG BASE_TAG=latest
+ARG REGISTRY=docker.io
+
+FROM ${REGISTRY}/cyberark/ubi-ruby-builder:${BASE_TAG} as builder
 
 ENV CONJUR_HOME=/opt/conjur-server
 
@@ -23,7 +26,7 @@ RUN bundle config set --local without 'test development' && \
 RUN rm -rf .bundle/plugin
 
 # Conjur Base Image (UBI)
-FROM cyberark/ubi-ruby-fips:latest
+FROM ${REGISTRY}/cyberark/ubi-ruby-fips:${BASE_TAG}
 ARG VERSION
 
 LABEL name="conjur-ubi" \

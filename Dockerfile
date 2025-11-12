@@ -1,5 +1,8 @@
 # kics-scan disable=fd54f200-402c-4333-a5a4-36ef6709af2f
-FROM cyberark/ubuntu-ruby-builder:latest AS builder
+ARG BASE_TAG=latest
+ARG REGISTRY=docker.io
+
+FROM ${REGISTRY}/cyberark/ubuntu-ruby-builder:${BASE_TAG} AS builder
 
 ENV CONJUR_HOME=/opt/conjur-server
 
@@ -21,7 +24,7 @@ RUN bundle config set --local without 'test development' && \
 # Cleanup any plugin data from bundle
 RUN rm -rf .bundle/plugin
 
-FROM cyberark/ubuntu-ruby-fips:latest
+FROM ${REGISTRY}/cyberark/ubuntu-ruby-fips:${BASE_TAG}
 
 ENV PORT=80 \
     LOG_DIR=${CONJUR_HOME}/log \

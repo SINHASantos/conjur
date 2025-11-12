@@ -191,7 +191,17 @@ pipeline {
       description: 'Filter which cucumber tags will run (e.g. "not @performance")',
       defaultValue: defaultCucumberFilterTags(env)
     )
-
+    string(
+      name: 'BASE_TAG',
+      description: 'Tag of the base image used to build the Conjur image',
+      defaultValue: 'latest',
+      trim: true
+    )
+    choice(
+      name: 'BASE_REGISTRY',
+      choices: ['docker.io', 'registry.tld'],
+      description: 'Registry to pull base images from'
+    )
   }
 
   environment {
@@ -322,7 +332,7 @@ pipeline {
             stage('Build AMD64 image') {
               steps {
                 script {
-                  INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './build.sh --jenkins'
+                  INFRAPOOL_EXECUTORV2_AGENT_0.agentSh "./build.sh --jenkins --base-tag=${params.BASE_TAG} --registry=${params.BASE_REGISTRY}"
                 }
               }
             }
@@ -330,7 +340,7 @@ pipeline {
             stage('Build ARM64 image') {
               steps {
                 script {
-                  INFRAPOOL_EXECUTORV2ARM_AGENT_0.agentSh './build.sh --jenkins'
+                  INFRAPOOL_EXECUTORV2ARM_AGENT_0.agentSh "./build.sh --jenkins --base-tag=${params.BASE_TAG} --registry=${params.BASE_REGISTRY}"
                 }
               }
             }
