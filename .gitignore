@@ -75,3 +75,6 @@ key.txt
 
 # Ignore node modules
 node_modules
+
+# Development CLI logs
+dev/conjur-dev.log

@@ -93,14 +93,15 @@ get_api_key() {
     echo -e "${YELLOW}Fetching API key for $user from Conjur container...${NC}" >&2
     
     # Try to get the API key from the container
-    local api_key=$(docker compose exec -T conjur conjurctl role retrieve-key "$CONJUR_ACCOUNT:user:$user" 2>/dev/null | grep -o '[a-z0-9]\{55\}')
-    
-    if [[ -z "$api_key" || "$api_key" == *"ERROR"* ]]; then
+    local api_key=$(docker compose exec -T conjur conjurctl role retrieve-key "$CONJUR_ACCOUNT:user:$user" 2>/dev/null)
+    if [[ $? -ne 0 ]]; then
         echo -e "${RED}Failed to retrieve API key for $user from container${NC}" >&2
         echo -e "${YELLOW}You may need to recreate the user or check container status${NC}" >&2
         return 1
     fi
     
+    # Clean up the API key (remove debug output and whitespace)
+    api_key=$(echo "$api_key" | tail -1 | tr -d '\r\n')
     echo "$api_key"
 }
 
@@ -153,40 +154,242 @@ get_token() {
     echo "$raw_token" | base64 -w 0
 }
 
+# Server management functions
+check_server_status() {
+    if docker compose exec conjur pgrep -f conjurctl >/dev/null 2>&1; then
+        return 0  # Server is running
+    else
+        return 1  # Server is not running
+    fi
+}
+
+start_server() {
+    echo -e "${YELLOW}Starting Conjur server...${NC}"
+    
+    # Check if we need full initialization
+    if ! docker compose exec conjur test -f /tmp/conjur_initialized >/dev/null 2>&1; then
+        echo -e "${YELLOW}Conjur not initialized. Running full setup...${NC}"
+        echo -e "${BLUE}This will take a few minutes. You'll see the full initialization process:${NC}"
+        echo ""
+        
+        # Run the proper start script for full initialization
+        if ! ./start --no-enter; then
+            echo -e "${RED}✗ Failed to initialize Conjur${NC}"
+            return 1
+        fi
+        
+        # Mark as initialized
+        docker compose exec conjur touch /tmp/conjur_initialized
+        echo -e "${GREEN}✓ Conjur initialized successfully${NC}"
+    fi
+    
+    # Just start the server process (already initialized)
+    docker compose exec -d conjur conjurctl server
+    echo -e "${GREEN}Waiting for server to start...${NC}"
+
+    if docker compose exec conjur conjurctl wait; then
+        echo -e "${GREEN}✓ Server started successfully${NC}"
+    else
+        echo -e "${RED}✗ Server failed to start or is not responding${NC}"
+        return 1
+    fi
+}
+
+stop_server() {
+    echo -e "${YELLOW}Stopping Conjur server...${NC}"
+    if docker compose exec conjur pkill -f conjurctl >/dev/null 2>&1; then
+        echo -e "${GREEN}✓ Server stopped${NC}"
+    else
+        echo -e "${YELLOW}Server was not running${NC}"
+    fi
+}
+
+restart_server() {
+    echo -e "${YELLOW}Restarting Conjur server...${NC}"
+    stop_server
+    sleep 2
+    start_server
+}
+
+ensure_server_running() {
+    if ! check_server_status; then
+        echo -e "${YELLOW}Conjur server is not running. Starting it...${NC}"
+        start_server
+    fi
+}
+
+# Function to view logs
+cmd_logs() {
+    local log_file="./conjur-dev.log"
+    local follow=false
+    local filter=""
+    local lines=50
+    local show_help=false
+    
+    # Parse log options
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -h|--help)
+                show_help=true
+                shift
+                ;;
+            -f|--follow)
+                follow=true
+                shift
+                ;;
+            -n|--lines)
+                if [[ "$2" == "all" ]]; then
+                    lines="all"
+                else
+                    lines="$2"
+                fi
+                shift 2
+                ;;
+            --all)
+                lines="all"
+                shift
+                ;;
+            -all)
+                echo -e "${RED}Error: Invalid option '-all'. Did you mean '--all'?${NC}" >&2
+                echo -e "${YELLOW}Use './conjur-dev logs --help' for usage information.${NC}" >&2
+                return 1
+                ;;
+            --filter)
+                filter="$2"
+                shift 2
+                ;;
+            --grep)
+                filter="$2"
+                shift 2
+                ;;
+            -*)
+                echo -e "${RED}Error: Unknown option '$1'${NC}" >&2
+                echo -e "${YELLOW}Use './conjur-dev logs --help' for usage information.${NC}" >&2
+                return 1
+                ;;
+            *)
+                # Treat remaining args as filter patterns (for backward compatibility)
+                if [[ -z "$filter" ]]; then
+                    filter="$1"
+                fi
+                shift
+                ;;
+        esac
+    done
+    
+    # Show help if requested
+    if [[ "$show_help" == true ]]; then
+        echo -e "${BLUE}Conjur Development CLI - Logs Command${NC}"
+        echo ""
+        echo "Usage: conjur-dev logs [options] [filter_pattern]"
+        echo ""
+        echo "Options:"
+        echo "  -f, --follow             - Follow log output (like tail -f)"
+        echo "  -n, --lines NUM          - Show last NUM lines (default: 50)"
+        echo "  -n all, --lines all      - Show all lines"
+        echo "  --all                    - Show all lines (same as -n all)"
+        echo "  --filter PATTERN         - Filter logs by pattern"
+        echo "  --grep PATTERN           - Same as --filter"
+        echo "  -h, --help               - Show this help"
+        echo ""
+        echo "Examples:"
+        echo "  conjur-dev logs                    - Show last 50 lines"
+        echo "  conjur-dev logs INFO               - Show last 50 lines containing 'INFO'"
+        echo "  conjur-dev logs -f DEBUG           - Follow logs, show only DEBUG messages"
+        echo "  conjur-dev logs -n 100 ERROR       - Show last 100 lines containing 'ERROR'"
+        echo "  conjur-dev logs --all INFO         - Show all lines containing 'INFO'"
+        echo "  conjur-dev logs -n all             - Show entire log file"
+        return 0
+    fi
+    
+    if [[ ! -f "$log_file" ]]; then
+        echo -e "${YELLOW}No log file found at $log_file${NC}"
+        echo -e "${BLUE}Start the server first with: ./conjur-dev start${NC}"
+        return 1
+    fi
+    
+    if [[ -n "$filter" ]]; then
+        echo -e "${BLUE}Viewing Conjur logs (filtered by: ${YELLOW}$filter${BLUE})${NC}"
+    else
+        echo -e "${BLUE}Viewing Conjur logs${NC}"
+    fi
+    if [[ "$follow" == true ]]; then
+        echo -e "${YELLOW}Following logs (Ctrl+C to exit)${NC}"
+    fi
+    if [[ "$lines" == "all" ]]; then
+        echo -e "${YELLOW}Showing all lines${NC}"
+    else
+        echo -e "${YELLOW}Showing last $lines lines${NC}"
+    fi
+    echo ""
+    
+    # Execute command with proper piping
+    if [[ -n "$filter" ]]; then
+        if [[ "$follow" == true ]]; then
+            tail -f "$log_file" | grep --color=auto "$filter"
+        elif [[ "$lines" == "all" ]]; then
+            cat "$log_file" | grep --color=auto "$filter"
+        else
+            tail -n "$lines" "$log_file" | grep --color=auto "$filter"
+        fi
+    else
+        if [[ "$follow" == true ]]; then
+            tail -f "$log_file"
+        elif [[ "$lines" == "all" ]]; then
+            cat "$log_file"
+        else
+            tail -n "$lines" "$log_file"
+        fi
+    fi
+}
+
 # Function to show usage
 show_usage() {
-    echo -e "${BLUE}Conjur Development Server Mini CLI${NC}"
+    echo -e "${BLUE}Conjur Development CLI${NC}"
     echo -e "${YELLOW}Server: $CONJUR_URL | Account: $CONJUR_ACCOUNT${NC}"
     echo ""
-    echo "Usage: $0 [command] [options]"
+    echo "Usage: conjur-dev [command] [options]"
     echo ""
-    echo "Commands:"
-    echo "  health                    - Check server health"
-    echo "  info                      - Get server info"
-    echo "  auth [admin|alice]        - Authenticate user and show token"
-    echo "  whoami [admin|alice]      - Show current user identity"
-    echo "  roles                     - List all roles"
-    echo "  role [admin|alice]        - Get specific role info"
-    echo "  policies                  - List policies"
-    echo "  cert-status               - Check certificate auth status"
-    echo "  cert-test [cert_file]     - Test certificate authentication"
-    echo "  custom [endpoint] [method] [data] - Make custom request with headers"
-    echo "  rotate-key [admin|alice]  - Rotate API key for user"
-    echo "  all                       - Run all basic tests"
+    echo "Service Management:"
+    echo "  start                     - Start Conjur server"
+    echo "  stop                      - Stop Conjur server"
+    echo "  restart                   - Restart Conjur server"
+    echo "  status                    - Check if server is running"
+    echo "  logs [options]            - View server logs"
+    echo ""
+    echo "Testing:"
+    echo "  test health               - Check server health (Appliance only)"
+    echo "  test info                 - Get server info (Appliance only)"
+    echo "  test auth [admin|alice]   - Authenticate user and show token"
+    echo "  test whoami [admin|alice] - Show current user identity"
+    echo "  test roles                - List all resources (includes roles)"
+    echo "  test role [admin|alice]   - Get specific role info"
+    echo "  test policies             - Get root policy"
+    echo "  test rotate-key [admin|alice] - Rotate API key for user"
+    echo "  test cert-status          - Check certificate auth status"
+    echo "  test cert-test [cert_file] - Test certificate authentication"
+    echo "  test custom [endpoint] [method] [data] - Make custom request"
+    echo "  test all                  - Run all basic tests"
     echo ""
     echo "Options:"
     echo "  -u, --url URL            - Override Conjur URL (default: $CONJUR_URL)"
     echo "  -a, --account ACCOUNT    - Override account (default: $CONJUR_ACCOUNT)"
-    echo "  -v, --verbose            - Show curl commands"
     echo "  -h, --help               - Show this help"
     echo ""
     echo "Examples:"
-    echo "  $0 health"
-    echo "  $0 auth admin"
-    echo "  $0 whoami alice"
-    echo "  $0 custom /health GET"
-    echo "  $0 custom /authn-cert/my-service/cucumber/status"
-    echo "  $0 cert-test client.crt"
+    echo "  $0 start"
+    echo "  $0 logs -f --filter INFO"
+    echo "  $0 logs --grep ERROR"
+    echo "  $0 test health"
+    echo "  $0 test auth admin"
+    echo "  $0 test whoami alice"
+    echo "  $0 test custom /health GET"
+    echo ""
+    echo "Log Options:"
+    echo "  -f, --follow             - Follow log output (like tail -f)"
+    echo "  -n, --lines NUM          - Show last NUM lines (default: 50)"
+    echo "  --filter PATTERN         - Filter logs by pattern"
+    echo "  --grep PATTERN           - Same as --filter"
 }
 
 # Command functions
@@ -266,8 +469,8 @@ cmd_whoami() {
 
 cmd_roles() {
     [[ -z "$ADMIN_TOKEN" ]] && cmd_auth admin
-    execute_curl_detailed "List all roles" \
-        -X GET "$CONJUR_URL/roles/$CONJUR_ACCOUNT" \
+    execute_curl_detailed "List all resources (includes roles)" \
+        -X GET "$CONJUR_URL/resources/$CONJUR_ACCOUNT" \
         -H "Authorization: Token token=\"$ADMIN_TOKEN\""
 }
 
@@ -287,8 +490,8 @@ cmd_role() {
 
 cmd_policies() {
     [[ -z "$ADMIN_TOKEN" ]] && cmd_auth admin
-    execute_curl_detailed "List policies" \
-        -X GET "$CONJUR_URL/policies/$CONJUR_ACCOUNT" \
+    execute_curl_detailed "Get root policy" \
+        -X GET "$CONJUR_URL/policies/$CONJUR_ACCOUNT/policy/root" \
         -H "Authorization: Token token=\"$ADMIN_TOKEN\""
 }
 
@@ -362,8 +565,6 @@ cmd_rotate_key() {
     esac
     
     echo -e "${YELLOW}Note: API key rotation requires manual intervention${NC}"
-    echo -e "${YELLOW}Current API key for $user:${NC}"
-    
     # Get current key
     local current_key=$(docker compose exec -T conjur conjurctl role retrieve-key "$CONJUR_ACCOUNT:user:$user" 2>/dev/null | tr -d '\r')
     
@@ -372,8 +573,7 @@ cmd_rotate_key() {
         return 1
     fi
     
-    echo "Current API key: $current_key"
-    echo ""
+    echo -e "${YELLOW}Current API key for $user: ${GREEN}${current_key:0:3}...${current_key: -3}${NC}"
     echo -e "${BLUE}To rotate the API key, you would need to:${NC}"
     echo "1. Delete and recreate the user, or"
     echo "2. Use the Conjur API to rotate the key, or" 
@@ -424,10 +624,6 @@ while [[ $# -gt 0 ]]; do
             CONJUR_ACCOUNT="$2"
             shift 2
             ;;
-        -v|--verbose)
-            VERBOSE=true
-            shift
-            ;;
         -h|--help)
             show_usage
             exit 0
@@ -440,6 +636,11 @@ while [[ $# -gt 0 ]]; do
         *)
             if [[ -z "$COMMAND" ]]; then
                 COMMAND="$1"
+                # Special handling for logs command - pass remaining args directly
+                if [[ "$COMMAND" == "logs" ]]; then
+                    shift
+                    break
+                fi
             else
                 ARGS+=("$1")
             fi
@@ -456,18 +657,43 @@ fi
 
 # Execute command
 case "$COMMAND" in
-    health) cmd_health ;;
-    info) cmd_info ;;
-    auth) cmd_auth "${ARGS[0]}" ;;
-    whoami) cmd_whoami "${ARGS[0]}" ;;
-    roles) cmd_roles ;;
-    role) cmd_role "${ARGS[0]}" ;;
-    policies) cmd_policies ;;
-    cert-status) cmd_cert_status ;;
-    cert-test) cmd_cert_test "${ARGS[0]}" ;;
-    custom) cmd_custom "${ARGS[0]}" "${ARGS[1]}" "${ARGS[2]}" ;;
-    rotate-key) cmd_rotate_key "${ARGS[0]}" ;;
-    all) cmd_all ;;
+    start) start_server ;;
+    stop) stop_server ;;
+    restart) restart_server ;;
+    status) 
+        if check_server_status; then
+            echo -e "${GREEN}✓ Conjur server is running${NC}"
+        else
+            echo -e "${RED}✗ Conjur server is not running${NC}"
+        fi
+        ;;
+    logs) 
+        # Pass all remaining arguments to logs command
+        cmd_logs "$@"
+        ;;
+    test)
+        # Handle test subcommands
+        TEST_COMMAND="${ARGS[0]}"
+        case "$TEST_COMMAND" in
+            health) ensure_server_running && cmd_health ;;
+            info) ensure_server_running && cmd_info ;;
+            auth) ensure_server_running && cmd_auth "${ARGS[1]}" ;;
+            whoami) ensure_server_running && cmd_whoami "${ARGS[1]}" ;;
+            roles) ensure_server_running && cmd_roles ;;
+            role) ensure_server_running && cmd_role "${ARGS[1]}" ;;
+            policies) ensure_server_running && cmd_policies ;;
+            cert-status) ensure_server_running && cmd_cert_status ;;
+            cert-test) ensure_server_running && cmd_cert_test "${ARGS[1]}" ;;
+            custom) ensure_server_running && cmd_custom "${ARGS[1]}" "${ARGS[2]}" "${ARGS[3]}" ;;
+            rotate-key) ensure_server_running && cmd_rotate_key "${ARGS[1]}" ;;
+            all) ensure_server_running && cmd_all ;;
+            *)
+                echo -e "${RED}Error: Unknown test command '$TEST_COMMAND'${NC}"
+                echo -e "${YELLOW}Available test commands: health, info, auth, whoami, roles, role, policies, cert-status, cert-test, custom, rotate-key, all${NC}"
+                exit 1
+                ;;
+        esac
+        ;;
     *)
         echo -e "${RED}Error: Unknown command '$COMMAND'${NC}"
         show_usage
