@@ -15,7 +15,8 @@ module AuthenticatorsV2
       "authn-gcp" => GcpAuthenticatorType,
       "authn-oidc" => OidcAuthenticatorType,
       "authn-ldap" => LdapAuthenticatorType,
-      "authn-k8s" => K8sAuthenticatorType
+      "authn-k8s" => K8sAuthenticatorType,
+      "authn-cert" => CertAuthenticatorType
     }.freeze
 
     # Creates an authenticator instance based on the given type
@@ -30,6 +31,7 @@ module AuthenticatorsV2
     # @return [AwsAuthenticatorType] if type is "authn-iam"
     # @return [AzureAuthenticatorType] if type is "authn-azure"
     # @return [GcpAuthenticatorType] if type is "authn-gcp"
+    # @return [CertAuthenticatorType] if type is "authn-cert"
     # @raise  [ApplicationController::UnprocessableEntity] if type is nil or unsupported
     def call(auth_dict)
       select_auth_klass(auth_dict[:type]).bind do |klass|
