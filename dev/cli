@@ -1,26 +1,487 @@
-#!/bin/bash -e
+#!/bin/bash
 
-function print_help() {
-  cat << EOF
-NAME
-    cli - Development tool to simplify working with a Conjur container.
+# Conjur Development CLI
+# Usage: ./cli [command] [options]
 
-SYNOPSIS
-    cli [global options] command [command options] [arguments...]
-GLOBAL OPTIONS
-    --help                                          - Show this message
-COMMANDS
-    exec                                            - Steps into the running Conjur container, into a bash shell.
+set -e
 
-    key                                             - Displays the admin user API key
+# Configuration
+CONJUR_URL="http://localhost:3000"
+CONJUR_ACCOUNT="cucumber"
+ADMIN_USER="admin"
+ALICE_USER="alice"
 
-    policy load -b <account> -f <policy/path.yml>   - Loads a conjur policy into the provided account.
-EOF
-exit
+# API keys will be fetched dynamically
+ADMIN_API_KEY=""
+ALICE_API_KEY=""
+
+# Clear any cached keys on script start
+unset ADMIN_API_KEY ALICE_API_KEY
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Global variables for tokens
+ADMIN_TOKEN=""
+ALICE_TOKEN=""
+
+# Function to print section headers
+print_section() {
+    echo -e "\n${GREEN}=== $1 ===${NC}"
 }
 
-function print_exec_help() {
-  cat << EOF
+# Function to execute curl with nice formatting
+execute_curl() {
+    local description="$1"
+    shift
+    echo -e "\n${YELLOW}$description${NC}"
+    echo "Command: curl $*"
+    echo "Response:"
+    curl -s "$@" | jq '.' 2>/dev/null || curl -s "$@"
+    echo ""
+}
+
+# Function to execute curl with detailed output (headers, status, etc.)
+execute_curl_detailed() {
+    local description="$1"
+    shift
+    echo -e "\n${YELLOW}$description${NC}"
+    echo "Command: curl -i $*"
+    echo ""
+    
+    # Create temp files for response parts
+    local response_file=$(mktemp)
+    local headers_file=$(mktemp)
+    
+    # Execute curl with verbose output
+    local http_code=$(curl -s -w "%{http_code}" -D "$headers_file" -o "$response_file" "$@")
+    
+    # Display HTTP status
+    echo -e "${BLUE}HTTP Status: $http_code${NC}"
+    
+    # Display headers
+    echo -e "\n${GREEN}Response Headers:${NC}"
+    cat "$headers_file" | grep -v "^$" | while IFS= read -r line; do
+        echo "  $line"
+    done
+    
+    # Display response body
+    echo -e "\n${GREEN}Response Body:${NC}"
+    if [[ -s "$response_file" ]]; then
+        # Try to format as JSON first, fallback to plain text
+        if jq '.' "$response_file" 2>/dev/null; then
+            :  # jq succeeded
+        else
+            cat "$response_file"
+        fi
+    else
+        echo "  (empty response)"
+    fi
+    
+    # Cleanup
+    rm -f "$response_file" "$headers_file"
+    echo ""
+}
+
+# Function to get API key from Conjur container
+get_api_key() {
+    local user="$1"
+    echo -e "${YELLOW}Fetching API key for $user from Conjur container...${NC}" >&2
+    
+    # Try to get the API key from the container
+    local api_key=$(docker compose exec -T conjur conjurctl role retrieve-key "$CONJUR_ACCOUNT:user:$user" 2>/dev/null)
+    if [[ $? -ne 0 ]]; then
+        echo -e "${RED}Failed to retrieve API key for $user from container${NC}" >&2
+        echo -e "${YELLOW}You may need to recreate the user or check container status${NC}" >&2
+        return 1
+    fi
+    
+    # Clean up the API key (remove debug output and whitespace)
+    api_key=$(echo "$api_key" | tail -1 | tr -d '\r\n')
+    echo "$api_key"
+}
+
+# Function to ensure we have API key for user
+ensure_api_key() {
+    local user="$1"
+    
+    # Check if we already have the key
+    local current_key=""
+    if [[ "$user" == "admin" ]]; then
+        current_key="$ADMIN_API_KEY"
+    elif [[ "$user" == "alice" ]]; then
+        current_key="$ALICE_API_KEY"
+    fi
+    
+    if [[ -z "$current_key" ]]; then
+        local api_key=$(get_api_key "$user")
+        if [[ $? -eq 0 ]]; then
+            # Set the variable
+            if [[ "$user" == "admin" ]]; then
+                ADMIN_API_KEY="$api_key"
+            elif [[ "$user" == "alice" ]]; then
+                ALICE_API_KEY="$api_key"
+            fi
+            echo -e "${GREEN}✓ Got API key for $user${NC}"
+        else
+            return 1
+        fi
+    fi
+}
+
+# Function to get authentication token
+get_token() {
+    local user="$1"
+    local api_key="$2"
+    
+    if [[ -z "$api_key" ]]; then
+        echo -e "${RED}Error: API key is empty for user $user${NC}" >&2
+        return 1
+    fi
+    
+    
+    local raw_token=$(curl -s -X POST "$CONJUR_URL/authn/$CONJUR_ACCOUNT/$user/authenticate" -d "$api_key")
+    
+    if [[ -z "$raw_token" ]]; then
+        echo -e "${RED}Error: Failed to get authentication token for $user${NC}" >&2
+        return 1
+    fi
+    
+    echo "$raw_token" | base64 -w 0
+}
+
+# Server management functions
+check_server_status() {
+    if docker compose exec conjur pgrep -f conjurctl >/dev/null 2>&1; then
+        return 0  # Server is running
+    else
+        return 1  # Server is not running
+    fi
+}
+
+start_server() {
+    echo -e "${YELLOW}Starting Conjur server...${NC}"
+    
+    # Check if we need full initialization
+    if ! docker compose exec conjur test -f /tmp/conjur_initialized >/dev/null 2>&1; then
+        echo -e "${YELLOW}Conjur not initialized. Running full setup...${NC}"
+        echo -e "${BLUE}This will take a few minutes. You'll see the full initialization process:${NC}"
+        echo ""
+        
+        # Run the proper start script for full initialization
+        if ! ./start --no-enter; then
+            echo -e "${RED}✗ Failed to initialize Conjur${NC}"
+            return 1
+        fi
+        
+        # Mark as initialized
+        docker compose exec conjur touch /tmp/conjur_initialized
+        echo -e "${GREEN}✓ Conjur initialized successfully${NC}"
+    fi
+    
+    # Just start the server process (already initialized)
+    docker compose exec -d conjur conjurctl server
+    echo -e "${GREEN}Waiting for server to start...${NC}"
+
+    if docker compose exec conjur conjurctl wait; then
+        echo -e "${GREEN}✓ Server started successfully${NC}"
+    else
+        echo -e "${RED}✗ Server failed to start or is not responding${NC}"
+        return 1
+    fi
+}
+
+stop_server() {
+    echo -e "${YELLOW}Stopping Conjur server...${NC}"
+    if docker compose exec conjur pkill -f conjurctl >/dev/null 2>&1; then
+        echo -e "${GREEN}✓ Server stopped${NC}"
+    else
+        echo -e "${YELLOW}Server was not running${NC}"
+    fi
+}
+
+restart_server() {
+    echo -e "${YELLOW}Restarting Conjur server...${NC}"
+    stop_server
+    sleep 2
+    start_server
+}
+
+ensure_server_running() {
+    if ! check_server_status; then
+        echo -e "${YELLOW}Conjur server is not running. Starting it...${NC}"
+        start_server
+    fi
+}
+
+# Function to view logs
+cmd_logs() {
+    local log_file="./conjur-dev.log"
+    local follow=false
+    local filter=""
+    local lines=50
+    local show_help=false
+    
+    # Parse log options
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -h|--help)
+                show_help=true
+                shift
+                ;;
+            -f|--follow)
+                follow=true
+                shift
+                ;;
+            -n|--lines)
+                if [[ "$2" == "all" ]]; then
+                    lines="all"
+                else
+                    lines="$2"
+                fi
+                shift 2
+                ;;
+            --all)
+                lines="all"
+                shift
+                ;;
+            -all)
+                echo -e "${RED}Error: Invalid option '-all'. Did you mean '--all'?${NC}" >&2
+                echo -e "${YELLOW}Use './conjur-dev logs --help' for usage information.${NC}" >&2
+                return 1
+                ;;
+            --filter)
+                filter="$2"
+                shift 2
+                ;;
+            --grep)
+                filter="$2"
+                shift 2
+                ;;
+            -*)
+                echo -e "${RED}Error: Unknown option '$1'${NC}" >&2
+                echo -e "${YELLOW}Use './conjur-dev logs --help' for usage information.${NC}" >&2
+                return 1
+                ;;
+            *)
+                # Treat remaining args as filter patterns (for backward compatibility)
+                if [[ -z "$filter" ]]; then
+                    filter="$1"
+                fi
+                shift
+                ;;
+        esac
+    done
+    
+    # Show help if requested
+    if [[ "$show_help" == true ]]; then
+        echo -e "${BLUE}Conjur Development CLI - Logs Command${NC}"
+        echo ""
+        echo "Usage: conjur-dev logs [options] [filter_pattern]"
+        echo ""
+        echo "Options:"
+        echo "  -f, --follow             - Follow log output (like tail -f)"
+        echo "  -n, --lines NUM          - Show last NUM lines (default: 50)"
+        echo "  -n all, --lines all      - Show all lines"
+        echo "  --all                    - Show all lines (same as -n all)"
+        echo "  --filter PATTERN         - Filter logs by pattern"
+        echo "  --grep PATTERN           - Same as --filter"
+        echo "  -h, --help               - Show this help"
+        echo ""
+        echo "Examples:"
+        echo "  conjur-dev logs                    - Show last 50 lines"
+        echo "  conjur-dev logs INFO               - Show last 50 lines containing 'INFO'"
+        echo "  conjur-dev logs -f DEBUG           - Follow logs, show only DEBUG messages"
+        echo "  conjur-dev logs -n 100 ERROR       - Show last 100 lines containing 'ERROR'"
+        echo "  conjur-dev logs --all INFO         - Show all lines containing 'INFO'"
+        echo "  conjur-dev logs -n all             - Show entire log file"
+        return 0
+    fi
+    
+    if [[ ! -f "$log_file" ]]; then
+        echo -e "${YELLOW}No log file found at $log_file${NC}"
+        echo -e "${BLUE}Start the server first with: ./conjur-dev start${NC}"
+        return 1
+    fi
+    
+    if [[ -n "$filter" ]]; then
+        echo -e "${BLUE}Viewing Conjur logs (filtered by: ${YELLOW}$filter${BLUE})${NC}"
+    else
+        echo -e "${BLUE}Viewing Conjur logs${NC}"
+    fi
+    if [[ "$follow" == true ]]; then
+        echo -e "${YELLOW}Following logs (Ctrl+C to exit)${NC}"
+    fi
+    if [[ "$lines" == "all" ]]; then
+        echo -e "${YELLOW}Showing all lines${NC}"
+    else
+        echo -e "${YELLOW}Showing last $lines lines${NC}"
+    fi
+    echo ""
+    
+    # Execute command with proper piping
+    if [[ -n "$filter" ]]; then
+        if [[ "$follow" == true ]]; then
+            tail -f "$log_file" | grep --color=auto "$filter"
+        elif [[ "$lines" == "all" ]]; then
+            cat "$log_file" | grep --color=auto "$filter"
+        else
+            tail -n "$lines" "$log_file" | grep --color=auto "$filter"
+        fi
+    else
+        if [[ "$follow" == true ]]; then
+            tail -f "$log_file"
+        elif [[ "$lines" == "all" ]]; then
+            cat "$log_file"
+        else
+            tail -n "$lines" "$log_file"
+        fi
+    fi
+}
+
+# Function to show usage
+show_usage() {
+    echo -e "${BLUE}Conjur Development CLI${NC}"
+    echo -e "${YELLOW}Server: $CONJUR_URL | Account: $CONJUR_ACCOUNT${NC}"
+    echo ""
+    echo "Usage: cli [command] [options]"
+    echo ""
+    echo "Service Management:"
+    echo "  start                     - Start Conjur server"
+    echo "  stop                      - Stop Conjur server"
+    echo "  restart                   - Restart Conjur server"
+    echo "  status                    - Check if server is running"
+    echo "  logs [options]            - View server logs"
+    echo ""
+    echo "Container Operations:"
+    echo "  exec [options]            - Enter Conjur container shell"
+    echo "  key                       - Display admin API key"
+    echo "  policy load <account> <file> - Load policy into account (file relative to repo root or full container path)"
+    echo ""
+    echo "Testing:"
+    echo "  test health               - Check server health (Appliance only)"
+    echo "  test info                 - Get server info (Appliance only)"
+    echo "  test auth [admin|alice]   - Authenticate user and show token"
+    echo "  test whoami [admin|alice] - Show current user identity"
+    echo "  test roles                - List all resources (includes roles)"
+    echo "  test role [admin|alice]   - Get specific role info"
+    echo "  test policies             - Get root policy"
+    echo "  test rotate-key [admin|alice] - Rotate API key for user"
+    echo "  test cert-status          - Check certificate auth status"
+    echo "  test cert-test [cert_file] - Test certificate authentication"
+    echo "  test custom [endpoint] [method] [data] - Make custom request"
+    echo "  test all                  - Run all basic tests"
+    echo ""
+    echo "Options:"
+    echo "  -u, --url URL            - Override Conjur URL (default: $CONJUR_URL)"
+    echo "  -a, --account ACCOUNT    - Override account (default: $CONJUR_ACCOUNT)"
+    echo "  -h, --help               - Show this help"
+    echo ""
+    echo "Examples:"
+    echo "  ./cli start"
+    echo "  ./cli exec                     # Enter container"
+    echo "  ./cli exec --authn-oidc        # Enter with OIDC support"
+    echo "  ./cli key                      # Get admin API key"
+    echo "  ./cli policy load cucumber dev/files/policy.yml"
+    echo "  ./cli logs -f --filter INFO"
+    echo "  ./cli test health"
+    echo "  ./cli test auth admin"
+    echo ""
+    echo "Log Options:"
+    echo "  -f, --follow             - Follow log output (like tail -f)"
+    echo "  -n, --lines NUM          - Show last NUM lines (default: 50)"
+    echo "  --filter PATTERN         - Filter logs by pattern"
+    echo "  --grep PATTERN           - Same as --filter"
+}
+
+# Container operation functions
+cmd_exec() {
+    local container="conjur"
+    local env_args=()
+    
+    # Get admin API key for authentication
+    local api_key=$(docker compose exec -T conjur conjurctl role retrieve-key cucumber:user:admin 2>/dev/null | tr -d '\r')
+    if [[ -n "$api_key" ]]; then
+        env_args+=(-e "CONJUR_AUTHN_API_KEY=$api_key")
+    fi
+    
+    # Parse exec options
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --authn-oidc)
+                echo -e "${BLUE}Enabling OIDC support...${NC}"
+                enable_oidc
+                shift
+                ;;
+            --authn-jwt)
+                echo -e "${BLUE}Enabling JWT support...${NC}"
+                enable_jwt
+                shift
+                ;;
+            --authn-azure)
+                echo -e "${BLUE}Enabling Azure support...${NC}"
+                enable_azure
+                shift
+                ;;
+            --authn-gcp)
+                echo -e "${BLUE}Enabling GCP support...${NC}"
+                handle_gcp "${@:2:4}"
+                shift 5
+                ;;
+            --client)
+                container="client"
+                shift
+                ;;
+            -h|--help)
+                print_exec_help
+                return 0
+                ;;
+            *)
+                echo -e "${RED}Error: Unknown exec option '$1'${NC}"
+                echo -e "${YELLOW}Use './conjur-dev exec --help' for usage information.${NC}"
+                return 1
+                ;;
+        esac
+    done
+    
+    echo -e "${BLUE}Entering $container container...${NC}"
+    docker exec "${env_args[@]}" -it --detach-keys 'ctrl-\' "$(docker compose ps -q "$container")" bash
+}
+
+cmd_key() {
+    echo -e "${BLUE}Admin API Key:${NC}"
+    docker compose exec -T conjur conjurctl role retrieve-key cucumber:user:admin 2>/dev/null | tr -d '\r'
+}
+
+cmd_policy_load() {
+    local account="$1"
+    local policy_file="$2"
+    
+    if [[ -z "$account" || -z "$policy_file" ]]; then
+        echo -e "${RED}Error: Both account and policy file are required${NC}"
+        echo -e "${YELLOW}Usage: ./cli policy load <account> <policy_file>${NC}"
+        echo -e "${YELLOW}Policy file should be relative to the dev/ directory${NC}"
+        return 1
+    fi
+    
+    # Check if file exists locally (relative to current directory)
+    if [[ -f "$policy_file" ]]; then
+        echo -e "${BLUE}Loading policy '$policy_file' into account '$account'...${NC}"
+        docker compose exec conjur conjurctl policy load "$account" "/src/conjur-server/$policy_file"
+    else
+        # Try container path directly (for files that exist only in container)
+        echo -e "${BLUE}Loading policy '$policy_file' into account '$account' (container path)...${NC}"
+        docker compose exec conjur conjurctl policy load "$account" "$policy_file"
+    fi
+}
+
+# Advanced authenticator support functions
+print_exec_help() {
+    cat << EOF
 NAME
     exec - Steps into the running Conjur container, into a bash shell.
 
@@ -33,247 +494,608 @@ COMMANDS
     --authn-azure   Enables Azure features
     --authn-gcp     Enables GCP features
     --authn-jwt     Enables JWT features
-    --client        Steps into the running Conjur CLI container, instead, as a bash shell. 
+    --client        Steps into the running Conjur CLI container, instead, as a bash shell.
 EOF
-exit
 }
 
-function print_gcp_help() {
-  cat << EOF
+print_policy_load_help() {
+    cat << EOF
 NAME
-    --authn-gcp - Enables GCP features, in order to run local tests.
+    load - Load MAML policy from file(s)
 
 SYNOPSIS
-    --authn-gcp [command options] [arguments...]
-GLOBAL OPTIONS
-    --help                                    - Show this message
-COMMANDS
-    --gce     Google compute engine instance name
-    --gcf     Google cloud function URL (Predefined ci/test_suites/authenticators_gcp/function/main.py code as GCF)
-USAGE
-    ./cli exec --authn-gcp --gce [GCE_INSTANCE_NAME] --gcf [GCF_URL]
+    cli policy load account filename...
+
+DESCRIPTION
+    Loads a conjur policy into the provided account.
+    
+ARGUMENTS
+    account     The Conjur account to load the policy into
+    filename    Path to the policy file (relative to container root)
+
+EXAMPLES
+    ./cli policy load cucumber dev/files/policy.yml
+    ./cli policy load myaccount policies/my-policy.yml
 EOF
-exit
 }
 
-function handle_gcp() {
-  local gcp_params="${@:1:4}"
-  validate_gcp_options_and_args $gcp_params
-  enable_gcp $gcp_params
+print_policy_help() {
+    cat << EOF
+NAME
+    policy - Manage Conjur policies
+
+SYNOPSIS
+    cli policy [command] [options]
+
+COMMANDS
+    load        Load MAML policy from file(s)
+
+EXAMPLES
+    ./cli policy load cucumber dev/files/policy.yml
+    ./cli policy load --help
+EOF
 }
 
-function validate_gcp_options_and_args() {
-  if [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
-    print_gcp_help
-    exit 1
-  elif [ -z "$1" ];  then
-    echo "--gce,--gcf required command options are missing"
-    print_gcp_help
-    exit 1
-  fi
-
-  local params_count=$#
-  while [ $params_count -gt 0 ]
-  do
-     local option=$1
-     local option_arg=$2
-     validate_gcp_option $option $option_arg
-
-     shift 2
-     params_count=$(( $params_count - 2 ))
-  done
+enable_oidc() {
+    add_keycloak_env_vars_to_env_args
 }
 
-function validate_gcp_option() {
-  local option=$1
-  local option_arg=$2
-  case "$option" in
-    --gce | --gcf ) validate_gcp_arguments_exist $option $option_arg ;;
-    * ) echo "$option is not a valid option"; print_gcp_help; exit 1;;
-  esac
+enable_jwt() {
+    add_keycloak_env_vars_to_env_args
 }
 
-function validate_gcp_arguments_exist() {
-  local option=$1
-  local option_arg=$2
-  if [ -z "$option_arg" ]; then
-    echo "argument is missing for $option option"
-    exit 1
-  fi
+add_keycloak_env_vars_to_env_args() {
+    echo "Extracting keycloak variables & setting as env variables"
+    
+    keycloak_env_args=(
+        -e "PROVIDER_URI=https://keycloak:8443/auth/realms/master"
+        -e "PROVIDER_INTERNAL_URI=http://keycloak:8080/auth/realms/master/protocol/openid-connect"
+        -e "PROVIDER_ISSUER=http://keycloak:8080/auth/realms/master"
+        -e "ID_TOKEN_USER_PROPERTY=preferred_username"
+    )
+    
+    # Try to get keycloak cert if container is running
+    if docker compose ps -q keycloak >/dev/null 2>&1; then
+        keycloak_cert=$(docker compose exec conjur cat /etc/ssl/certs/keycloak.pem 2>/dev/null || echo "")
+        if [[ -n "$keycloak_cert" ]]; then
+            keycloak_env_args+=(-e "KEYCLOAK_CA_CERT=$keycloak_cert")
+        fi
+        
+        # Merge env vars from the keycloak container if available
+        output="$(docker compose exec -T keycloak printenv 2>/dev/null | grep KEYCLOAK || true)"
+        if [[ -n "$output" ]]; then
+            IFS=$'\n'
+            while IFS= read -r line; do
+                [[ -n "$line" ]] && keycloak_env_args+=(-e "$line")
+            done <<< "$output"
+        fi
+    fi
+    
+    env_args+=("${keycloak_env_args[@]}")
 }
 
-function enable_gcp() {
-  local params_count=$#
-  while [ $params_count -gt 0 ]
-  do
+enable_azure() {
+    # Check if Azure dependencies script exists
+    if [[ -f "../ci/authn-azure/check_dependencies.sh" ]]; then
+        ../ci/authn-azure/check_dependencies.sh
+    fi
+    
+    echo "Setting Azure details as env variables"
+    
+    azure_env_args=(
+        -e "AZURE_TENANT_ID=${AZURE_TENANT_ID:-}"
+        -e "INFRAPOOL_AZURE_AUTHN_INSTANCE_IP=${INFRAPOOL_AZURE_AUTHN_INSTANCE_IP:-}"
+        -e "AZURE_AUTHN_INSTANCE_USERNAME=${AZURE_AUTHN_INSTANCE_USERNAME:-}"
+        -e "AZURE_AUTHN_INSTANCE_PASSWORD=${AZURE_AUTHN_INSTANCE_PASSWORD:-}"
+        -e "AZURE_SUBSCRIPTION_ID=${AZURE_SUBSCRIPTION_ID:-}"
+        -e "AZURE_RESOURCE_GROUP=${AZURE_RESOURCE_GROUP:-}"
+        -e "USER_ASSIGNED_IDENTITY=${USER_ASSIGNED_IDENTITY:-}"
+        -e "USER_ASSIGNED_IDENTITY_CLIENT_ID=${USER_ASSIGNED_IDENTITY_CLIENT_ID:-}"
+        -e "INFRAPOOL_SYSTEM_ASSIGNED_IDENTITY=${INFRAPOOL_SYSTEM_ASSIGNED_IDENTITY:-}"
+    )
+    
+    env_args+=("${azure_env_args[@]}")
+}
+
+handle_gcp() {
+    local gcp_params=("$@")
+    validate_gcp_options_and_args "${gcp_params[@]}"
+    enable_gcp "${gcp_params[@]}"
+}
+
+validate_gcp_options_and_args() {
+    if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+        print_gcp_help
+        return 0
+    elif [[ -z "$1" ]]; then
+        echo "--gce,--gcf required command options are missing"
+        print_gcp_help
+        return 1
+    fi
+    
+    local params_count=$#
+    while [[ $params_count -gt 0 ]]; do
+        local option=$1
+        local option_arg=$2
+        validate_gcp_option "$option" "$option_arg"
+        shift 2
+        params_count=$((params_count - 2))
+    done
+}
+
+validate_gcp_option() {
     local option=$1
     local option_arg=$2
-
     case "$option" in
-      --gce ) fetch_gce_tokens $option_arg ;;
-      --gcf ) fetch_gcf_tokens $option_arg ;;
+        --gce | --gcf) validate_gcp_arguments_exist "$option" "$option_arg" ;;
+        *) echo "$option is not a valid option"; print_gcp_help; return 1;;
     esac
-
-     shift 2
-     params_count=$(( $params_count - 2 ))
-  done
 }
 
-function fetch_gce_tokens() {
-  local gce_instance_name="$1"
+validate_gcp_arguments_exist() {
+    local option=$1
+    local option_arg=$2
+    if [[ -z "$option_arg" ]]; then
+        echo "argument is missing for $option option"
+        return 1
+    fi
+}
 
- "../ci/test_suites/authenticators_gcp/get_gcp_id_tokens.sh" "$gce_instance_name"
-  _set_gcp_token_payload "../ci/test_suites/authenticators_gcp/tokens/gce_token_valid"
-  echo "Setting GCE details as env variables"
-  local gce_project_id="$(echo "$DECODED_GCP_TOKEN_PAYLOAD" | jq -r '.google.compute_engine.project_id')"
-  local gce_instance_name="$(echo "$DECODED_GCP_TOKEN_PAYLOAD" | jq -r '.google.compute_engine.instance_name')"
-  local gce_service_account_id="$(echo "$DECODED_GCP_TOKEN_PAYLOAD" | jq -r '.sub')"
-  local gce_service_account_email="$(echo "$DECODED_GCP_TOKEN_PAYLOAD" | jq -r '.email')"
+enable_gcp() {
+    local params_count=$#
+    while [[ $params_count -gt 0 ]]; do
+        local option=$1
+        local option_arg=$2
+        
+        case "$option" in
+            --gce) fetch_gce_tokens "$option_arg" ;;
+            --gcf) fetch_gcf_tokens "$option_arg" ;;
+        esac
+        
+        shift 2
+        params_count=$((params_count - 2))
+    done
+}
 
-  gce_env_args=(
-    -e "GCE_INSTANCE_NAME=$gce_instance_name"
-    -e "GCE_SERVICE_ACCOUNT_ID=$gce_service_account_id"
-    -e "GCE_SERVICE_ACCOUNT_EMAIL=$gce_service_account_email"
-    -e "GCE_PROJECT_ID=$gce_project_id"
-  )
-
-  env_args+=("${gce_env_args[@]}")
+fetch_gce_tokens() {
+    local gce_instance_name="$1"
+    
+    if [[ -f "../ci/test_suites/authenticators_gcp/get_gcp_id_tokens.sh" ]]; then
+        "../ci/test_suites/authenticators_gcp/get_gcp_id_tokens.sh" "$gce_instance_name"
+        _set_gcp_token_payload "../ci/test_suites/authenticators_gcp/tokens/gce_token_valid"
+        echo "Setting GCE details as env variables"
+        
+        local gce_project_id="$(echo "$DECODED_GCP_TOKEN_PAYLOAD" | jq -r '.google.compute_engine.project_id' 2>/dev/null || echo "")"
+        local gce_instance_name="$(echo "$DECODED_GCP_TOKEN_PAYLOAD" | jq -r '.google.compute_engine.instance_name' 2>/dev/null || echo "")"
+        local gce_service_account_id="$(echo "$DECODED_GCP_TOKEN_PAYLOAD" | jq -r '.sub' 2>/dev/null || echo "")"
+        local gce_service_account_email="$(echo "$DECODED_GCP_TOKEN_PAYLOAD" | jq -r '.email' 2>/dev/null || echo "")"
+        
+        gce_env_args=(
+            -e "GCE_INSTANCE_NAME=$gce_instance_name"
+            -e "GCE_SERVICE_ACCOUNT_ID=$gce_service_account_id"
+            -e "GCE_SERVICE_ACCOUNT_EMAIL=$gce_service_account_email"
+            -e "GCE_PROJECT_ID=$gce_project_id"
+        )
+        
+        env_args+=("${gce_env_args[@]}")
+    else
+        echo "GCP token script not found, skipping GCE token setup"
+    fi
 }
 
 _set_gcp_token_payload() {
-  local gcp_token_file="$1"
-
-  if ! [ -f "$gcp_token_file" ]; then
-    echo "GCP token file: '$gcp_token_file' not found."
-    exit 1
-  fi
-
-  # read token and set env vars
-  gcp_token=$(cat "$gcp_token_file")
-
-  source ../ci/jwt/decode_token.sh
-
-  DECODED_GCP_TOKEN_PAYLOAD=$(decode_jwt_payload "$gcp_token")
+    local gcp_token_file="$1"
+    
+    if [[ ! -f "$gcp_token_file" ]]; then
+        echo "GCP token file: '$gcp_token_file' not found."
+        return 1
+    fi
+    
+    # read token and set env vars
+    local gcp_token=$(cat "$gcp_token_file")
+    
+    if [[ -f "../ci/jwt/decode_token.sh" ]]; then
+        source ../ci/jwt/decode_token.sh
+        DECODED_GCP_TOKEN_PAYLOAD=$(decode_jwt_payload "$gcp_token")
+    fi
 }
 
-function fetch_gcf_tokens() {
-  echo "-- ------------------------------------------------------ --"
-  echo "-- Generate Google Cloud GCP Identity tokens from GCF URL --"
-  echo "-- ------------------------------------------------------ --"
-
-  local gcp_func_url=$1
-  local token_prefix="tokens/gcf_"
-
-  validate_gcf_url_accessible "$gcp_func_url" || exit 1
-
-  cd ../ci/test_suites/authenticators_gcp/
-  sh ./get_tokens_to_files.sh "$gcp_func_url" "$token_prefix" || exit 1
-  cd -
-  local decoded_gcf_token_payload=$(_get_gcp_token_payload "../ci/test_suites/authenticators_gcp/tokens/gcf_token_valid")
-
-  echo "Setting GCF details as env variables"
-  local gcf_service_account_id="$(echo "$decoded_gcf_token_payload" | jq -r '.sub')"
-  local gcf_service_account_email="$(echo "$decoded_gcf_token_payload" | jq -r '.email')"
-
-  gce_env_args=(
-    -e "GCF_SERVICE_ACCOUNT_ID=$gcf_service_account_id"
-    -e "GCF_SERVICE_ACCOUNT_EMAIL=$gcf_service_account_email"
-    )
-
-  env_args+=("${gce_env_args[@]}")
-
-  echo "Finished obtaining and writing tokens to file"
+fetch_gcf_tokens() {
+    echo "-- ------------------------------------------------------ --"
+    echo "-- Generate Google Cloud GCP Identity tokens from GCF URL --"
+    echo "-- ------------------------------------------------------ --"
+    
+    local gcp_func_url=$1
+    local token_prefix="tokens/gcf_"
+    
+    validate_gcf_url_accessible "$gcp_func_url" || return 1
+    
+    if [[ -d "../ci/test_suites/authenticators_gcp/" ]]; then
+        cd ../ci/test_suites/authenticators_gcp/
+        sh ./get_tokens_to_files.sh "$gcp_func_url" "$token_prefix" || return 1
+        cd -
+        local decoded_gcf_token_payload=$(_get_gcp_token_payload "../ci/test_suites/authenticators_gcp/tokens/gcf_token_valid")
+        
+        echo "Setting GCF details as env variables"
+        local gcf_service_account_id="$(echo "$decoded_gcf_token_payload" | jq -r '.sub' 2>/dev/null || echo "")"
+        local gcf_service_account_email="$(echo "$decoded_gcf_token_payload" | jq -r '.email' 2>/dev/null || echo "")"
+        
+        gcf_env_args=(
+            -e "GCF_SERVICE_ACCOUNT_ID=$gcf_service_account_id"
+            -e "GCF_SERVICE_ACCOUNT_EMAIL=$gcf_service_account_email"
+        )
+        
+        env_args+=("${gcf_env_args[@]}")
+        
+        echo "Finished obtaining and writing tokens to file"
+    else
+        echo "GCP test suite directory not found, skipping GCF token setup"
+    fi
 }
 
-function validate_gcf_url_accessible() {
-  echo "Validating google cloud function is accessible"
-  local gcp_func_url=$1
-  local audience="dummy_host"
-
-  sh ../ci/test_suites/authenticators_gcp/validate_gcf_url_accessible.sh "$gcp_func_url" "$audience" || exit 1
+validate_gcf_url_accessible() {
+    echo "Validating google cloud function is accessible"
+    local gcp_func_url=$1
+    local audience="dummy_host"
+    
+    if [[ -f "../ci/test_suites/authenticators_gcp/validate_gcf_url_accessible.sh" ]]; then
+        sh ../ci/test_suites/authenticators_gcp/validate_gcf_url_accessible.sh "$gcp_func_url" "$audience" || return 1
+    else
+        echo "GCF validation script not found, skipping validation"
+    fi
 }
 
-function enable_oidc() {
-  add_keycloak_env_vars_to_env_args
+print_gcp_help() {
+    echo -e "${BLUE}GCP Authenticator Help${NC}"
+    echo "--authn-gcp - Enables GCP features, in order to run local tests."
+    echo ""
+    echo -e "${BLUE}Usage:${NC}"
+    echo "    ./cli exec --authn-gcp --gce [GCE_INSTANCE_NAME] --gcf [GCF_URL]"
+    echo ""
+    echo -e "${BLUE}Options:${NC}"
+    echo "    --gce INSTANCE    Google compute engine instance name"
+    echo "    --gcf URL         Google cloud function URL"
+    echo "    --help            Show this help"
+    echo ""
+    echo -e "${BLUE}Example:${NC}"
+    echo "    ./cli exec --authn-gcp --gce my-instance --gcf https://my-function-url"
 }
 
-function add_keycloak_env_vars_to_env_args() {
-  echo "Extracting keycloak variables & setting as env variables"
-
-  keycloak_env_args=(
-    -e "PROVIDER_URI=https://keycloak:8443/auth/realms/master"
-    -e "PROVIDER_INTERNAL_URI=http://keycloak:8080/auth/realms/master/protocol/openid-connect"
-    -e "PROVIDER_ISSUER=http://keycloak:8080/auth/realms/master"
-    -e "ID_TOKEN_USER_PROPERTY=preferred_username"
-    -e "KEYCLOAK_CA_CERT=$(docker compose exec conjur cat /etc/ssl/certs/keycloak.pem)"
-  )
-
-  # Merge env vars from the keycloak container
-  output="$(set -o pipefail; docker compose exec -T keycloak printenv | grep KEYCLOAK)"
-  IFS=$'\n'
-  while IFS= read -r line; do
-    keycloak_container_args+=(-e "$line")
-  done <<< "$output"
-
-  keycloak_env_args+=("${keycloak_container_args[@]}")
-
-  env_args+=("${keycloak_env_args[@]}")
+# Command functions
+cmd_health() {
+    local curl_args=("-X" "GET" "$CONJUR_URL/health")
+    if [[ -n "$ADMIN_TOKEN" ]]; then
+        curl_args+=("-H" "Authorization: Token token=\"$ADMIN_TOKEN\"")
+    fi
+    execute_curl_detailed "Check server health" "${curl_args[@]}"
 }
 
-function enable_jwt() {
-  add_keycloak_env_vars_to_env_args
+cmd_info() {
+    local curl_args=("-X" "GET" "$CONJUR_URL/info")
+    if [[ -n "$ADMIN_TOKEN" ]]; then
+        curl_args+=("-H" "Authorization: Token token=\"$ADMIN_TOKEN\"")
+    fi
+    execute_curl_detailed "Get server info" "${curl_args[@]}"
 }
 
-function enable_azure() {
-
-  ../ci/authn-azure/check_dependencies.sh
-
-  echo "Setting Azure details as env variables"
-
-  azure_env_args=(
-    -e "AZURE_TENANT_ID=$AZURE_TENANT_ID"
-    -e "INFRAPOOL_AZURE_AUTHN_INSTANCE_IP=$INFRAPOOL_AZURE_AUTHN_INSTANCE_IP"
-    -e "AZURE_AUTHN_INSTANCE_USERNAME=$AZURE_AUTHN_INSTANCE_USERNAME"
-    -e "AZURE_AUTHN_INSTANCE_PASSWORD=$AZURE_AUTHN_INSTANCE_PASSWORD"
-    -e "AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID"
-    -e "AZURE_RESOURCE_GROUP=$AZURE_RESOURCE_GROUP"
-    -e "USER_ASSIGNED_IDENTITY=$USER_ASSIGNED_IDENTITY"
-    -e "USER_ASSIGNED_IDENTITY_CLIENT_ID=$USER_ASSIGNED_IDENTITY_CLIENT_ID"
-    -e "INFRAPOOL_SYSTEM_ASSIGNED_IDENTITY=$INFRAPOOL_SYSTEM_ASSIGNED_IDENTITY"
-  )
-
-  env_args+=("${azure_env_args[@]}")
+cmd_auth() {
+    local user="${1:-admin}"
+    
+    case "$user" in
+        admin|alice) ;;
+        *) echo -e "${RED}Error: Unknown user '$user'. Use 'admin' or 'alice'${NC}"; return 1 ;;
+    esac
+    
+    # Ensure we have the API key
+    ensure_api_key "$user" || return 1
+    
+    # Get the API key
+    local api_key=""
+    if [[ "$user" == "admin" ]]; then
+        api_key="$ADMIN_API_KEY"
+    else
+        api_key="$ALICE_API_KEY"
+    fi
+    
+    echo -e "${YELLOW}Authenticating as $user...${NC}"
+    local token=$(get_token "$user" "$api_key")
+    
+    if [[ $? -ne 0 || -z "$token" ]]; then
+        echo -e "${RED}Failed to authenticate as $user${NC}"
+        return 1
+    fi
+    
+    if [[ "$user" == "admin" ]]; then
+        ADMIN_TOKEN="$token"
+    else
+        ALICE_TOKEN="$token"
+    fi
+    
+    echo -e "${GREEN}✓ Authentication successful${NC}"
+    echo "Token: $token"
 }
 
-unset COMPOSE_PROJECT_NAME
+cmd_whoami() {
+    local user="${1:-admin}"
+    local token=""
+    
+    case "$user" in
+        admin) 
+            [[ -z "$ADMIN_TOKEN" ]] && cmd_auth admin
+            token="$ADMIN_TOKEN"
+            ;;
+        alice) 
+            [[ -z "$ALICE_TOKEN" ]] && cmd_auth alice
+            token="$ALICE_TOKEN"
+            ;;
+        *) echo -e "${RED}Error: Unknown user '$user'. Use 'admin' or 'alice'${NC}"; return 1 ;;
+    esac
+    
+    execute_curl_detailed "Whoami as $user" \
+        -X GET "$CONJUR_URL/whoami" \
+        -H "Authorization: Token token=\"$token\""
+}
 
-while true ; do
-  case "$1" in
-    -h | --help ) print_help ; shift ;;
-    exec )
-      api_key=$(docker compose exec -T conjur conjurctl role retrieve-key cucumber:user:admin | tr -d '\r')
-      env_args=(-e "CONJUR_AUTHN_API_KEY=$api_key")
-      case "$2" in
-        -h | --help ) print_exec_help ; shift ;;
-        --authn-oidc ) enable_oidc ; shift ;;
-        --authn-azure ) enable_azure ; shift ;;
-        --authn-gcp ) handle_gcp "${@:3:4}"; shift 5;;
-        --authn-jwt ) enable_jwt ; shift ;;
-        --client ) container=client ; shift ;;
-        * ) if [ -z "$2" ]; then shift ; else echo "$2 is not a valid option"; exit 1; fi;;
-      esac
-      docker exec "${env_args[@]}" -e "CONJUR_AUTHN_API_KEY=$api_key" -it --detach-keys 'ctrl-\' "$(docker compose ps -q "${container:-conjur}")" bash
-     shift ;;
-    policy )
-      case "$2" in
-        load )
-          account="$3"
-          policy_file=$4
-          docker compose exec conjur conjurctl policy load "$account" "/src/conjur-server/$policy_file"
-          shift 4 ;;
-        * ) if [ -z "$1" ]; then break; else echo "$1 is not a valid option"; exit 1; fi;;
-      esac ;;
-    key ) docker compose exec -T conjur conjurctl role retrieve-key cucumber:user:admin ; shift ;;
-     * ) if [ -z "$1" ]; then break; else echo "$1 is not a valid option"; exit 1; fi;;
-  esac
+cmd_roles() {
+    [[ -z "$ADMIN_TOKEN" ]] && cmd_auth admin
+    execute_curl_detailed "List all resources (includes roles)" \
+        -X GET "$CONJUR_URL/resources/$CONJUR_ACCOUNT" \
+        -H "Authorization: Token token=\"$ADMIN_TOKEN\""
+}
+
+cmd_role() {
+    local user="${1:-admin}"
+    [[ -z "$ADMIN_TOKEN" ]] && cmd_auth admin
+    
+    case "$user" in
+        admin|alice) ;;
+        *) echo -e "${RED}Error: Unknown user '$user'. Use 'admin' or 'alice'${NC}"; return 1 ;;
+    esac
+    
+    execute_curl_detailed "Get $user role info" \
+        -X GET "$CONJUR_URL/roles/$CONJUR_ACCOUNT/user/$user" \
+        -H "Authorization: Token token=\"$ADMIN_TOKEN\""
+}
+
+cmd_policies() {
+    [[ -z "$ADMIN_TOKEN" ]] && cmd_auth admin
+    execute_curl_detailed "Get root policy" \
+        -X GET "$CONJUR_URL/policies/$CONJUR_ACCOUNT/policy/root" \
+        -H "Authorization: Token token=\"$ADMIN_TOKEN\""
+}
+
+cmd_cert_status() {
+    execute_curl_detailed "Certificate auth status" \
+        -X GET "$CONJUR_URL/authn-cert/my-service/$CONJUR_ACCOUNT/status"
+}
+
+cmd_cert_test() {
+    local cert_file="$1"
+    if [[ -z "$cert_file" ]]; then
+        echo -e "${RED}Error: Certificate file required${NC}"
+        echo "Usage: $0 cert-test <cert_file>"
+        return 1
+    fi
+    
+    if [[ ! -f "$cert_file" ]]; then
+        echo -e "${RED}Error: Certificate file '$cert_file' not found${NC}"
+        return 1
+    fi
+    
+    execute_curl_detailed "Test certificate authentication" \
+        -X POST "$CONJUR_URL/authn-cert/my-service/$CONJUR_ACCOUNT/authenticate" \
+        --cert "$cert_file"
+}
+
+cmd_custom() {
+    local endpoint="$1"
+    local method="${2:-GET}"
+    local data="$3"
+    
+    if [[ -z "$endpoint" ]]; then
+        echo -e "${RED}Error: Endpoint required${NC}"
+        echo "Usage: $0 custom <endpoint> [method] [data]"
+        echo "Examples:"
+        echo "  $0 custom /health"
+        echo "  $0 custom /authn-cert/my-service/cucumber/status GET"
+        echo "  $0 custom /policies/cucumber POST '{\"policy\":\"...\"}"
+        return 1
+    fi
+    
+    # Add leading slash if missing
+    [[ "$endpoint" != /* ]] && endpoint="/$endpoint"
+    
+    # Build curl arguments
+    local curl_args=()
+    curl_args+=("-X" "$method")
+    curl_args+=("$CONJUR_URL$endpoint")
+    
+    # Add authentication for most endpoints (except some auth endpoints)
+    if [[ ! "$endpoint" =~ ^/authn.*authenticate$ ]]; then
+        [[ -z "$ADMIN_TOKEN" ]] && cmd_auth admin
+        curl_args+=("-H" "Authorization: Token token=\"$ADMIN_TOKEN\"")
+    fi
+    
+    # Add data if provided
+    if [[ -n "$data" ]]; then
+        curl_args+=("-H" "Content-Type: application/json")
+        curl_args+=("-d" "$data")
+    fi
+    
+    execute_curl_detailed "Custom $method request to $endpoint" "${curl_args[@]}"
+}
+
+cmd_rotate_key() {
+    local user="${1:-admin}"
+    
+    case "$user" in
+        admin|alice) ;;
+        *) echo -e "${RED}Error: Unknown user '$user'. Use 'admin' or 'alice'${NC}"; return 1 ;;
+    esac
+    
+    echo -e "${YELLOW}Note: API key rotation requires manual intervention${NC}"
+    # Get current key
+    local current_key=$(docker compose exec -T conjur conjurctl role retrieve-key "$CONJUR_ACCOUNT:user:$user" 2>/dev/null | tr -d '\r')
+    
+    if [[ -z "$current_key" || "$current_key" == *"ERROR"* ]]; then
+        echo -e "${RED}Failed to retrieve current API key for $user${NC}"
+        return 1
+    fi
+    
+    echo -e "${YELLOW}Current API key for $user: ${GREEN}${current_key:0:3}...${current_key: -3}${NC}"
+    echo -e "${BLUE}To rotate the API key, you would need to:${NC}"
+    echo "1. Delete and recreate the user, or"
+    echo "2. Use the Conjur API to rotate the key, or" 
+    echo "3. Use conjurctl role reset-password (interactive)"
+    echo ""
+    echo -e "${YELLOW}For now, refreshing cached key...${NC}"
+    
+    # Update our cached key with current key
+    if [[ "$user" == "admin" ]]; then
+        ADMIN_API_KEY="$current_key"
+        ADMIN_TOKEN=""  # Clear cached token
+    else
+        ALICE_API_KEY="$current_key"
+        ALICE_TOKEN=""  # Clear cached token
+    fi
+    
+    echo -e "${GREEN}✓ Refreshed cached API key for $user${NC}"
+}
+
+cmd_all() {
+    echo -e "${BLUE}=== Running All Basic Tests ===${NC}"
+    cmd_health
+    cmd_info
+    cmd_auth admin
+    cmd_auth alice
+    cmd_whoami admin
+    cmd_whoami alice
+    cmd_roles
+    cmd_role admin
+    cmd_role alice
+    cmd_policies
+    cmd_cert_status
+    echo -e "\n${GREEN}=== All Tests Complete ===${NC}"
+}
+
+# Parse command line arguments
+VERBOSE=false
+COMMAND=""
+ARGS=()
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -u|--url)
+            CONJUR_URL="$2"
+            shift 2
+            ;;
+        -a|--account)
+            CONJUR_ACCOUNT="$2"
+            shift 2
+            ;;
+        -h|--help)
+            show_usage
+            exit 0
+            ;;
+        -*)
+            echo -e "${RED}Error: Unknown option $1${NC}"
+            show_usage
+            exit 1
+            ;;
+        *)
+            if [[ -z "$COMMAND" ]]; then
+                COMMAND="$1"
+                # Special handling for logs, exec, and policy commands - pass remaining args directly
+                if [[ "$COMMAND" == "logs" || "$COMMAND" == "exec" || "$COMMAND" == "policy" ]]; then
+                    shift
+                    break
+                fi
+            else
+                ARGS+=("$1")
+            fi
+            shift
+            ;;
+    esac
 done
+
+# Show usage if no command provided
+if [[ -z "$COMMAND" ]]; then
+    show_usage
+    exit 0
+fi
+
+# Execute command
+case "$COMMAND" in
+    start) start_server ;;
+    stop) stop_server ;;
+    restart) restart_server ;;
+    status) 
+        if check_server_status; then
+            echo -e "${GREEN}✓ Conjur server is running${NC}"
+        else
+            echo -e "${RED}✗ Conjur server is not running${NC}"
+        fi
+        ;;
+    logs) 
+        # Pass all remaining arguments to logs command
+        cmd_logs "$@"
+        ;;
+    test)
+        # Handle test subcommands
+        TEST_COMMAND="${ARGS[0]}"
+        case "$TEST_COMMAND" in
+            health) ensure_server_running && cmd_health ;;
+            info) ensure_server_running && cmd_info ;;
+            auth) ensure_server_running && cmd_auth "${ARGS[1]}" ;;
+            whoami) ensure_server_running && cmd_whoami "${ARGS[1]}" ;;
+            roles) ensure_server_running && cmd_roles ;;
+            role) ensure_server_running && cmd_role "${ARGS[1]}" ;;
+            policies) ensure_server_running && cmd_policies ;;
+            cert-status) ensure_server_running && cmd_cert_status ;;
+            cert-test) ensure_server_running && cmd_cert_test "${ARGS[1]}" ;;
+            custom) ensure_server_running && cmd_custom "${ARGS[1]}" "${ARGS[2]}" "${ARGS[3]}" ;;
+            rotate-key) ensure_server_running && cmd_rotate_key "${ARGS[1]}" ;;
+            all) ensure_server_running && cmd_all ;;
+            *)
+                echo -e "${RED}Error: Unknown test command '$TEST_COMMAND'${NC}"
+                echo -e "${YELLOW}Available test commands: health, info, auth, whoami, roles, role, policies, cert-status, cert-test, custom, rotate-key, all${NC}"
+                exit 1
+                ;;
+        esac
+        ;;
+    exec)
+        # Pass all remaining arguments to exec command
+        cmd_exec "$@"
+        ;;
+    key)
+        cmd_key
+        ;;
+    policy)
+        # Handle policy subcommands
+        POLICY_COMMAND="$1"
+        case "$POLICY_COMMAND" in
+            load)
+                # Check for help flag in remaining arguments
+                if [[ "$2" == "--help" || "$2" == "-h" ]]; then
+                    print_policy_load_help
+                    exit 0
+                fi
+                cmd_policy_load "$2" "$3"
+                ;;
+            --help|-h)
+                print_policy_help
+                exit 0
+                ;;
+            *)
+                echo -e "${RED}Error: Unknown policy command '$POLICY_COMMAND'${NC}"
+                echo -e "${YELLOW}Available policy commands: load${NC}"
+                exit 1
+                ;;
+        esac
+        ;;
+    *)
+        echo -e "${RED}Error: Unknown command '$COMMAND'${NC}"
+        show_usage
+        exit 1
+        ;;
+esac
