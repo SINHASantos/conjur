@@ -205,6 +205,11 @@ module LogMessages
         code: "CONJ00004D"
       )
 
+      InstanceMisconfigured = ::Util::TrackableLogMessageClass.new(
+        msg: "Cannot render misconfigured authn-oidc instance {0-service-id}: {1-error-message}",
+        code: "CONJ00061I"
+      )
+
     end
 
     module AuthnK8s

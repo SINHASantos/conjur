@@ -62,6 +62,8 @@ function flatten() {
 # the container was built from.
 git rev-parse HEAD > conjur_git_commit
 
+arch=$(get_machine_architecture)
+
 # We want to build an image:
 # 1. Always, when we're developing locally
 if [[ $jenkins = false ]]; then
@@ -77,18 +79,18 @@ image_doesnt_exist() {
 
 if image_doesnt_exist "conjur:$TAG"; then
   echo "Building image conjur:$TAG"
-  docker build --pull --tag "conjur:$TAG" .
+  docker build --platform "$arch" --pull --tag "conjur:$TAG" .
   flatten "conjur:$TAG"
 fi
 
 if image_doesnt_exist "conjur-test:$TAG"; then
   echo "Building image conjur-test:$TAG container"
-  docker build --build-arg "VERSION=$TAG" --tag "conjur-test:$TAG" --file Dockerfile.test .
+  docker build --platform "$arch" --build-arg "VERSION=$TAG" --tag "conjur-test:$TAG" --file Dockerfile.test .
 fi
 
 if image_doesnt_exist "conjur-ubi:$TAG"; then
   echo "Building image conjur-ubi:$TAG container"
-  docker build --pull --build-arg "VERSION=$TAG" --tag "conjur-ubi:$TAG" --file Dockerfile.ubi .
+  docker build --platform "$arch" --pull --build-arg "VERSION=$TAG" --tag "conjur-ubi:$TAG" --file Dockerfile.ubi .
   # Avoid flattening RH image for now, otherwise it fails to pass RH's preflight scan
   # flatten "conjur-ubi:$TAG"
 fi

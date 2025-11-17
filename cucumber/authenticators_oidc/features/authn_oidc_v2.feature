@@ -68,6 +68,18 @@ Feature: OIDC Authenticator V2 - Users can authenticate with OIDC authenticator
             privilege: [ read, authenticate ]
             resource: !webservice
 
+      - !policy
+        id: conjur/authn-oidc/keycloak2-missing-required
+        body:
+          - !webservice
+            annotations:
+              description: Authentication service for Keycloak, based on Open ID Connect. Missing required configuration.
+          - !group users
+          - !permit
+            role: !group users
+            privilege: [ read, authenticate ]
+            resource: !webservice
+
       - !user
         id: alice
       - !grant
@@ -298,4 +310,15 @@ Feature: OIDC Authenticator V2 - Users can authenticate with OIDC authenticator
     And The following appears in the log after my savepoint:
     """
     Errors::Authentication::OAuth::ProviderDiscoveryFailed
+    """
+
+  @negative @acceptance
+  Scenario: OIDC Providers endpoint gracefully handles misconfigured OIDC authenticator
+    When I save my place in the log file
+    And I fetch OIDC provider context from Conjur
+    Then the OIDC provider request has succeeded
+    And the OIDC provider response does not include "keycloak2-missing-required"
+    And The following appears in the log after my savepoint:
+    """
+    CONJ00061I Cannot render misconfigured authn-oidc instance keycloak2-missing-required: Value 'provider_uri' is missing
     """

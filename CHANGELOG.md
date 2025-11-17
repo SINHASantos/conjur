@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing should go in this section, please add to the latest unreleased version
   (and update the corresponding date), or add a new version.
 
+## [1.24.1] - 2025-11-16
+
+### Fixed
+- Misconfigured OIDC provider denying access to details for properly configured providers. CNJR-11824
+
 ## [1.24.0] - 2025-11-10
 
 ### Changed
