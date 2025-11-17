@@ -33,6 +33,26 @@ Given(/^I successfully initialize an OIDC authenticator named "([^"]*)" via the 
   post(path, payload.to_json, authenticated_v2_api_headers)
 end
 
+Given(/I fetch OIDC provider context from Conjur/) do
+  response = Net::HTTP.get_response(
+    URI("#{conjur_hostname}/authn-oidc/cucumber/providers")
+  )
+
+  @scenario_context.add(:providers_response_code, response.code)
+  @scenario_context.add(:providers_response_json, JSON.parse(response.body))
+end
+
+Then(/the OIDC provider request has succeeded/) do
+  code = @scenario_context.get(:providers_response_code)
+  expect(code).to eq('200')
+end
+
+Then(/the OIDC provider response does not include "([^"]*)"/) do |service_id|
+  providers = @scenario_context.get(:providers_response_json)
+
+  expect(providers).not_to include(service_id)
+end
+
 Given(/I fetch a code for username "([^"]*)" and password "([^"]*)" from "([^"]*)"/) do |username, password, service_id|
   Rails.application.config.conjur_config.authenticators = ["authn-oidc/#{service_id}"]
 

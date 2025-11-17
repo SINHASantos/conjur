@@ -11,9 +11,19 @@ class ProvidersController < ApplicationController
     ).bind do |response|
       response.map do |authenticator|
         # perform validation on each record
-        validator.validate(authenticator.provider_details).bind do
-          authenticator
+        result = validator.validate(authenticator.provider_details)
+
+        unless result.success?
+          logger.info(
+            LogMessages::Authentication::AuthnOidc::InstanceMisconfigured.new(
+              authenticator.service_id,
+              result.to_s
+            )
+          )
+          next
         end
+
+        authenticator
       end.compact
     end
 
