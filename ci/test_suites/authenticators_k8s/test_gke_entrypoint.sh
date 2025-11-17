@@ -233,7 +233,7 @@ function writeCreateAuthRequestBody() {
   # via the API
   SUBJECT="/CN=conjur.authn-k8s.api/OU=Conjur Kubernetes CA/O=rspec"
   CA_KEY="$(openssl genrsa -out - 2048)"
-  CA_CERT="$(echo -n "$CA_KEY" | openssl req -x509 -new -nodes -key - -sha256 -days 365 -out - -subj "$SUBJECT")"
+  CA_CERT="$(echo -n "$CA_KEY" | openssl req -x509 -new -nodes -key /dev/stdin -sha256 -days 365 -out - -subj "$SUBJECT")"
 
   json_payload=$(jq -n \
     --arg ca_key "$CA_KEY" \
