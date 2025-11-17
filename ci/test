@@ -59,6 +59,7 @@ SYNOPSIS
 SUBCOMMANDS
     api                    - Runs Cucumber API features
     authenticators_azure   - Runs Cucumber Azure Authenticator features
+    authenticators_cert    - Runs Cucumber Certificate Authenticator features
     authenticators_config  - Runs Cucumber Authenticator configuration features
     authenticators_gcp     - Runs Cucumber GCP Authenticator features
     authenticators_iam     - Runs Cucumber IAM Authenticator features

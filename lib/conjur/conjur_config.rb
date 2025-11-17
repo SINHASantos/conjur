@@ -54,7 +54,7 @@ module Conjur
     )
 
     AUTHENTICATORS = %w[authn authn-k8s authn-oidc authn-iam
-        authn-ldap authn-gcp authn-jwt authn-azure].freeze
+                        authn-ldap authn-gcp authn-jwt authn-azure authn-cert].freeze
 
     def initialize(
       *args,
