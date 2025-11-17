@@ -22,7 +22,7 @@ module DB
         # If contract fails, return the first defined exception...
         error = result.errors.first
         # If this is an authenticator validation and a field is missing, we want to return an alternative error.
-        if error.text == 'is missing' &&
+        if (error.text == 'is missing' || error.text == 'must be filled') &&
             @contract.class.to_s.match(/\AAuthentication::Authn\w+::V2::Validations::AuthenticatorConfiguration\z/)
           type = @contract.class.to_s.split('::')[1].underscore.dasherize
 

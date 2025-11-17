@@ -38,7 +38,11 @@ Rails.application.configure do
     # through the secret GET API. This requires an available ephemeral secrets
     # service configured with the `EPHEMERAL_SECRETS_SERVICE_*` environment
     # variables.
-    dynamic_secrets: false
+    dynamic_secrets: false,
+
+    # When enabled, the Certificate Authentication API is available. This
+    # requires an available credential validation service.
+    certificate_authentication: false
   }.freeze
 
   config.feature_flags = Conjur::FeatureFlags::Features.new(
