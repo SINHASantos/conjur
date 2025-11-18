@@ -2,9 +2,9 @@
 
 require 'spec_helper'
 
-describe Issuers::EphemeralEngines::ConjurDynamicEngineClient do
+describe Issuers::DynamicSecrets::ConjurDynamicSecretsClient do
   subject do
-    Issuers::EphemeralEngines::ConjurDynamicEngineClient.new(
+    Issuers::DynamicSecrets::ConjurDynamicSecretsClient.new(
       logger: logger,
       request_id: request_id,
       http_client: http_client_double
@@ -87,7 +87,7 @@ describe Issuers::EphemeralEngines::ConjurDynamicEngineClient do
       end
     end
 
-    context "when there are failures from the ephemeral secrets service" do
+    context "when there are failures from the dynamic secrets service" do
       let(:response_code) { 422 }
       let(:response_body) { JSON.generate(mock_secret_error) }
 
@@ -112,7 +112,7 @@ describe Issuers::EphemeralEngines::ConjurDynamicEngineClient do
       end
     end
 
-    context "when there are failures attempting to use the ephemeral secrets service" do
+    context "when there are failures attempting to use the dynamic secrets service" do
       before do
         allow(http_client_double)
           .to receive(:request)
@@ -140,7 +140,7 @@ describe Issuers::EphemeralEngines::ConjurDynamicEngineClient do
       end
 
       it "then they are trimmed and turned to upper case" do
-        result = Issuers::EphemeralEngines::ConjurDynamicEngineClient.normalize_hash_keys(hash)
+        result = Issuers::DynamicSecrets::ConjurDynamicSecretsClient.normalize_hash_keys(hash)
 
         expected_result = {
           "key_one" => "value-one",
@@ -165,7 +165,7 @@ describe Issuers::EphemeralEngines::ConjurDynamicEngineClient do
       end
 
       it "then the sub hash is transformed as well" do
-        result = Issuers::EphemeralEngines::ConjurDynamicEngineClient.normalize_hash_keys(hash)
+        result = Issuers::DynamicSecrets::ConjurDynamicSecretsClient.normalize_hash_keys(hash)
 
         expected_result = {
           "key_one" => "value-one",
@@ -190,7 +190,7 @@ describe Issuers::EphemeralEngines::ConjurDynamicEngineClient do
       end
 
       it "then they are transformed ok" do
-        result = Issuers::EphemeralEngines::ConjurDynamicEngineClient.normalize_hash_keys(hash)
+        result = Issuers::DynamicSecrets::ConjurDynamicSecretsClient.normalize_hash_keys(hash)
 
         expected_result = {
           "key_one" => "value-one",
@@ -212,7 +212,7 @@ describe Issuers::EphemeralEngines::ConjurDynamicEngineClient do
       end
 
       it "then they are normalized" do
-        result = Issuers::EphemeralEngines::ConjurDynamicEngineClient.normalize_hash_keys(hash)
+        result = Issuers::DynamicSecrets::ConjurDynamicSecretsClient.normalize_hash_keys(hash)
 
         expected_result = {
           "key_one" => "value-one",
@@ -234,7 +234,7 @@ describe Issuers::EphemeralEngines::ConjurDynamicEngineClient do
       end
 
       it "then they are normalized" do
-        result = Issuers::EphemeralEngines::ConjurDynamicEngineClient.normalize_hash_keys(hash)
+        result = Issuers::DynamicSecrets::ConjurDynamicSecretsClient.normalize_hash_keys(hash)
 
         expected_result = {
           "key_one#" => "value-one",
@@ -250,7 +250,7 @@ describe Issuers::EphemeralEngines::ConjurDynamicEngineClient do
       let(:hash) { {} }
 
       it "then the result is empty as well" do
-        result = Issuers::EphemeralEngines::ConjurDynamicEngineClient.normalize_hash_keys(hash)
+        result = Issuers::DynamicSecrets::ConjurDynamicSecretsClient.normalize_hash_keys(hash)
 
         expected_result = {}
 

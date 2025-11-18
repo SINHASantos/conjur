@@ -660,13 +660,13 @@ describe IssuersController, type: :request do
         BODY
       end
 
-      let(:payload_create_ephemeral_variables) do
+      let(:payload_create_dynamic_variables) do
         <<~POLICY
           - !policy
             id: data/dynamic
             body:
             - !variable
-              id: related-ephemeral-variable
+              id: related-dynamic-variable
               annotations:
                 dynamic/issuer: my-new-aws-issuer
                 dynamic/method: assume-role
@@ -687,11 +687,11 @@ describe IssuersController, type: :request do
         post(
           '/policies/rspec/policy/root',
           env: token_auth_header(role: admin_user).merge(
-            'RAW_POST_DATA' => payload_create_ephemeral_variables
+            'RAW_POST_DATA' => payload_create_dynamic_variables
           )
         )
         assert_response :success
-        expect(Resource.find(resource_id: "rspec:variable:data/dynamic/related-ephemeral-variable")).to_not eq(nil)
+        expect(Resource.find(resource_id: "rspec:variable:data/dynamic/related-dynamic-variable")).to_not eq(nil)
         post("/issuers/rspec",
              env: token_auth_header(role: admin_user).merge(
                'RAW_POST_DATA' => payload_create_issuer_input,
@@ -1101,31 +1101,31 @@ describe IssuersController, type: :request do
         BODY
       end
 
-      let(:payload_create_ephemeral_variables) do
+      let(:payload_create_dynamic_variables) do
         <<~POLICY
           - !policy
             id: data/dynamic
             body:
             - !variable
-              id: related-ephemeral-variable
+              id: related-dynamic-variable
               annotations:
                 dynamic/issuer: my-new-aws-issuer
                 dynamic/method: assume-role
             - !variable
-              id: unrelated-ephemeral-variable
+              id: unrelated-dynamic-variable
               annotations:
                 dynamic/issuer: my-other-issuer
                 dynamic/method: assume-role
         POLICY
       end
 
-      let(:payload_create_non_ephemeral_variable) do
+      let(:payload_create_non_dynamic_variable) do
         <<~POLICY
           - !policy
             id: data
             body:
             - !variable
-              id: non-ephemeral-variable
+              id: non-dynamic-variable
               annotations:
                 dynamic/issuer: my-new-aws-issuer
                 dynamic/method: assume-role
@@ -1143,60 +1143,60 @@ describe IssuersController, type: :request do
         post(
           '/policies/rspec/policy/root',
           env: token_auth_header(role: admin_user).merge(
-            'RAW_POST_DATA' => payload_create_ephemeral_variables
+            'RAW_POST_DATA' => payload_create_dynamic_variables
           )
         )
         assert_response :success
-        expect(Resource.find(resource_id: "rspec:variable:data/dynamic/related-ephemeral-variable")).to_not eq(nil)
-        expect(Resource.find(resource_id: "rspec:variable:data/dynamic/unrelated-ephemeral-variable")).to_not eq(nil)
+        expect(Resource.find(resource_id: "rspec:variable:data/dynamic/related-dynamic-variable")).to_not eq(nil)
+        expect(Resource.find(resource_id: "rspec:variable:data/dynamic/unrelated-dynamic-variable")).to_not eq(nil)
 
         # Attempting to create a non-dynamic secret with the issuer annotation
         # isn't allowed and is enforced in policy validation.
         post(
           '/policies/rspec/policy/root',
           env: token_auth_header(role: admin_user).merge(
-            'RAW_POST_DATA' => payload_create_non_ephemeral_variable
+            'RAW_POST_DATA' => payload_create_non_dynamic_variable
           )
         )
         assert_response :unprocessable_entity
-        expect(Resource.find(resource_id: "rspec:variable:data/non-ephemeral-variable")).to eq(nil)
+        expect(Resource.find(resource_id: "rspec:variable:data/non-dynamic-variable")).to eq(nil)
       end
 
-      it 'deletes both issuer and related ephemeral variables successfully if requested' do
+      it 'deletes both issuer and related dynamic variables successfully if requested' do
         delete("/issuers/rspec/my-new-aws-issuer?keep_secrets=false", env: token_auth_header(role: admin_user))
         assert_response :no_content
 
-        # Issuer related resources are expected to be deleted, along with the ephemeral variables related to it
+        # Issuer related resources are expected to be deleted, along with the dynamic variables related to it
         expect(Resource.find(resource_id: "rspec:policy:conjur/issuers/my-new-aws-issuer")).to eq(nil)
         expect(Resource.find(resource_id: "rspec:policy:conjur/issuers/my-new-aws-issuer/delegation")).to eq(nil)
         expect(Resource.find(resource_id: "rspec:group:conjur/issuers/my-new-aws-issuer/delegation/consumers")).to eq(nil)
-        expect(Resource.find(resource_id: "rspec:variable:data/dynamic/related-ephemeral-variable")).to eq(nil)
+        expect(Resource.find(resource_id: "rspec:variable:data/dynamic/related-dynamic-variable")).to eq(nil)
 
-        # Non related ephemeral variables and non ephemeral variables are not deleted
-        expect(Resource.find(resource_id: "rspec:variable:data/dynamic/unrelated-ephemeral-variable")).to_not eq(nil)
+        # Non related dynamic variables and non dynamic variables are not deleted
+        expect(Resource.find(resource_id: "rspec:variable:data/dynamic/unrelated-dynamic-variable")).to_not eq(nil)
 
-        # Non ephemeral secrets with an issuer annotation are never created to begin with
-        expect(Resource.find(resource_id: "rspec:variable:data/non-ephemeral-variable")).to eq(nil)
+        # Non dynamic secrets with an issuer annotation are never created to begin with
+        expect(Resource.find(resource_id: "rspec:variable:data/non-dynamic-variable")).to eq(nil)
       end
 
-      it 'deletes issuer and delete related ephemeral variables by default' do
+      it 'deletes issuer and delete related dynamic variables by default' do
         delete("/issuers/rspec/my-new-aws-issuer", env: token_auth_header(role: admin_user))
         assert_response :no_content
-        # Issuer related resources are expected to be deleted, along with the ephemeral variables related to it
+        # Issuer related resources are expected to be deleted, along with the dynamic variables related to it
         expect(Resource.find(resource_id: "rspec:policy:conjur/issuers/my-new-aws-issuer")).to eq(nil)
         expect(Resource.find(resource_id: "rspec:policy:conjur/issuers/my-new-aws-issuer/delegation")).to eq(nil)
         expect(Resource.find(resource_id: "rspec:group:conjur/issuers/my-new-aws-issuer/delegation/consumers")).to eq(nil)
-        expect(Resource.find(resource_id: "rspec:variable:data/dynamic/related-ephemeral-variable")).to eq(nil)
+        expect(Resource.find(resource_id: "rspec:variable:data/dynamic/related-dynamic-variable")).to eq(nil)
       end
 
-      it 'deletes issuer but keeps related ephemeral variables when flag is true' do
+      it 'deletes issuer but keeps related dynamic variables when flag is true' do
         delete("/issuers/rspec/my-new-aws-issuer?keep_secrets=true", env: token_auth_header(role: admin_user))
         assert_response :no_content
-        # Issuer related resources are expected to be deleted, along with the ephemeral variables related to it
+        # Issuer related resources are expected to be deleted, along with the dynamic variables related to it
         expect(Resource.find(resource_id: "rspec:policy:conjur/issuers/my-new-aws-issuer")).to eq(nil)
         expect(Resource.find(resource_id: "rspec:policy:conjur/issuers/my-new-aws-issuer/delegation")).to eq(nil)
         expect(Resource.find(resource_id: "rspec:group:conjur/issuers/my-new-aws-issuer/delegation/consumers")).to eq(nil)
-        expect(Resource.find(resource_id: "rspec:variable:data/dynamic/related-ephemeral-variable")).to_not eq(nil)
+        expect(Resource.find(resource_id: "rspec:variable:data/dynamic/related-dynamic-variable")).to_not eq(nil)
       end
 
       context "when a user deletes a non existing issuer without permissions" do

@@ -174,7 +174,7 @@ Feature: Issuers audits tests
       id: data/dynamic
       body:
       - !variable
-        id: my-ephemeral-secret
+        id: my-dynamic-secret
         annotations:
           dynamic/issuer: aws-issuer-1
           dynamic/method: assume-role
@@ -183,7 +183,7 @@ Feature: Issuers audits tests
       id: data
       body:
       - !variable
-        id: my-non-ephemeral-secret
+        id: my-non-dynamic-secret
     """
     And I successfully POST "/policies/cucumber/policy/data/dynamic" with body:
     """
@@ -191,7 +191,7 @@ Feature: Issuers audits tests
       id: inner-policy
       body:
       - !variable
-        id: my-other-ephemeral-secret
+        id: my-other-dynamic-secret
         annotations:
           dynamic/issuer: aws-issuer-1
           dynamic/method: assume-role
@@ -213,17 +213,17 @@ Feature: Issuers audits tests
     """
       <86>1 * - conjur * variable
       [auth@43868 user="cucumber:user:admin"]
-      [subject@43868 account="cucumber" issuer="aws-issuer-1" resource_id="cucumber:variable:data/dynamic/my-ephemeral-secret"]
+      [subject@43868 account="cucumber" issuer="aws-issuer-1" resource_id="cucumber:variable:data/dynamic/my-dynamic-secret"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="remove"]
-      cucumber:variable:data/dynamic/my-ephemeral-secret removed as a result of the removal of cucumber:issuer:aws-issuer-1
+      cucumber:variable:data/dynamic/my-dynamic-secret removed as a result of the removal of cucumber:issuer:aws-issuer-1
     """
     And there is an audit record matching:
     """
       <86>1 * - conjur * variable
       [auth@43868 user="cucumber:user:admin"]
-      [subject@43868 account="cucumber" issuer="aws-issuer-1" resource_id="cucumber:variable:data/dynamic/inner-policy/my-other-ephemeral-secret"]
+      [subject@43868 account="cucumber" issuer="aws-issuer-1" resource_id="cucumber:variable:data/dynamic/inner-policy/my-other-dynamic-secret"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="remove"]
-      cucumber:variable:data/dynamic/inner-policy/my-other-ephemeral-secret removed as a result of the removal of cucumber:issuer:aws-issuer-1
+      cucumber:variable:data/dynamic/inner-policy/my-other-dynamic-secret removed as a result of the removal of cucumber:issuer:aws-issuer-1
     """

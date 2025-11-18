@@ -5,8 +5,8 @@ require 'uri'
 require 'json'
 
 module Issuers
-  module EphemeralEngines
-    class ConjurDynamicEngineClient < DynamicEngineClient
+  module DynamicSecrets
+    class ConjurDynamicSecretsClient < DynamicSecretsClient
 
       def initialize(
         logger:,
@@ -23,8 +23,8 @@ module Issuers
           type: type,
           method: method,
           role: role_id,
-          issuer: ConjurDynamicEngineClient.normalize_hash_keys(issuer_data),
-          secret: ConjurDynamicEngineClient.normalize_hash_keys(variable_data)
+          issuer: ConjurDynamicSecretsClient.normalize_hash_keys(issuer_data),
+          secret: ConjurDynamicSecretsClient.normalize_hash_keys(variable_data)
         }
 
         # Create the POST request

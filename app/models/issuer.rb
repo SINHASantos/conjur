@@ -3,7 +3,7 @@
 require 'json'
 
 # Issuer represents a backend service that "issues" dynamic, ephemeral
-# credentials through an ephemeral secret engine.
+# credentials through an dynamic secrets engine.
 class Issuer < Sequel::Model
   DYNAMIC_ANNOTATION_PREFIX = "dynamic/"
   DYNAMIC_VARIABLE_PREFIX = "data/dynamic/"

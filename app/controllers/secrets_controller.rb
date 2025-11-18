@@ -255,10 +255,10 @@ class SecretsController < RestController
       data: JSON.parse(issuer.data)
     }
 
-    Issuers::EphemeralEngines::ConjurDynamicEngineClient.new(
+    Issuers::DynamicSecrets::ConjurDynamicSecretsClient.new(
       logger: logger,
       request_id: request_id,
-      http_client: ephemeral_secrets_service_http_client
+      http_client: dynamic_secrets_service_http_client
     ).dynamic_secret(
       issuer.issuer_type,
       variable_data["method"],
@@ -268,17 +268,17 @@ class SecretsController < RestController
     )
   end
 
-  def ephemeral_secrets_service_http_client
+  def dynamic_secrets_service_http_client
     service_address = Rails.application.config.try(
-      :ephemeral_secrets_service_address
+      :dynamic_secrets_service_address
     )
     service_port = Rails.application.config.try(
-      :ephemeral_secrets_service_port
+      :dynamic_secrets_service_port
     )
 
     if service_address.nil? || service_port.nil?
       raise ApplicationController::UnprocessableEntity,
-            "No ephemeral secret engine configured for Conjur"
+            "No dynamic secrets service configured for Conjur"
     end
 
     Net::HTTP.new(

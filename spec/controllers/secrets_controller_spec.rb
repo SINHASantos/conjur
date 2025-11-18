@@ -412,16 +412,16 @@ describe SecretsController, type: :request do
             expect(response.body).to eq(issuer_secret_value)
           end
 
-          context 'when the ephemeral secrets engine is not configured' do
+          context 'when the dynamic secrets service is not configured' do
             before do
               allow(Rails.application.config)
                 .to receive(:try)
-                .with(:ephemeral_secrets_service_address)
+                .with(:dynamic_secrets_service_address)
                 .and_return(nil)
 
               allow(Rails.application.config)
                 .to receive(:try)
-                .with(:ephemeral_secrets_service_port)
+                .with(:dynamic_secrets_service_port)
                 .and_return(nil)
             end
 
@@ -429,7 +429,7 @@ describe SecretsController, type: :request do
               view_secret
               expect(response.code).to eq("422")
               expect(response.body)
-                .to include('No ephemeral secret engine configured for Conjur')
+                .to include('No dynamic secrets service configured for Conjur')
             end
           end
         end
