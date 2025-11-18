@@ -9,12 +9,22 @@ module Authentication
 
       def initialize(non_permitted:)
         @non_permitted = non_permitted
+
+        @success = Responses::Success
+        @failure = Responses::Failure
       end
 
       def validate(resource_restrictions:)
         any_non_permitted_restrictions = resource_restrictions & @non_permitted
+        return @success.new(true) if any_non_permitted_restrictions.empty?
 
-        raise Errors::Authentication::Constraints::NonPermittedRestrictionGiven, any_non_permitted_restrictions unless any_non_permitted_restrictions.empty?
+        exception = Errors::Authentication::Constraints::NonPermittedRestrictionGiven.new(
+          any_non_permitted_restrictions
+        )
+        @failure.new(
+          exception.message,
+          exception: exception
+        )
       end
     end
   end

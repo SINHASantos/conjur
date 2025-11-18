@@ -57,7 +57,7 @@ module Authentication
 
         @constraints.validate(
           resource_restrictions: resource_restrictions.names
-        )
+        ).bind!
 
         @logger.debug(LogMessages::Authentication::ResourceRestrictions::ValidatedResourceRestrictionsConfiguration.new)
       end

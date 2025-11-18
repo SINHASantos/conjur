@@ -38,13 +38,13 @@ RSpec.describe(DB::Repository::AuthenticatorRoleRepository) do
       )
     end
 
-    let(:role_validation_class) { nil }
+    let(:constraints_class) { nil }
     let(:role_credential_validation_class) { nil }
 
     let(:repo) do
       described_class.new(
         authenticator: authenticator_model,
-        role_validation: role_validation_class,
+        constraint_validation: constraints_class,
         role_credential_validation: role_credential_validation_class
       )
     end
@@ -87,14 +87,14 @@ RSpec.describe(DB::Repository::AuthenticatorRoleRepository) do
       end
 
       context 'when role validations are defined' do
-        let(:role_validation_class) do
-          class_double('RoleValidationClass').tap do |double|
-            allow(double).to receive(:new).and_return(role_validation)
+        let(:constraints_class) do
+          class_double('ConstraintsClass').tap do |double|
+            allow(double).to receive(:new).and_return(constraints)
           end
         end
-        let(:role_validation) do
-          instance_double('RoleValidationInstance').tap do |double|
-            allow(double).to receive(:valid?).and_return(false)
+        let(:constraints) do
+          instance_double('ConstraintsInstance').tap do |double|
+            allow(double).to receive(:run).and_return(Responses::Failure.new('error message'))
           end
         end
         let(:role_credential_validation_class) do
@@ -147,17 +147,14 @@ RSpec.describe(DB::Repository::AuthenticatorRoleRepository) do
             ::Annotation[id, "#{type}/#{service_id}/#{slashed_restriction[:key]}"].destroy
           end
 
-          let(:role_validation_class) do
-            class_double('RoleValidationClass').tap do |double|
-              allow(double).to receive(:new).and_return(role_validation)
+          let(:constraints_class) do
+            class_double('ConstraintsClass').tap do |double|
+              allow(double).to receive(:new).and_return(constraints)
             end
           end
-          let(:role_validation) do
-            instance_double('RoleValidationInstance').tap do |double|
-              allow(double).to receive(:valid?).and_return(false)
-              allow(double).to receive(:errors).and_return([
-                DB::Repository::Mock::Error.new("error message", "error type")
-              ])
+          let(:constraints) do
+            instance_double('ConstraintsInstance').tap do |double|
+              allow(double).to receive(:run).and_return(Responses::Failure.new('error message'))
             end
           end
 
@@ -170,14 +167,14 @@ RSpec.describe(DB::Repository::AuthenticatorRoleRepository) do
         end
 
         context 'when role validations are defined and pass' do
-          let(:role_validation_class) do
-            class_double('RoleValidationClass').tap do |double|
-              expect(double).to receive(:new).with(**expected_role_validation_args).and_return(role_validation)
+          let(:constraints_class) do
+            class_double('ConstraintsClass').tap do |double|
+              allow(double).to receive(:new).and_return(constraints)
             end
           end
-          let(:role_validation) do
-            instance_double('RoleValidationInstance').tap do |double|
-              allow(double).to receive(:valid?).and_return(true)
+          let(:constraints) do
+            instance_double('ConstraintsInstance').tap do |double|
+              expect(double).to receive(:run).with(**expected_constraints_args).and_return(Responses::Success.new(true))
             end
           end
 
@@ -193,14 +190,10 @@ RSpec.describe(DB::Repository::AuthenticatorRoleRepository) do
               ::Annotation[id, "#{type}/#{service_id}/#{slashed_restriction[:key]}"].destroy
             end
 
-            let(:expected_role_validation_args) do
+            let(:expected_constraints_args) do
               {
                 annotations: {
                   global_restriction[:key] => global_restriction[:value],
-                  specific_restriction[:key] => specific_restriction[:value],
-                  slashed_restriction[:key] => slashed_restriction[:value]
-                },
-                specific_annotations: {
                   specific_restriction[:key] => specific_restriction[:value],
                   slashed_restriction[:key] => slashed_restriction[:value]
                 },
@@ -278,10 +271,11 @@ RSpec.describe(DB::Repository::AuthenticatorRoleRepository) do
               ::Annotation[id, "#{type}/#{service_id}/#{global_restriction[:key]}"].destroy
             end
 
-            let(:expected_role_validation_args) do
+            let(:expected_constraints_args) do
               {
-                annotations: { global_restriction[:key] => specific_restriction[:value] },
-                specific_annotations: { global_restriction[:key] => specific_restriction[:value] },
+                annotations: {
+                  global_restriction[:key] => specific_restriction[:value]
+                },
                 authenticator: authenticator_model
               }
             end
@@ -308,17 +302,14 @@ RSpec.describe(DB::Repository::AuthenticatorRoleRepository) do
       end
 
       context 'when role validations are defined and fail' do
-        let(:role_validation_class) do
-          class_double('RoleValidationClass').tap do |double|
-            allow(double).to receive(:new).and_return(role_validation)
+        let(:constraints_class) do
+          class_double('ConstraintsClass').tap do |double|
+            allow(double).to receive(:new).and_return(constraints)
           end
         end
-        let(:role_validation) do
-          instance_double('RoleValidationInstance').tap do |double|
-            allow(double).to receive(:valid?).and_return(false)
-            allow(double).to receive(:errors).and_return([
-              DB::Repository::Mock::Error.new("error message", "error type")
-            ])
+        let(:constraints) do
+          instance_double('ConstraintsInstance').tap do |double|
+            allow(double).to receive(:run).and_return(Responses::Failure.new('error message'))
           end
         end
 

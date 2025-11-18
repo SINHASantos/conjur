@@ -36,7 +36,7 @@ module Authentication
         @strategy = klass_loader.strategy
         @authenticator_klass = klass_loader.data_object
         @authenticator_validation = klass_loader.authenticator_validation
-        @role_validation = klass_loader.role_validation
+        @constraint_validation = klass_loader.constraint_validation
         @role_credential_validation = klass_loader.role_credential_validation
 
         @success = Responses::Success
@@ -141,7 +141,7 @@ module Authentication
       def retrieve_role(role_identifier:, authenticator:)
         @role_repository.new(
           authenticator: authenticator,
-          role_validation: @role_validation,
+          constraint_validation: @constraint_validation,
           role_credential_validation: @role_credential_validation
         ).find(role_identifier)
       end

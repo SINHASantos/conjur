@@ -7,7 +7,6 @@ RSpec.describe(Authentication::Constraints::AnyConstraint) do
     let(:any_one_restriction) { ["required"] }
     let(:not_required_restriction) { "not-required" }
     let(:raised_error) { ::Errors::Authentication::Constraints::RoleMissingRequiredConstraints }
-    let(:expected_error_message) { /#{Regexp.escape(any_one_restriction.to_s)}/ }
 
     subject(:constraint) do
       Authentication::Constraints::AnyConstraint.new(any: any_one_restriction)
@@ -18,8 +17,12 @@ RSpec.describe(Authentication::Constraints::AnyConstraint) do
         constraint.validate(resource_restrictions: [])
       end
 
-      it "raises an error" do
-        expect { subject }.to raise_error(raised_error, expected_error_message)
+      it "returns a failure response" do
+        response = subject
+        expect(response.success?).to be(false)
+        expect(response.exception.class).to be(raised_error)
+        expect(response.exception.message).to include(any_one_restriction.to_s)
+        expect(response.status).to eq(:unauthorized)
       end
     end
 
@@ -28,8 +31,12 @@ RSpec.describe(Authentication::Constraints::AnyConstraint) do
         constraint.validate(resource_restrictions: [not_required_restriction])
       end
 
-      it "raises an error" do
-        expect { subject }.to raise_error(raised_error, expected_error_message)
+      it "returns a failure response" do
+        response = subject
+        expect(response.success?).to be(false)
+        expect(response.exception.class).to be(raised_error)
+        expect(response.exception.message).to include(any_one_restriction.to_s)
+        expect(response.status).to eq(:unauthorized)
       end
     end
 
@@ -38,8 +45,8 @@ RSpec.describe(Authentication::Constraints::AnyConstraint) do
         constraint.validate(resource_restrictions: any_one_restriction)
       end
 
-      it "does not raise an error" do
-        expect { subject }.to_not raise_error
+      it "returns a success response" do
+        expect(subject.success?).to be(true)
       end
     end
 
@@ -48,8 +55,8 @@ RSpec.describe(Authentication::Constraints::AnyConstraint) do
         constraint.validate(resource_restrictions: any_one_restriction + [not_required_restriction])
       end
 
-      it "does not raise an error" do
-        expect { subject }.to_not raise_error
+      it "returns a success response" do
+        expect(subject.success?).to be(true)
       end
     end
   end
@@ -58,7 +65,6 @@ RSpec.describe(Authentication::Constraints::AnyConstraint) do
     let(:any_two_restrictions) { %w[required_first required_second] }
     let(:not_required_restriction) { "not-required" }
     let(:raised_error) { ::Errors::Authentication::Constraints::RoleMissingRequiredConstraints }
-    let(:expected_error_message) { /#{Regexp.escape(any_two_restrictions.to_s)}/ }
 
     subject(:constraint) do
       Authentication::Constraints::AnyConstraint.new(any: any_two_restrictions)
@@ -70,7 +76,11 @@ RSpec.describe(Authentication::Constraints::AnyConstraint) do
       end
 
       it "raises an error" do
-        expect { subject }.to raise_error(raised_error, expected_error_message)
+        response = subject
+        expect(response.success?).to be(false)
+        expect(response.exception.class).to be(raised_error)
+        expect(response.exception.message).to include(any_two_restrictions.to_s)
+        expect(response.status).to eq(:unauthorized)
       end
     end
 
@@ -80,7 +90,11 @@ RSpec.describe(Authentication::Constraints::AnyConstraint) do
       end
 
       it "raises an error" do
-        expect { subject }.to raise_error(raised_error, expected_error_message)
+        response = subject
+        expect(response.success?).to be(false)
+        expect(response.exception.class).to be(raised_error)
+        expect(response.exception.message).to include(any_two_restrictions.to_s)
+        expect(response.status).to eq(:unauthorized)
       end
     end
 
@@ -90,7 +104,7 @@ RSpec.describe(Authentication::Constraints::AnyConstraint) do
       end
 
       it "does not raise an error" do
-        expect { subject }.to_not raise_error
+        expect(subject.success?).to be(true)
       end
     end
 
@@ -100,7 +114,7 @@ RSpec.describe(Authentication::Constraints::AnyConstraint) do
       end
 
       it "does not raise an error" do
-        expect { subject }.to_not raise_error
+        expect(subject.success?).to be(true)
       end
     end
 
@@ -110,7 +124,7 @@ RSpec.describe(Authentication::Constraints::AnyConstraint) do
       end
 
       it "does not raise an error" do
-        expect { subject }.to_not raise_error
+        expect(subject.success?).to be(true)
       end
     end
 
@@ -120,7 +134,7 @@ RSpec.describe(Authentication::Constraints::AnyConstraint) do
       end
 
       it "does not raise an error" do
-        expect { subject }.to_not raise_error
+        expect(subject.success?).to be(true)
       end
     end
   end
