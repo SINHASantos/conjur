@@ -61,7 +61,7 @@ RSpec.describe(Authentication::Util::NetworkTransporter) do
                 response = transport.get(path)
 
                 expect(response.success?).to be(false)
-                expect(response.message).to eq("Invalid JSON: unexpected token at '#{response_body}'")
+                expect(response.message).to start_with("Invalid JSON:")
                 expect(response.exception.class).to eq(JSON::ParserError)
                 expect(response.status).to eq(:bad_request)
               end

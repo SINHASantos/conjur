@@ -547,7 +547,7 @@ describe SecretsController, type: :request do
             .with(json: {
               'rspec:variable:test' => secret_value
             })
-            .and_raise(JSON::GeneratorError)
+            .and_raise(JSON::GeneratorError.new(""))
         end
 
         it 'returns a 406 status code' do

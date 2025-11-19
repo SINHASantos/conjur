@@ -9,10 +9,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing should go in this section, please add to the latest unreleased version
   (and update the corresponding date), or add a new version.
 
-## [1.24.1] - 2025-11-16
+## [1.24.1] - 2025-11-20
 
 ### Fixed
 - Misconfigured OIDC provider denying access to details for properly configured providers. CNJR-11824
+
+### Security
+- Upgrade Rails to 8.1.1 CNJR-11753
 
 ## [1.24.0] - 2025-11-10
 

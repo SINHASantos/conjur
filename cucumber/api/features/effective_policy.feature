@@ -131,7 +131,7 @@ Feature: Fetching effective policy
   @acceptance
   Scenario: As admin I can get effective policy with depth and limit
     Given I am the super-user
-    And I can GET "/policies/cucumber/policy/rootpolicy/acme-adm/outer?depth=1;limit=10"
+    And I can GET "/policies/cucumber/policy/rootpolicy/acme-adm/outer?depth=1&limit=10"
     Then the yaml result is:
     """
     ---
@@ -146,7 +146,7 @@ Feature: Fetching effective policy
   @acceptance
   Scenario: As admin I can get effective policy for subpolicy with depth and limit
     Given I am the super-user
-    And I can GET "/policies/cucumber/policy/rootpolicy/acme-adm/outer-adm?depth=1;limit=16"
+    And I can GET "/policies/cucumber/policy/rootpolicy/acme-adm/outer-adm?depth=1&limit=16"
     Then the yaml result is:
     """
     ---

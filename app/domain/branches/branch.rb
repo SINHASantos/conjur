@@ -32,7 +32,7 @@ module Branches
     end
 
     def as_json(options = {})
-      super(options).except("validation_context", "errors")
+      super(options).except("context_for_validation", "errors")
     end
 
     def self.from_input(input)

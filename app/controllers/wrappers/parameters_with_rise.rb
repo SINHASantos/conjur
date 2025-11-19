@@ -7,7 +7,7 @@ module Wrappers
 
     # TODO - this seems inappropriate
 
-    def unpermitted_parameters!(params)
+    def unpermitted_parameters!(params, _context = nil)
       unpermitted_keys = unpermitted_keys(params)
       return unless unpermitted_keys.any?
 

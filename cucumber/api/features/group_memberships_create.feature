@@ -107,7 +107,7 @@ Feature: Group Memberships APIv2 tests - create
     And the JSON should be:
     """
     { "code": "400",
-    "message": "Invalid JSON body: unexpected token at ': \"host\",\n\"id\": \"data/myhost\"'" }
+    "message": "Invalid JSON body: unexpected token at end of stream ':' at line 1 column 7" }
     """
     Then there is an audit record matching:
     """
@@ -116,5 +116,5 @@ Feature: Group Memberships APIv2 tests - create
     [subject@43868 edge=""]
     [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
     [action@43868 result="failure" operation="create"]\s
-    cucumber:user:admin failed to create membership data/data-group-non with URI path: '/groups/cucumber/data/data-group-non/members' and JSON object: "kind": "host", "id": "data/myhost": Invalid JSON body: unexpected token at ': "host", "id": "data/myhost"'
+    cucumber:user:admin failed to create membership data/data-group-non with URI path: '/groups/cucumber/data/data-group-non/members' and JSON object: "kind": "host", "id": "data/myhost": Invalid JSON body: unexpected token at end of stream ':' at line 1 column 7
     """
