@@ -16,6 +16,7 @@ jenkins=false # Running on Jenkins (vs local dev machine)
 REGISTRY="docker.io"
 BASE_TAG="latest"
 UPDATE="false"
+SKIP_LOCK="false"
 
 for arg in "$@"; do
   case $arg in
@@ -33,6 +34,10 @@ for arg in "$@"; do
       ;;
     --update )
       UPDATE=true
+      shift
+      ;;
+    --skip-lock )
+      SKIP_LOCK=true
       shift
       ;;
     * )
@@ -82,18 +87,20 @@ git rev-parse HEAD > conjur_git_commit
 
 arch=$(get_machine_architecture)
 
-UPDATE_ARG=""
-if [[ $UPDATE == true ]]; then
-  UPDATE_ARG="--update"
-fi
 # Update Gemfile.lock for any unpinned dependencies
-docker run --rm \
-  -v "$(pwd):$(pwd)" \
-  --workdir "$(pwd)" \
-  cyberark/ubuntu-ruby-builder:latest \
-  sh -c "bundle plugin install bundler-override && \
-   bundle lock $UPDATE_ARG
- "
+if [[ $SKIP_LOCK == false ]]; then
+  UPDATE_ARG=""
+  if [[ $UPDATE == true ]]; then
+    UPDATE_ARG="--update"
+  fi
+  docker run --rm \
+    -v "$(pwd):$(pwd)" \
+    --workdir "$(pwd)" \
+    cyberark/ubuntu-ruby-builder:latest \
+    sh -c "bundle plugin install bundler-override && \
+     bundle lock $UPDATE_ARG
+   "
+fi
 
 # We want to build an image:
 # 1. Always, when we're developing locally

@@ -152,7 +152,10 @@ main() {
 
   # Create Conjur Image
   # (On Jenkins, this will no-op because we have a build stage)
-  ./build.sh --jenkins >&2
+  ./build.sh --jenkins --skip-lock >&2
+
+  # Cleanup any bundle data
+  rm -rf ./.bundle || sudo rm -rf ./.bundle
 
   TAG=$(version_tag)
 
