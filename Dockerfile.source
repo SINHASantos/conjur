@@ -12,9 +12,8 @@ COPY . .
 
 RUN bundle config set --local without 'test development' && \
     bundle config set --local deployment true && \
-    bundle config set --local path vendor/bundle && \
-    bundle config --local jobs "$(nproc --all)" && \
-    bundle install && \
+    bundle config set --local path /usr/local/bundle && \
+    bundle install --prefer-local && \
     # Remove private keys brought in by gems in their test data
     find / -name 'openid_connect-*' -type d -exec find {} -name '*.pem' -type f -delete \; && \
     find / -name 'httpclient-*' -type d -exec find {} -name '*.key' -type f -delete \; && \
@@ -30,6 +29,7 @@ ARG CONJUR_HOME=/src/opt/conjur/possum
 WORKDIR /src
 
 COPY --from=builder ${CONJUR_HOME} ${CONJUR_HOME}
+COPY --from=builder /usr/local/bundle usr/local/bundle
 
 RUN mkdir -p usr/local/bin
 RUN ln -sf /opt/conjur/possum/bin/conjur-possum usr/local/bin/
