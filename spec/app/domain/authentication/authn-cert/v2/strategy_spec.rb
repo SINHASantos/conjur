@@ -16,16 +16,16 @@ RSpec.describe(Authentication::AuthnCert::V2::Strategy) do
 
   let(:certificate_attributes) do
     {
-      subject: 'CN=client',
-      issuer: 'CN=CyberArk CA',
-      san_uri: ['spiffe://trust.com/workload'],
-      not_before: '2023-01-01T00:00:00Z',
-      not_after: '2024-01-01T00:00:00Z',
-      serial_number: '1234567890',
-      thumbprint: 'abcdef1234567890abcdef1234567890abcdef12'
+      'subject' => 'CN=client',
+      'issuer' => 'CN=CyberArk CA',
+      'san_uri' => ['spiffe://trust.com/workload'],
+      'not_before' => '2023-01-01T00:00:00Z',
+      'not_after' => '2024-01-01T00:00:00Z',
+      'serial_number' => '1234567890',
+      'thumbprint' => 'abcdef1234567890abcdef1234567890abcdef12'
     }
   end
-  let(:saas_response) { { attributes: certificate_attributes } }
+  let(:saas_response) { { 'attributes' => certificate_attributes } }
 
   let(:saas_auth_client) do
     class_double(Authentication::AuthnCert::V2::SaasAuthClient).tap do |double|
@@ -34,7 +34,7 @@ RSpec.describe(Authentication::AuthnCert::V2::Strategy) do
   end
   let(:instantiated_saas_client) do
     instance_double(Authentication::AuthnCert::V2::SaasAuthClient).tap do |double|
-      allow(double).to receive(:do).and_return(Responses::Success.new(saas_response))
+      allow(double).to receive(:validate_certificate).and_return(Responses::Success.new(saas_response))
     end
   end
 

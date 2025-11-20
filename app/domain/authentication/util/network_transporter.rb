@@ -35,12 +35,21 @@ module Authentication
         end
       end
 
-      # Possible types are :form and :json. Default is :form.
-      #   If type is :json, the body expected to be a hash. It is converted to JSON and the Content-Type header is set to 'application/json'
-      #   If type is :form, the body expected to be a hash. It is converted to form data and the Content-Type header is set to 'application/x-www-form-urlencoded'.
-      def post(path:, body: '', basic_auth: [], headers: {}, type: :form)
-        as_response do
-          post_request(path: path, body: body, basic_auth: basic_auth, headers: headers, type: type)
+      # Possible request types are :form and :json. Default is :form.
+      #   - If request_type is :json, the body is expected to be a hash. It is
+      #     converted to JSON and the Content-Type header is set
+      #     to 'application/json'
+      #   - If request_type is :form, the body expected to be a hash. It is
+      #     converted to form data and the Content-Type header is set
+      #     to 'application/x-www-form-urlencoded'.
+      # Possible error response types are :none and :json. Default is :none.
+      #   - If error_type is :json, the body is expected to be a hash. It is
+      #     converted to JSON and returned to the client consumer.
+      #   - If error_type is :none, the body is expected to be empty or
+      #     negligible. The client consumer receives a canned, templated message.
+      def post(path:, body: '', basic_auth: [], headers: {}, request_type: :form, error_type: :none)
+        as_response(error_type: error_type) do
+          post_request(path: path, body: body, basic_auth: basic_auth, headers: headers, request_type: request_type)
         end
       end
 
@@ -66,15 +75,15 @@ module Authentication
       end
 
       # Body parameter accepts a hash or a string. Hashes are converted to form data.
-      def post_request(path:, body: '', type: :form, basic_auth: [], headers: {})
+      def post_request(path:, body: '', request_type: :form, basic_auth: [], headers: {})
         http_client.start do |http|
           request = @http_post.new(URI(path).path)
           headers.each do |key, value|
             request[key] = value
           end
-          if body.is_a?(Hash) && type == :form
+          if body.is_a?(Hash) && request_type == :form
             request.set_form_data(body)
-          elsif body.is_a?(Hash) && type == :json
+          elsif body.is_a?(Hash) && request_type == :json
             request.body = body.to_json
             request['Content-Type'] = 'application/json'
           else
@@ -85,13 +94,15 @@ module Authentication
         end
       end
 
-      def as_response(&block)
+      def as_response(error_type: :none, &block)
         response = block.call
-        if response.code.match(/^2\d{2}/)
-          @success.new(JSON.parse(response.body.to_s))
-        else
-          @failure.new("Error Response Code: '#{response.code}' from '#{response.uri}'")
+        if response.code.to_i >= 200 && response.code.to_i < 300
+          return @success.new(JSON.parse(response.body.to_s))
         end
+
+        return @failure.new(JSON.parse(response.body.to_s)) if error_type == :json
+
+        @failure.new("Error Response Code: '#{response.code}' from '#{response.uri}'")
       rescue JSON::ParserError => e
         @failure.new("Invalid JSON: #{e.message}", exception: e, status: :bad_request)
       rescue => e

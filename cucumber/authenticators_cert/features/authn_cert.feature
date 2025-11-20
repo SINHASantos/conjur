@@ -43,3 +43,17 @@ Feature: Certificate Authenticator
       """
       cucumber:host:alice successfully authenticated with authenticator authn-cert service cucumber:webservice:conjur/authn-cert/my-service
       """
+
+    @negative
+    Scenario: An invalid client certificate cannot be exchanged for a Conjur access token
+      Given I generate a client certificate signed by a different CA
+      And I have a "variable" resource called "test-variable"
+      And I permit host "alice" to "execute" it
+      And I add the secret value "test-secret" to the resource "cucumber:variable:test-variable"
+      And I save my place in the audit log file
+      And I authenticate via Certificate with service-id "my-service" and role id "host%2Falice"
+      Then it is unauthorized
+      And The following appears in the audit log after my savepoint:
+      """
+      CONJ00048I Authentication Error: CONJ00175E Certificate validation failed: x509: certificate signed by unknown authority
+      """

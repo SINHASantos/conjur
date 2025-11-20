@@ -217,7 +217,7 @@ RSpec.describe(Authentication::Util::NetworkTransporter) do
             response = transport.post(
               path: 'https://accounts.google.com/o/oauth2/v2/auth',
               body: body,
-              type: :json
+              request_type: :json
             )
             expect(response.success?).to be(true)
           end
