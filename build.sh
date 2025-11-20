@@ -96,7 +96,7 @@ if [[ $SKIP_LOCK == false ]]; then
   docker run --rm \
     -v "$(pwd):$(pwd)" \
     --workdir "$(pwd)" \
-    cyberark/ubuntu-ruby-builder:latest \
+    "$REGISTRY/cyberark/ubuntu-ruby-builder:$BASE_TAG" \
     sh -c "bundle plugin install bundler-override && \
      bundle lock $UPDATE_ARG
    "
