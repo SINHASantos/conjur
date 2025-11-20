@@ -124,6 +124,7 @@ if [[ "${PUBLISH_RELEASE}" = true ]]; then
   echo "Pushing ${VERSION}-${ARCH} to registry.tld..."
   tag_and_push "${VERSION}-${ARCH}" "${LOCAL_IMAGE}" "registry.tld/${IMAGE_NAME}"
   tag_and_push "${VERSION}-${ARCH}" "${RH_LOCAL_IMAGE}" "registry.tld/conjur-ubi"
+  tag_and_push "${VERSION}-${ARCH}" "conjur-source:${LOCAL_TAG}" "registry.tld/conjur-source"
 
   # Publish release specific and edge tags to dockerhub
   if [[ "${DOCKERHUB}" = true ]]; then
@@ -144,6 +145,7 @@ if [[ "${PROMOTE}" = true ]]; then
 
     tag_and_push "${version}-${ARCH}" "registry.tld/${IMAGE_NAME}:${LOCAL_TAG}-${ARCH}" "registry.tld/${IMAGE_NAME}"
     tag_and_push "${version}-${ARCH}" "registry.tld/conjur-ubi:${LOCAL_TAG}-${ARCH}" "registry.tld/conjur-ubi"
+    tag_and_push "${version}-${ARCH}" "registry.tld/conjur-source:${LOCAL_TAG}-${ARCH}" "registry.tld/conjur-source"
 
     if [[ "${DOCKERHUB}" ]]; then
       echo "Pushing to DockerHub"
