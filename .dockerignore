@@ -10,10 +10,10 @@ cucumber
 # Make an exception for authenticators_k8s, though
 !cucumber/authenticators_k8s/features
 
-*.deb
 .git
 .idea
 engines/conjur_audit/spec/dummy/log
+container_logs
 coverage
 demo
 dev
@@ -35,11 +35,14 @@ docs/**/*
 # Ignore the scripts that are used by the Jenkinsfile
 build.sh
 ci
-package.sh
-publish.sh
 push-image.sh
 test.sh
 website.sh
 
 # Ignore vim swapfiles
 *.sw[po]
+
+# Container commit marker
+conjur_git_commit
+
+.bundle

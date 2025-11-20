@@ -12,17 +12,40 @@ set -ex
 TAG="$(version_tag)"
 jenkins=false # Running on Jenkins (vs local dev machine)
 
-while [[ $# -gt 0 ]]
-do
-key="$1"
-case $key in
-    --jenkins)
-    jenkins=true
-    ;;
-    *)
-    ;;
-esac
-shift # past argument or value
+# Registry and tag of the base image
+REGISTRY="docker.io"
+BASE_TAG="latest"
+UPDATE="false"
+SKIP_LOCK="false"
+
+for arg in "$@"; do
+  case $arg in
+    --base-tag=* )
+      BASE_TAG="${arg#*=}"
+      shift
+      ;;
+    --registry=* )
+      REGISTRY="${arg#*=}"
+      shift
+      ;;
+    --jenkins )
+      jenkins=true
+      shift
+      ;;
+    --update )
+      UPDATE=true
+      shift
+      ;;
+    --skip-lock )
+      SKIP_LOCK=true
+      shift
+      ;;
+    * )
+      echo "Unknown option: ${arg}"
+      print_help
+      exit 1
+      ;;
+    esac
 done
 
 # Flatten resulting image.
@@ -64,6 +87,21 @@ git rev-parse HEAD > conjur_git_commit
 
 arch=$(get_machine_architecture)
 
+# Update Gemfile.lock for any unpinned dependencies
+if [[ $SKIP_LOCK == false ]]; then
+  UPDATE_ARG=""
+  if [[ $UPDATE == true ]]; then
+    UPDATE_ARG="--update"
+  fi
+  docker run --rm \
+    -v "$(pwd):$(pwd)" \
+    --workdir "$(pwd)" \
+    cyberark/ubuntu-ruby-builder:latest \
+    sh -c "bundle plugin install bundler-override && \
+     bundle lock $UPDATE_ARG
+   "
+fi
+
 # We want to build an image:
 # 1. Always, when we're developing locally
 if [[ $jenkins = false ]]; then
@@ -79,18 +117,24 @@ image_doesnt_exist() {
 
 if image_doesnt_exist "conjur:$TAG"; then
   echo "Building image conjur:$TAG"
-  docker build --platform "$arch" --pull --tag "conjur:$TAG" .
+  docker build --platform "$arch" --pull --build-arg BASE_TAG="$BASE_TAG" --build-arg REGISTRY="$REGISTRY" --tag "conjur:$TAG" .
   flatten "conjur:$TAG"
 fi
 
 if image_doesnt_exist "conjur-test:$TAG"; then
   echo "Building image conjur-test:$TAG container"
-  docker build --platform "$arch" --build-arg "VERSION=$TAG" --tag "conjur-test:$TAG" --file Dockerfile.test .
+  docker build --platform "$arch" --build-arg "VERSION=$TAG" --build-arg BASE_TAG="$BASE_TAG" --build-arg REGISTRY="$REGISTRY" --tag "conjur-test:$TAG" --file Dockerfile.test .
 fi
 
 if image_doesnt_exist "conjur-ubi:$TAG"; then
   echo "Building image conjur-ubi:$TAG container"
-  docker build --platform "$arch" --pull --build-arg "VERSION=$TAG" --tag "conjur-ubi:$TAG" --file Dockerfile.ubi .
+  docker build --platform "$arch" --pull --build-arg "VERSION=$TAG" --build-arg BASE_TAG="$BASE_TAG" --build-arg REGISTRY="$REGISTRY" --tag "conjur-ubi:$TAG" --file Dockerfile.ubi .
   # Avoid flattening RH image for now, otherwise it fails to pass RH's preflight scan
   # flatten "conjur-ubi:$TAG"
+fi
+
+if image_doesnt_exist "conjur-source:$TAG"; then
+  echo "Building image conjur-source:$TAG container"
+  docker build --platform "$arch" --pull --build-arg BASE_TAG="$BASE_TAG" --build-arg REGISTRY="$REGISTRY" --tag "conjur-source:$TAG" --file Dockerfile.source .
+  flatten "conjur-source:$TAG"
 fi

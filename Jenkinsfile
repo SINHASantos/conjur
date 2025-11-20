@@ -61,8 +61,7 @@ properties([
   release.addParams(),
   // Dependencies of the project that should trigger builds
   dependencies(['conjur-enterprise/conjur-base-image',
-                'conjur-enterprise/conjur-api-ruby',
-                'conjurinc/debify'])
+                'conjur-enterprise/conjur-api-ruby'])
 ])
 
 // Performs release promotion.  No other stages will be run
@@ -192,7 +191,17 @@ pipeline {
       description: 'Filter which cucumber tags will run (e.g. "not @performance")',
       defaultValue: defaultCucumberFilterTags(env)
     )
-
+    string(
+      name: 'BASE_TAG',
+      description: 'Tag of the base image used to build the Conjur image',
+      defaultValue: 'latest',
+      trim: true
+    )
+    choice(
+      name: 'BASE_REGISTRY',
+      choices: ['docker.io', 'registry.tld'],
+      description: 'Registry to pull base images from'
+    )
   }
 
   environment {
@@ -323,7 +332,7 @@ pipeline {
             stage('Build AMD64 image') {
               steps {
                 script {
-                  INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './build.sh --jenkins'
+                  INFRAPOOL_EXECUTORV2_AGENT_0.agentSh "./build.sh --jenkins --base-tag=${params.BASE_TAG} --registry=${params.BASE_REGISTRY}"
                 }
               }
             }
@@ -331,7 +340,7 @@ pipeline {
             stage('Build ARM64 image') {
               steps {
                 script {
-                  INFRAPOOL_EXECUTORV2ARM_AGENT_0.agentSh './build.sh --jenkins'
+                  INFRAPOOL_EXECUTORV2ARM_AGENT_0.agentSh "./build.sh --jenkins --base-tag=${params.BASE_TAG} --registry=${params.BASE_REGISTRY}"
                 }
               }
             }
@@ -1146,24 +1155,6 @@ pipeline {
               INFRAPOOL_EXECUTORV2ARM_AGENT_0.agentSh './publish-images.sh --release --arch=arm64'
               INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './publish-manifest.sh'
             }
-
-            // Create deb and rpm packages (ARM64)
-            INFRAPOOL_EXECUTORV2ARM_AGENT_0.agentSh 'echo "CONJUR_VERSION=5" >> debify.env'
-            INFRAPOOL_EXECUTORV2ARM_AGENT_0.agentSh './package.sh'
-            INFRAPOOL_EXECUTORV2ARM_AGENT_0.agentStash name: 'arm64-packages', includes: '*.deb,*.rpm', allowEmpty:true
-
-            // Create deb and rpm packages (AMD64)
-            INFRAPOOL_EXECUTORV2_AGENT_0.agentSh 'echo "CONJUR_VERSION=5" >> debify.env'
-            INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './package.sh'
-
-            // Unstash packages built in ARM64 agent
-            INFRAPOOL_EXECUTORV2_AGENT_0.agentUnstash name: 'arm64-packages'
-            // Copy assets to the release
-            INFRAPOOL_EXECUTORV2_AGENT_0.agentSh "cp *.rpm ${assetDirectory}/."
-            INFRAPOOL_EXECUTORV2_AGENT_0.agentSh "cp *.deb ${assetDirectory}/."
-
-            // Publish deb and rpm packages
-            INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './publish.sh'
           }
         }
       }
@@ -1189,9 +1180,11 @@ def addNewImagesToAgent(infrapool) {
     docker pull registry.tld/conjur:${TAG_SHA}
     docker pull registry.tld/conjur-ubi:${TAG_SHA}
     docker pull registry.tld/conjur-test:${TAG_SHA}
+    docker pull registry.tld/conjur-source:${TAG_SHA}
     docker tag registry.tld/conjur:${TAG_SHA} conjur:${TAG_SHA}
     docker tag registry.tld/conjur-ubi:${TAG_SHA} conjur-ubi:${TAG_SHA}
     docker tag registry.tld/conjur-test:${TAG_SHA} conjur-test:${TAG_SHA}
+    docker tag registry.tld/conjur-source:${TAG_SHA} conjur-source:${TAG_SHA}
   """
 }
 

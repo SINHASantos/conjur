@@ -92,11 +92,13 @@ if [[ "${PUBLISH_INTERNAL}" = true ]]; then
   tag_and_push "${VERSION}-${LOCAL_TAG}-${ARCH}" "${LOCAL_IMAGE}" "registry.tld/conjur"
   tag_and_push "${VERSION}-${LOCAL_TAG}-${ARCH}" "conjur-test:${LOCAL_TAG}" "registry.tld/conjur-test"
   tag_and_push "${VERSION}-${LOCAL_TAG}-${ARCH}" "conjur-ubi:${LOCAL_TAG}" "registry.tld/conjur-ubi"
+  tag_and_push "${VERSION}-${LOCAL_TAG}-${ARCH}" "conjur-source:${LOCAL_TAG}" "registry.tld/conjur-source"
 
   # Push SHA only tagged images to our internal registry
   tag_and_push "${LOCAL_TAG}-${ARCH}" "${LOCAL_IMAGE}" "registry.tld/conjur"
   tag_and_push "${LOCAL_TAG}-${ARCH}" "conjur-test:${LOCAL_TAG}" "registry.tld/conjur-test"
   tag_and_push "${LOCAL_TAG}-${ARCH}" "conjur-ubi:${LOCAL_TAG}" "registry.tld/conjur-ubi"
+  tag_and_push "${LOCAL_TAG}-${ARCH}" "conjur-source:${LOCAL_TAG}" "registry.tld/conjur-source"
 fi
 
 if [[ "${PUBLISH_EDGE}" = true ]]; then
@@ -104,6 +106,7 @@ if [[ "${PUBLISH_EDGE}" = true ]]; then
 
   # Push image to internal registry
   tag_and_push "edge-${ARCH}" "${LOCAL_IMAGE}" "registry.tld/${IMAGE_NAME}"
+  tag_and_push "edge-${ARCH}" "conjur-source:${LOCAL_TAG}" "registry.tld/${IMAGE_NAME}"
   tag_and_push "edge-${ARCH}" "${RH_LOCAL_IMAGE}" "registry.tld/conjur-ubi"
 
   # Publish release specific and edge tags to dockerhub
