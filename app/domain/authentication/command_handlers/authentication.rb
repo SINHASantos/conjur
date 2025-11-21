@@ -12,7 +12,8 @@ module Authentication
         audit_logger: ::Audit.logger,
         authentication_error: LogMessages::Authentication::AuthenticationError,
         available_authenticators: ::DB::Repository::AuthenticatorConfigRepository.new,
-        role_resource: ::Role,
+        role_repository: ::DB::Repository::AuthenticatorRoleRepository,
+        identity_resolver: ::Authentication::Base::IdentityResolver,
         authorization: ::RBAC::Permission.new,
         token_factory: ::TokenFactory.new,
         validator: ::DB::Validation,
@@ -23,7 +24,8 @@ module Authentication
         @audit_logger = audit_logger
         @authentication_error = authentication_error
         @available_authenticators = available_authenticators
-        @role_resource = role_resource
+        @role_repository = role_repository
+        @identity_resolver = identity_resolver
         @authorization = authorization
         @token_factory = token_factory
         @authenticator_repository = authenticator_repository
@@ -34,13 +36,15 @@ module Authentication
         @strategy = klass_loader.strategy
         @authenticator_klass = klass_loader.data_object
         @authenticator_validation = klass_loader.authenticator_validation
+        @role_validation = klass_loader.role_validation
+        @role_credential_validation = klass_loader.role_credential_validation
 
         @success = Responses::Success
         @failure = Responses::Failure
       end
       # rubocop:enable Metrics/ParameterLists
 
-      def call(request_ip:, parameters:, request_body: nil)
+      def call(request_ip:, parameters:, request_body: nil, request_headers: nil)
         service_id = parameters[:service_id]
         account = parameters[:account]
         role_for_audit = nil
@@ -48,9 +52,9 @@ module Authentication
 
         response = retrieve_authenticator(service_id: service_id, account: account).bind do |authenticator|
           identified_authenticator = authenticator
-          identify_role(authenticator: authenticator, parameters: parameters, request_body: request_body).bind do |role_identifier|
-            retrieve_role(role_identifier: role_identifier).bind do |role|
-              role_for_audit = role
+          identify_role(authenticator: authenticator, parameters: parameters, request_body: request_body, request_headers: request_headers).bind do |role_identifier|
+            retrieve_role(role_identifier: role_identifier, authenticator: authenticator).bind do |role|
+              role_for_audit = role.role_id
               check_usage_permitted(role: role, authenticator: authenticator).bind do |check_permitted_role|
                 check_origin_permitted(role: check_permitted_role, request_ip: request_ip).bind do |check_allowed_role|
                   issue_authentication_token(account: account, login: check_allowed_role.login, ttl: authenticator.token_ttl).bind do |token|
@@ -68,17 +72,18 @@ module Authentication
           end
         end
 
-        role_identifier = if role_for_audit.is_a?(String)
-          role_for_audit
-        elsif role_for_audit.nil? && parameters[:id].present?
-          @role_resource.roleid_from_username(parameters[:account], parameters[:id])
-        else
-          role_for_audit&.role_id
+        if role_for_audit.nil? && parameters[:id].present?
+          role_identifier = @identity_resolver.id_from_params(parameters[:id])
+          role_for_audit = [
+            parameters[:account],
+            role_identifier[:type],
+            role_identifier[:role_id]
+          ].join(':')
         end
 
         log_audit_failure(
           service: identified_authenticator,
-          role_id: role_identifier,
+          role_id: role_for_audit,
           request_ip: request_ip,
           authenticator_type: identified_authenticator&.type,
           error_message: response.message
@@ -133,21 +138,18 @@ module Authentication
         )
       end
 
-      def retrieve_role(role_identifier:)
-        role = @role_resource[role_identifier.identifier]
-        return @success.new(role) if role
-
-        @failure.new(
-          "Failed to find role for: '#{role_identifier.identifier}'",
-          exception: Errors::Authentication::Security::RoleNotFound.new(role_identifier.role_for_error),
-          status: :bad_request
-        )
+      def retrieve_role(role_identifier:, authenticator:)
+        @role_repository.new(
+          authenticator: authenticator,
+          role_validation: @role_validation,
+          role_credential_validation: @role_credential_validation
+        ).find(role_identifier)
       end
 
-      def identify_role(authenticator:, parameters:, request_body:)
+      def identify_role(authenticator:, parameters:, request_body:, request_headers:)
         @strategy.new(
           authenticator: authenticator
-        ).callback(parameters: parameters, request_body: request_body)
+        ).callback(parameters: parameters, request_body: request_body, request_headers: request_headers)
       end
 
       def retrieve_authenticator(service_id:, account:)

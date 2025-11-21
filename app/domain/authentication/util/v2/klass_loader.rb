@@ -24,6 +24,14 @@ module Authentication
           find('Validations::AuthenticatorConfiguration')
         end
 
+        def role_validation
+          find('Validations::RoleValidation')
+        end
+
+        def role_credential_validation
+          find('Validations::RoleCredentialValidation')
+        end
+
         private
 
         def find(name)

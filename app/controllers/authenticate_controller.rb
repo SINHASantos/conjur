@@ -31,6 +31,7 @@ class AuthenticateController < ApplicationController
     response = handler.call(
       parameters: params.permit(handler.params_allowed).to_h.symbolize_keys,
       request_body: request.body.read,
+      request_headers: request.headers,
       request_ip: request.ip
     ).bind do |auth_token|
       return render_authn_token(auth_token)

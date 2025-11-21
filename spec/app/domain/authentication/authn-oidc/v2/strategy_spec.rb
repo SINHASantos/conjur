@@ -59,7 +59,7 @@ RSpec.describe(Authentication::AuthnOidc::V2::Strategy) do
             expect(response.success?).to eq(true)
             expect(response.result.class).to eq(Authentication::RoleIdentifier)
             expect(response.result.identifier).to eq('cucumber:user:alice')
-            expect(response.result.annotations).to eq({})
+            expect(response.result.attributes).to eq(jwt)
           end
         end
         context 'when an identifying claim is not found' do
@@ -98,7 +98,7 @@ RSpec.describe(Authentication::AuthnOidc::V2::Strategy) do
         expect(response.success?).to eq(true)
         expect(response.result.class).to eq(Authentication::RoleIdentifier)
         expect(response.result.identifier).to eq('cucumber:user:alice')
-        expect(response.result.annotations).to eq({})
+        expect(response.result.attributes).to eq(jwt)
       end
     end
 

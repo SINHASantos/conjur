@@ -2,11 +2,11 @@
 
 module Authentication
   class RoleIdentifier
-    attr_reader :identifier, :annotations
+    attr_reader :identifier, :attributes
 
-    def initialize(identifier:, annotations: {})
+    def initialize(identifier:, attributes: {})
       @identifier = identifier
-      @annotations = annotations
+      @attributes = attributes
     end
 
     def type

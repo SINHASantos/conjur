@@ -73,5 +73,9 @@ module AuthenticatorsV2
     rescue ActiveSupport::Duration::ISO8601Parser::ParsingError
       raise Errors::Authentication::DataObjects::InvalidTokenTTL.new(resource_id, @token_ttl)
     end
+
+    def identity_attribute
+      @claim_mapping
+    end
   end
 end

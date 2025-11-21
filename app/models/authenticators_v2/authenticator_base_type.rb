@@ -89,6 +89,14 @@ module AuthenticatorsV2
       "#{account}:policy:#{branch}"
     end
 
+    # If an authenticator can derive a host or user ID from a credential, it
+    # will likely also require a static identity path where related hosts and
+    # users are created. Implementers should overwrite the `identity_path`
+    # method.
+    def identity_path
+      nil
+    end
+
     private
 
     def data 

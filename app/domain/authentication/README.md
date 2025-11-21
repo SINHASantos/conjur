@@ -13,9 +13,12 @@ from the version 1 architecture.
   - [Components](#components)
     - [Generic Components](#generic-components)
     - [Authenticator-specific Components](#authenticator-specific-components)
-      - [Component Interfaces](#component-interfaces)
+    - [Component Interfaces](#component-interfaces)
       - [Authenticator Data Object](#authenticator-data-object)
-    - [Authenticator Validations](#authenticator-validations)
+      - [Role Validations](#role-validations)
+      - [Credential Validations](#credential-validations)
+      - [Identity Resolver](#identity-resolver)
+      - [Authenticator Validations](#authenticator-validations)
       - [Strategy](#strategy)
       - [Authenticator Repository](#authenticator-repository)
       - [Authentication Handler](#authentication-handler)
@@ -40,6 +43,10 @@ These components are related to the overall authentication process.
 - `DB::Repository::AuthenticatorRepository` - interface for querying for all
   or a single authenticator. This allows all relevant authenticator variable
   values to be retrieved in a single request.
+
+- `DB::Repository::AuthenticatorRoleRepository` - interface for querying a Conjur
+  Role (User or Host) based on the provided `RoleIdentifier`. This repository
+  runs optional role and credential validations.
 
 - `DB::Validation` - runs a provided set of validations against a target set
   of data. This interface provides a generic interface for re-mapping
@@ -71,33 +78,82 @@ correct authenticator namespace to load authenticators components from.
 
 These components are unique to each of our various authenticators.
 
+- **(Required)** `AuthenticatorsV2::<type>AuthenticatorType` - defines the
+  variables (and optional default values) an authenticator requires. These are
+  instantiated via the `DB::Repository::AuthenticatorRepository`.
+
 - **(Required)** `Authentication::Authn<type>::V2::Strategy` - defines the
   process through which a provided credential is validated and mapped to a
   potential Conjur resource.
 
-- **(Required)** `Authentication::Authn<type>::V2::DataObjects::Authenticator` -
-  defines the variables (and optionally default values) an authenticator
-  requires. These are instantiated via data from the
-  `DB::Repository::AuthenticatorRepository`.
-
 - **(Optional)** `Authentication::Authn<type>::V2::Validations::AuthenticatorConfiguration` -
-defines the specific. These validations are loaded via the `KlassLoader`.
+  defines the specific. These validations are loaded via the `KlassLoader`.
+
+- **(Optional)** `Authentication::Authn<type>::V2::Validations::RoleValidation` -
+  enables validations to be run on the requested host's annotations. Validations
+  are run by the `DB::Repository::AuthenticatorRoleRepository`.
+
+- **(Optional)** `Authentication::Authn<type>::V2::Validations::RoleCredentialValidation` -
+  enables custom validation of a credential against the requested host's annotations.
+  Validations are run by the `DB::Repository::AuthenticatorRoleRepository`.
+
+- **(Optional)** `Authentication::Authn<type>::V2::IdentityResolver` - allows
+  custom mapping for deriving a Conjur role from a credential.
 
 The following diagram provides an overview of the components used during the
 authentication cycle:
 
 ![Authentication Components](./readme_assets/authenticator-workflow-components.png)
 
-#### Component Interfaces
+### Component Interfaces
 
-#### Authenticator Data Object
+#### Authenticator Model
 
 Authenticator Data objects are dumb objects. They are initialized with all
 relevant authenticator data and should include reader methods for all
 attributes. Additional helper methods can be added, but these methods should
 be limited to providing alternative views of its core data.
 
-The following is the simplest example of an Authenticator Data Object:
+The following is the simplest example of an Authenticator model:
+
+```ruby
+# frozen_string_literal: true
+
+module AuthenticatorsV2
+  # This model encapsulates the data required for an Authn-<type> authenticator.
+  # These models must inherit from the base model type, which includes a number
+  # of helper methods.
+  class <type>AuthenticatorType < AuthenticatorsV2::AuthenticatorBaseType
+
+    # `data` is responsible for formatting a hash of configuration variables
+    # into the form expected and required by the V2 authenticators CRUD API.
+    def data
+      return {} if @variables.blank?
+
+      {
+        identity: {
+          identity_path: format_field(@variables[:identity_path])
+        }
+      }.compact
+    end
+
+    # If this authenticator is capable of deriving role IDs from its credentials,
+    # it likely requires that Conjur roles be loaded into the Conjur policy path
+    # indicated by identity_path.
+    def identity_path
+      @variables[:identity_path]
+    end
+  end
+end
+```
+
+#### Role Validations
+
+Authenticator role validations provide a generic mechanism for validating that a
+role's annotations satisfy an authenticator's requirements. Implementations of
+this class must use `ActiveModel::Validations` to enforce its requirements.
+
+The following is the simplest example of an authenticator's role validations:
 
 ```ruby
 # frozen_string_literal: true
@@ -105,22 +161,26 @@ The following is the simplest example of an Authenticator Data Object:
 module Authentication
   module Authn<type>
     module V2
-      module DataObjects
+      module Validations
+        # This class performs validations that a set of role annotations satisfies
+        # the requirements for the given instance of an Authn-<type> authenticator.
+        class RoleValidation
 
-        # This DataObject encapsulates the data required for an Authn-<type> authenticator.
-        #
-        # DataObjects must enherit from the Base data object (which includes a variety of helper methods).
-        class Authenticator < Authentication::Base::DataObject
+          # The class must use ActiveModel::Validations to verify annotations
+          # against authenticator configuration.
+          include ActiveModel::Validations
+          validate :custom_validation
 
-          # add additional variables (if any).
-          # attr_reader()
+          def initialize(annotations:, authenticator:, specific_annotations: nil)
+            @annotations = annotations
+            @authenticator = authenticator
+            @specific_annotations = specific_annotations
+          end
 
-          # Authn <type> has no variables. Add named params if this authenticator has variables.
-          def initialize(account:, service_id:)
-            super(account: account, service_id: service_id)
+          private
 
-            # If this authenticator has a non-standard TTL:
-            # @token_ttl = token_ttl.present? ? token_ttl : 'PT60M'
+          def custom_validation
+            # Verify role annotations in some manner
           end
         end
       end
@@ -129,7 +189,83 @@ module Authentication
 end
 ```
 
-### Authenticator Validations
+#### Credential Validations
+
+Authenticator credential validations provide a generic mechanism for validating
+that a credential's attributes adhere to an authenticating role's annotation
+based restrictions.
+
+The following is the simplest example of an authenticator's credential validations:
+
+```ruby
+# frozen_string_literal: true
+
+module Authentication
+  module Authn<type>
+    module V2
+      module Validations
+        # This class performs validations that a set of role annotations is
+        # satisfied by a provided credential's attributes.
+        class RoleCredentialValidation
+
+          # The class must use ActiveModel::Validations to credential attributes
+          # against role annotations.
+          include ActiveModel::Validations
+          validate :custom_validation
+
+          def initialize(annotations:, authenticator:, credential:)
+            @annotations = annotations
+            @authenticator = authenticator
+            @credential = credential
+          end
+
+          private
+
+          def custom_validation
+            # Verify credential attributes in some manner
+          end
+        end
+      end
+    end
+  end
+end
+```
+
+#### Identity Resolver
+
+Authenticator identity resolves allow authenticators to implement custom role ID
+mapping schemes. The class' `call` method must return a string formatted like a
+Conjur role ID, formatted `"${account}:[user|host]:${identifier}"`.
+
+The following is the simplest example of an authenticator's credential validations:
+
+```ruby
+module Authentication
+  module Authn<type>
+    module V2
+      # As part of behavior inherited from Base::IdentityResolver, this class
+      # returns a role ID received via request parameters if it exists. Otherwise,
+      # the ID is derived from a credential.
+      class IdentityResolver < Authentication::Base::IdentityResolver
+
+        # Overwrite `call` method if default behavior needs to be changed for a
+        # particular authenticator type.
+        #
+        # def call(id: nil, credential: nil)
+        # end
+
+        # Implement `identity_from_credential` in order to write custom role ID
+        # mapping logic.
+        def identity_from_credential(credential)
+          # Derive role ID in some way
+        end
+      end
+    end
+  end
+end
+```
+
+#### Authenticator Validations
 
 Authenticator validations provide a mechanism for validating authenticator data
 prior to initializing an Authenticator Data Object.
@@ -220,18 +356,22 @@ end
 # Verifies the validity of the contents of the provided request body and/or
 #       request parameters
 #
-# @param [String] request_body - authentication request body
 # @param [Hash] parameters - authentication request parameters
+# @param [String] request_body - authentication request body
+# @param [Hash] request_headers - authentication request headers
 #
 # @return something suitable for identifying a Conjur Role (usually a String
 #        or Hash)
-def callback(request_body:, parameters:)
+def callback(parameters:, request_body:, request_headers:)
   ...
 end
 ```
 
 Strategies should be stateless and follow the pattern of dependency injection to
-allow network requests to be mocked during testing.
+allow network requests to be mocked during testing. They should return instances
+of the `Authentication::RoleIdentifier` class, which includes a role ID
+(formatted `"${account}:[user|host]:${identifier}"`) and any identifying
+attributes associated with the credential used to authenticate.
 
 #### Authenticator Repository
 
@@ -292,7 +432,7 @@ The new architecture emphasizes stateless strategies. This allows us to easily
 create authenticators which are specific implementations of a more generic
 authenticator. As an example, `authn-oidc` performs two actions:
 
-1. Exchange a code for n bearer token
+1. Exchange a code for a bearer token
 1. Validates a JWT token from that bearer token
 
 To avoid code duplication, the `authn-oidc` extends the `authn-jwt` strategy.

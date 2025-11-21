@@ -22,7 +22,12 @@ module Authentication
 
         # Parameter `id` is guaranteed to be present based on the
         # upstream routes file.
-        def callback(request_body:, parameters:)
+        #
+        # NOTE: The `request_headers` parameter is not used in this context, but
+        # needs to be present to adhere to the interface.
+        #
+        # rubocop:disable Lint/UnusedMethodArgument
+        def callback(parameters:, request_body:, request_headers: nil)
           role_id = parameters[:id]
           api_key = request_body
 
@@ -54,12 +59,14 @@ module Authentication
           end
 
           return @success.new(role_identifier) if role_credentials.valid_api_key?(api_key)
+
           exception = Errors::Authentication::InvalidCredentials.new
           @failure.new(
             exception.message,
             exception: exception
           )
         end
+        # rubocop:enable Lint/UnusedMethodArgument
 
         # TODO: need to pull this over from the authn-jwt refactor
         #

@@ -5,11 +5,13 @@ require 'spec_helper'
 RSpec.describe(Authentication::AuthnOidc::V2::OidcClient) do
   let(:authenticator_args) do
     {
-      provider_uri: 'https://dev-92899796.okta.com/oauth2/default',
-      redirect_uri: "http://localhost:3000/authn-oidc/okta/cucumber/authenticate",
-      client_id: 'super-secret-client-id',
-      client_secret: 'super-secret-client-secret',
-      claim_mapping: "email",
+      variables: {
+        provider_uri: 'https://dev-92899796.okta.com/oauth2/default',
+        redirect_uri: "http://localhost:3000/authn-oidc/okta/cucumber/authenticate",
+        client_id: 'super-secret-client-id',
+        client_secret: 'super-secret-client-secret',
+        claim_mapping: "email"
+      },
       account: "bar",
       service_id: "baz"
     }
@@ -17,7 +19,7 @@ RSpec.describe(Authentication::AuthnOidc::V2::OidcClient) do
 
   let(:oidc_client) do
     described_class.new(
-      authenticator: Authentication::AuthnOidc::V2::DataObjects::Authenticator.new(**authenticator_args),
+      authenticator: AuthenticatorsV2::OidcAuthenticatorType.new(authenticator_args),
       client: transporter
     )
   end
@@ -38,7 +40,7 @@ RSpec.describe(Authentication::AuthnOidc::V2::OidcClient) do
       code_verifier: "c1de7f1251849accd99d4839d79a637561b1181b909ed7dc1d",
       grant_type: "authorization_code",
       nonce: "7efcbba36a9b96fdb5285a159665c3d382abd8b6b3288fcc8d",
-      redirect_uri: authenticator_args[:redirect_uri],
+      redirect_uri: authenticator_args[:variables][:redirect_uri],
       scope: "openid email profile"
     }
   end
@@ -120,10 +122,12 @@ RSpec.describe(Authentication::AuthnOidc::V2::OidcClient) do
         context 'when the oidc provider does not require a redirect uri' do
           let(:authenticator_args) do
             {
-              provider_uri: 'https://dev-92899796.okta.com/oauth2/default',
-              client_id: 'super-secret-client-id',
-              client_secret: 'super-secret-client-secret',
-              claim_mapping: "email",
+              variables: {
+                provider_uri: 'https://dev-92899796.okta.com/oauth2/default',
+                client_id: 'super-secret-client-id',
+                client_secret: 'super-secret-client-secret',
+                claim_mapping: "email"
+              },
               account: "bar",
               service_id: "baz"
             }

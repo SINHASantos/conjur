@@ -16,6 +16,12 @@ module Authentication
       module Validations
         class AuthenticatorConfiguration
         end
+
+        class RoleValidation
+        end
+
+        class RoleCredentialValidation
+        end
       end
     end
   end
@@ -67,6 +73,32 @@ RSpec.describe(Authentication::Util::V2::KlassLoader) do
       let(:authenticator_type) { 'Foo' }
       it 'returns a null value' do
         expect(loader.data_object).to eq(nil)
+      end
+    end
+  end
+  describe '.role_validation' do
+    context 'when the role validation class exists' do
+      it 'returns the desired class' do
+        expect(loader.role_validation).to eq(Authentication::KlassTest::V2::Validations::RoleValidation)
+      end
+    end
+    context 'when the role validation class does not exist' do
+      let(:authenticator_type) { 'Foo' }
+      it 'returns a null value' do
+        expect(loader.role_validation).to eq(nil)
+      end
+    end
+  end
+  describe '.role_credential_validation' do
+    context 'when the role credential validation class exists' do
+      it 'returns the desired class' do
+        expect(loader.role_credential_validation).to eq(Authentication::KlassTest::V2::Validations::RoleCredentialValidation)
+      end
+    end
+    context 'when the role credential validation class does not exist' do
+      let(:authenticator_type) { 'Foo' }
+      it 'returns a null value' do
+        expect(loader.role_credential_validation).to eq(nil)
       end
     end
   end

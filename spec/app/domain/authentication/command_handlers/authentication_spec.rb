@@ -74,10 +74,17 @@ RSpec.describe(Authentication::CommandHandlers::Authentication) do
           allow(double).to receive(:signed_token).and_return('success-token')
         end
       end
-      let(:role) { Role.new(role_id: 'rspec:user:foo-bar') }
-      let(:role_resource) do
-        class_double(::Role).tap do |double|
-          allow(double).to receive(:[]).with('rspec:user:foo-bar').and_return(role)
+      let(:role_id) { 'rspec:user:foo-bar' }
+      let(:role_identifier) { ::Authentication::RoleIdentifier.new(identifier: role_id) }
+      let(:role) { Role.new(role_id: role_id) }
+      let(:role_repository_response) { Responses::Success.new(role) }
+      let(:role_repository) do
+        class_double(::DB::Repository::AuthenticatorRoleRepository).tap do |double|
+          allow(double).to receive(:new).and_return(
+            instance_double(::DB::Repository::AuthenticatorRoleRepository).tap do |instance|
+              allow(instance).to receive(:find).and_return(role_repository_response)
+            end
+          )
         end
       end
       let(:available_authenticators) do
@@ -106,7 +113,7 @@ RSpec.describe(Authentication::CommandHandlers::Authentication) do
             authenticator_type: authenticator_type,
             klass_loader_library: klass_loader_class,
             available_authenticators: available_authenticators,
-            role_resource: role_resource,
+            role_repository: role_repository,
             token_factory: token_factory,
             configuration: configuration
           )
@@ -159,7 +166,7 @@ RSpec.describe(Authentication::CommandHandlers::Authentication) do
             authenticator_type: authenticator_type,
             klass_loader_library: klass_loader_class,
             available_authenticators: available_authenticators,
-            role_resource: role_resource,
+            role_repository: role_repository,
             token_factory: token_factory
           )
         end
@@ -177,7 +184,7 @@ RSpec.describe(Authentication::CommandHandlers::Authentication) do
             authenticator_type: 'authn-jwt',
             klass_loader_library: klass_loader_class,
             available_authenticators: available_authenticators,
-            role_resource: role_resource,
+            role_repository: role_repository,
             token_factory: token_factory,
             authenticator_repository: authenticator_repository,
             authorization: rbac
@@ -239,17 +246,6 @@ RSpec.describe(Authentication::CommandHandlers::Authentication) do
             expect(response.success?).to be(false)
             expect(response.exception.class).to eq(Errors::Authentication::InvalidOrigin)
             expect(response.status).to eq(:unauthorized)
-          end
-        end
-        context 'when the role is not found' do
-          let(:role) { nil }
-
-          it 'is unsuccessful' do
-            response = handler.call(**args)
-
-            expect(response.success?).to be(false)
-            expect(response.exception.class).to eq(Errors::Authentication::Security::RoleNotFound)
-            expect(response.status).to eq(:bad_request)
           end
         end
       end

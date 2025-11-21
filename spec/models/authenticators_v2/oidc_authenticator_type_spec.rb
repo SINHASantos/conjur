@@ -109,6 +109,12 @@ RSpec.describe(AuthenticatorsV2::OidcAuthenticatorType) do
     end
   end
 
+  describe '.identity_attribute', type: 'unit' do
+    context 'with default initializer' do
+      it { expect(authenticator.identity_attribute).to eq('email')}
+    end
+  end
+
   describe "#to_h" do
     let(:authenticator) { described_class.new(authenticator_dict) }
 
