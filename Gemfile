@@ -34,7 +34,7 @@ gem 'net-imap', '>= 0.5.8'
 gem 'nokogiri', '>= 1.18.9'
 gem 'puma', '~> 6', '>= 6.4.3'
 gem 'rack', '>= 2.2.20'
-gem 'rails', '~> 7.2', '>= 7.2.2.2'
+gem 'rails', '~> 8.1', '>= 8.1.1'
 gem 'rake'
 
 gem 'pg'

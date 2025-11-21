@@ -107,7 +107,7 @@ Feature: Branches APIv2 tests - read list
   @acceptance
   Scenario: As admin I can list branches from root using pagination
     Given I set the Accept header to APIv2
-    When I can GET "/branches/cucumber?offset=2;limit=3"
+    When I can GET "/branches/cucumber?offset=2&limit=3"
     Then the HTTP response status code is 200
     And the HTTP response content type is APIv2
     And the JSON should be:
@@ -133,7 +133,7 @@ Feature: Branches APIv2 tests - read list
     Given I set the Accept header to APIv2
     And I save my place in the audit log file for remote
     And I save my place in the audit log file for remote
-    When I GET "/branches/cucumber?offset=2;limit=-1"
+    When I GET "/branches/cucumber?offset=2&limit=-1"
     Then the HTTP response status code is 422
     And the HTTP response content type is APIv2
     And the JSON should be:

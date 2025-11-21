@@ -38,7 +38,7 @@ module Branches
     end
 
     def as_json(options = {})
-      super(options).except("validation_context", "errors", "is_set")
+      super(options).except("context_for_validation", "errors", "is_set")
     end
 
     def not_admin?
