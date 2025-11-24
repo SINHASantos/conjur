@@ -1,3 +1,4 @@
+name: "conjur-dev"
 services:
   pg:
     image: postgres:15
