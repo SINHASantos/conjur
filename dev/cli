@@ -3,6 +3,8 @@
 # Conjur Development CLI
 # Usage: ./cli [command] [options]
 
+cd $(dirname "$0")
+
 set -e
 
 # Configuration
@@ -14,9 +16,6 @@ ALICE_USER="alice"
 # API keys will be fetched dynamically
 ADMIN_API_KEY=""
 ALICE_API_KEY=""
-
-# Clear any cached keys on script start
-unset ADMIN_API_KEY ALICE_API_KEY
 
 # Colors for output
 RED='\033[0;31m'
@@ -65,8 +64,8 @@ execute_curl_detailed() {
     
     # Display headers
     echo -e "\n${GREEN}Response Headers:${NC}"
-    cat "$headers_file" | grep -v "^$" | while IFS= read -r line; do
-        echo "  $line"
+    grep -v "^$" "$headers_file" | while IFS= read -r line; do
+      echo "  $line"
     done
     
     # Display response body
@@ -111,9 +110,9 @@ ensure_api_key() {
     
     # Check if we already have the key
     local current_key=""
-    if [[ "$user" == "admin" ]]; then
+    if [[ "$user" == "$ADMIN_USER" ]]; then
         current_key="$ADMIN_API_KEY"
-    elif [[ "$user" == "alice" ]]; then
+    elif [[ "$user" == "$ALICE_USER" ]]; then
         current_key="$ALICE_API_KEY"
     fi
     
@@ -121,9 +120,9 @@ ensure_api_key() {
         local api_key=$(get_api_key "$user")
         if [[ $? -eq 0 ]]; then
             # Set the variable
-            if [[ "$user" == "admin" ]]; then
+            if [[ "$user" == "$ADMIN_USER" ]]; then
                 ADMIN_API_KEY="$api_key"
-            elif [[ "$user" == "alice" ]]; then
+            elif [[ "$user" == "$ALICE_USER" ]]; then
                 ALICE_API_KEY="$api_key"
             fi
             echo -e "${GREEN}✓ Got API key for $user${NC}"
@@ -363,8 +362,6 @@ show_usage() {
     echo "  policy load <account> <file> - Load policy into account (file relative to repo root or full container path)"
     echo ""
     echo "Testing:"
-    echo "  test health               - Check server health (Appliance only)"
-    echo "  test info                 - Get server info (Appliance only)"
     echo "  test auth [admin|alice]   - Authenticate user and show token"
     echo "  test whoami [admin|alice] - Show current user identity"
     echo "  test roles                - List all resources (includes roles)"
@@ -388,7 +385,6 @@ show_usage() {
     echo "  ./cli key                      # Get admin API key"
     echo "  ./cli policy load cucumber dev/files/policy.yml"
     echo "  ./cli logs -f --filter INFO"
-    echo "  ./cli test health"
     echo "  ./cli test auth admin"
     echo ""
     echo "Log Options:"
@@ -453,7 +449,6 @@ cmd_exec() {
 }
 
 cmd_key() {
-    echo -e "${BLUE}Admin API Key:${NC}"
     docker compose exec -T conjur conjurctl role retrieve-key cucumber:user:admin 2>/dev/null | tr -d '\r'
 }
 
@@ -762,24 +757,8 @@ print_gcp_help() {
 }
 
 # Command functions
-cmd_health() {
-    local curl_args=("-X" "GET" "$CONJUR_URL/health")
-    if [[ -n "$ADMIN_TOKEN" ]]; then
-        curl_args+=("-H" "Authorization: Token token=\"$ADMIN_TOKEN\"")
-    fi
-    execute_curl_detailed "Check server health" "${curl_args[@]}"
-}
-
-cmd_info() {
-    local curl_args=("-X" "GET" "$CONJUR_URL/info")
-    if [[ -n "$ADMIN_TOKEN" ]]; then
-        curl_args+=("-H" "Authorization: Token token=\"$ADMIN_TOKEN\"")
-    fi
-    execute_curl_detailed "Get server info" "${curl_args[@]}"
-}
-
 cmd_auth() {
-    local user="${1:-admin}"
+    local user="${1:-$ADMIN_USER}"
     
     case "$user" in
         admin|alice) ;;
@@ -791,7 +770,7 @@ cmd_auth() {
     
     # Get the API key
     local api_key=""
-    if [[ "$user" == "admin" ]]; then
+    if [[ "$user" == "$ADMIN_USER" ]]; then
         api_key="$ADMIN_API_KEY"
     else
         api_key="$ALICE_API_KEY"
@@ -805,7 +784,7 @@ cmd_auth() {
         return 1
     fi
     
-    if [[ "$user" == "admin" ]]; then
+    if [[ "$user" == "$ADMIN_USER" ]]; then
         ADMIN_TOKEN="$token"
     else
         ALICE_TOKEN="$token"
@@ -816,19 +795,19 @@ cmd_auth() {
 }
 
 cmd_whoami() {
-    local user="${1:-admin}"
+    local user="${1:-$ADMIN_USER}"
     local token=""
     
     case "$user" in
-        admin) 
-            [[ -z "$ADMIN_TOKEN" ]] && cmd_auth admin
+        "$ADMIN_USER") 
+            [[ -z "$ADMIN_TOKEN" ]] && cmd_auth "$ADMIN_USER"
             token="$ADMIN_TOKEN"
             ;;
-        alice) 
-            [[ -z "$ALICE_TOKEN" ]] && cmd_auth alice
+        "$ALICE_USER") 
+            [[ -z "$ALICE_TOKEN" ]] && cmd_auth "$ALICE_USER"
             token="$ALICE_TOKEN"
             ;;
-        *) echo -e "${RED}Error: Unknown user '$user'. Use 'admin' or 'alice'${NC}"; return 1 ;;
+        *) echo -e "${RED}Error: Unknown user '$user'. Use '$ADMIN_USER' or '$ALICE_USER'${NC}"; return 1 ;;
     esac
     
     execute_curl_detailed "Whoami as $user" \
@@ -837,15 +816,15 @@ cmd_whoami() {
 }
 
 cmd_roles() {
-    [[ -z "$ADMIN_TOKEN" ]] && cmd_auth admin
+    [[ -z "$ADMIN_TOKEN" ]] && cmd_auth "$ADMIN_USER"
     execute_curl_detailed "List all resources (includes roles)" \
         -X GET "$CONJUR_URL/resources/$CONJUR_ACCOUNT" \
         -H "Authorization: Token token=\"$ADMIN_TOKEN\""
 }
 
 cmd_role() {
-    local user="${1:-admin}"
-    [[ -z "$ADMIN_TOKEN" ]] && cmd_auth admin
+    local user="${1:-$ADMIN_USER}"
+    [[ -z "$ADMIN_TOKEN" ]] && cmd_auth "$ADMIN_USER"
     
     case "$user" in
         admin|alice) ;;
@@ -858,7 +837,7 @@ cmd_role() {
 }
 
 cmd_policies() {
-    [[ -z "$ADMIN_TOKEN" ]] && cmd_auth admin
+    [[ -z "$ADMIN_TOKEN" ]] && cmd_auth "$ADMIN_USER"
     execute_curl_detailed "Get root policy" \
         -X GET "$CONJUR_URL/policies/$CONJUR_ACCOUNT/policy/root" \
         -H "Authorization: Token token=\"$ADMIN_TOKEN\""
@@ -912,7 +891,7 @@ cmd_custom() {
     
     # Add authentication for most endpoints (except some auth endpoints)
     if [[ ! "$endpoint" =~ ^/authn.*authenticate$ ]]; then
-        [[ -z "$ADMIN_TOKEN" ]] && cmd_auth admin
+        [[ -z "$ADMIN_TOKEN" ]] && cmd_auth "$ADMIN_USER"
         curl_args+=("-H" "Authorization: Token token=\"$ADMIN_TOKEN\"")
     fi
     
@@ -926,7 +905,7 @@ cmd_custom() {
 }
 
 cmd_rotate_key() {
-    local user="${1:-admin}"
+    local user="${1:-$ADMIN_USER}"
     
     case "$user" in
         admin|alice) ;;
@@ -951,7 +930,7 @@ cmd_rotate_key() {
     echo -e "${YELLOW}For now, refreshing cached key...${NC}"
     
     # Update our cached key with current key
-    if [[ "$user" == "admin" ]]; then
+    if [[ "$user" == "$ADMIN_USER" ]]; then
         ADMIN_API_KEY="$current_key"
         ADMIN_TOKEN=""  # Clear cached token
     else
@@ -964,22 +943,19 @@ cmd_rotate_key() {
 
 cmd_all() {
     echo -e "${BLUE}=== Running All Basic Tests ===${NC}"
-    cmd_health
-    cmd_info
-    cmd_auth admin
-    cmd_auth alice
-    cmd_whoami admin
-    cmd_whoami alice
+    cmd_auth "$ADMIN_USER"
+    cmd_auth "$ALICE_USER"
+    cmd_whoami "$ADMIN_USER"
+    cmd_whoami "$ALICE_USER"
     cmd_roles
-    cmd_role admin
-    cmd_role alice
+    cmd_role "$ADMIN_USER"
+    cmd_role "$ALICE_USER"
     cmd_policies
     cmd_cert_status
     echo -e "\n${GREEN}=== All Tests Complete ===${NC}"
 }
 
 # Parse command line arguments
-VERBOSE=false
 COMMAND=""
 ARGS=()
 
@@ -1044,8 +1020,6 @@ case "$COMMAND" in
         # Handle test subcommands
         TEST_COMMAND="${ARGS[0]}"
         case "$TEST_COMMAND" in
-            health) ensure_server_running && cmd_health ;;
-            info) ensure_server_running && cmd_info ;;
             auth) ensure_server_running && cmd_auth "${ARGS[1]}" ;;
             whoami) ensure_server_running && cmd_whoami "${ARGS[1]}" ;;
             roles) ensure_server_running && cmd_roles ;;
@@ -1058,7 +1032,7 @@ case "$COMMAND" in
             all) ensure_server_running && cmd_all ;;
             *)
                 echo -e "${RED}Error: Unknown test command '$TEST_COMMAND'${NC}"
-                echo -e "${YELLOW}Available test commands: health, info, auth, whoami, roles, role, policies, cert-status, cert-test, custom, rotate-key, all${NC}"
+                echo -e "${YELLOW}Available test commands: auth, whoami, roles, role, policies, cert-status, cert-test, custom, rotate-key, all${NC}"
                 exit 1
                 ;;
         esac
