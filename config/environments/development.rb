@@ -32,12 +32,6 @@ Rails.application.configure do
   # when problems arise.
   config.log_level = ENV['CONJUR_LOG_LEVEL'] || :debug
   config.log_formatter = Logger::Formatter::ConjurFormatter.new
-  
-  # Enable better logging for development
-  # Log to file in mounted volume for easy access from host
-  config.logger = ActiveSupport::Logger.new('/src/conjur-server/dev/conjur-dev.log')
-  config.logger.formatter = Logger::Formatter::ConjurFormatter.new
-  config.logger.level = Logger::DEBUG
 
   # Don't care if the mailer can't send.
   # config.action_mailer.raise_delivery_errors = false
