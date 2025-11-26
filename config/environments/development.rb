@@ -8,7 +8,7 @@ Rails.application.configure do
   # In the development environment your application's code is reloaded on
   # every request. This slows down response time but is perfect for development
   # since you don't have to restart the web server when you make code changes.
-  config.cache_classes = true
+  config.enable_reloading = true
 
   # Whitelist conjur hostname for tests
   # For more information, refer to:
@@ -25,7 +25,7 @@ Rails.application.configure do
   # config.assets.digest = false
 
   # Show full error reports and disable caching.
-  config.consider_all_requests_local       = false
+  config.consider_all_requests_local       = true
   config.action_controller.perform_caching = false
 
   # Use the lowest log level to ensure availability of diagnostic information

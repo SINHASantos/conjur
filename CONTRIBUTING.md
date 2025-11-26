@@ -191,35 +191,41 @@ these steps:
 
 ### Development CLI
 
-As a developer, there are a number of common scenarios when actively working on Conjur.
-The `./cli` script, located in the `dev` folder is intended to streamline these tasks.
+The `./cli` script in the `dev` folder provides a comprehensive set of commands for managing and testing your local Conjur development environment.
 
 ```sh-session
+$ cd dev
 $ ./cli --help
-
-NAME
-    cli - Development tool to simplify working with a Conjur container.
-
-SYNOPSIS
-    cli [global options] command [command options] [arguments...]
-
-GLOBAL OPTIONS
-    --help                                    - Show this message
-
-COMMANDS
-
-    exec                                      - Steps into the running Conjur container, into a bash shell.
-
-    key                                       - Displays the admin user API key
-
-    policy load <account> <policy/path.yml>   - Loads a conjur policy into the provided account.
 ```
+
+**Server Management:**
+- `./cli start` - Start the Conjur development environment
+- `./cli stop` - Stop all containers
+- `./cli restart` - Restart the Conjur server
+- `./cli status` - Check if the server is running
+- `./cli logs [service]` - View container logs
+
+**Container Access:**
+- `./cli exec` - Open a bash shell in the Conjur container
+- `./cli key` - Display the admin user's API key
+
+**Policy Management:**
+- `./cli policy load <account> <policy-file>` - Load a policy file
+
+**Testing Commands:**
+The CLI includes built-in API testing commands that authenticate and make requests to your local Conjur instance:
+- `./cli test auth [user]` - Authenticate as a user (admin or alice)
+- `./cli test whoami [user]` - Get current user info
+- `./cli test roles` - List all roles
+- `./cli test role [user]` - Get role details
+- `./cli test policies` - List policies
+- `./cli test cert-status` - Check certificate authenticator status
+- `./cli test all` - Run all test commands
 
 #### Step into the running Conjur container
 
 ```sh-session
 $ ./cli exec
-
 root@88d43f7b3dfa:/src/conjur-server#
 ```
 
@@ -227,17 +233,23 @@ root@88d43f7b3dfa:/src/conjur-server#
 
 ```sh-session
 $ ./cli key
-
 3xmx4tn353q4m02f8e0xc1spj8zt6qpmwv178f5z83g6b101eepwn1
 ```
 
 #### Load a policy
 
 ```sh-session
-$ ./cli policy load <account> <policy/path/from/project/root.yml>
+$ ./cli policy load cucumber policy/example.yml
 ```
 
-For most development work, the account will be `cucumber`, which is created when the development environment starts. The policy path must be inside the `cyberark/conjur` project folder, and referenced from the project root.
+#### Test API endpoints
+
+```sh-session
+$ ./cli test auth admin
+$ ./cli test whoami admin
+```
+
+For most development work, the account will be `cucumber`, which is created when the development environment starts.
 
 ### Updating the API
 

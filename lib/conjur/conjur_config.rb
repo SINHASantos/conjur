@@ -48,7 +48,9 @@ module Conjur
       # network calls and are significantly slower to retrieve.
       dynamic_secrets_per_request_max: 10,
       # Host factory operation can be disabled entirely
-      host_factories_enabled: true
+      host_factories_enabled: true,
+      # URL for external SaaS authenticator service
+      saas_authenticator_url: 'http://host.docker.internal:8080'
     )
 
     AUTHENTICATORS = %w[authn authn-k8s authn-oidc authn-iam
