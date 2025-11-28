@@ -38,10 +38,22 @@ RSpec.describe(Authentication::AuthnCert::V2::Strategy) do
     end
   end
 
+  let(:identity_resolver) do
+    class_double(Authentication::AuthnCert::V2::IdentityResolver).tap do |double|
+      allow(double).to receive(:new).and_return(instantiated_identity_resolver)
+    end
+  end
+  let(:instantiated_identity_resolver) do
+    instance_double(Authentication::AuthnCert::V2::IdentityResolver).tap do |double|
+      allow(double).to receive(:call).and_return(Responses::Success.new('rspec:user:alice'))
+    end
+  end
+
   let(:strategy) do
     described_class.new(
       authenticator: authenticator,
-      saas_auth_client: saas_auth_client
+      saas_auth_client: saas_auth_client,
+      identity_resolver: identity_resolver
     )
   end
 
@@ -50,7 +62,7 @@ RSpec.describe(Authentication::AuthnCert::V2::Strategy) do
       let(:headers) { { 'X-SSL-Client-Certificate' => 'my-client-pem' } }
 
       it 'is successful' do
-        response = strategy.callback(request_headers: headers)
+        response = strategy.callback(parameters: { id: 'alice' }, request_headers: headers)
         expect(response.success?).to be(true)
         expect(response.result.class).to be(Authentication::RoleIdentifier)
         expect(response.result.identifier).to eq('rspec:user:alice')

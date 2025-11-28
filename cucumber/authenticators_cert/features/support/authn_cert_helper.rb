@@ -4,9 +4,15 @@ require 'cgi'
 
 module AuthnCertHelper
   ACCOUNT = 'cucumber'
+  TRUST_DOMAIN = 'trust.com'
+  WORKLOAD_ID = 'cyberark/conjur/vm'
 
-  def authenticate_with_certificate(service_id:, account:, client_cert:, client_key:, user_id:)
-    path = "#{conjur_hostname}/authn-cert/#{service_id}/#{account}/#{user_id}/authenticate"
+  def authenticate_with_certificate(service_id:, account:, client_cert:, client_key:, role_id: nil)
+    path = if role_id.nil?
+      "#{conjur_hostname}/authn-cert/#{service_id}/#{account}/authenticate"
+    else
+      "#{conjur_hostname}/authn-cert/#{service_id}/#{account}/#{role_id}/authenticate"
+    end
 
     post(path, '', {
       "X-SSL-Client-Certificate": CGI.escape(client_cert.to_pem)
@@ -54,6 +60,7 @@ module AuthnCertHelper
     cert.add_extension(ef.create_extension('basicConstraints', 'CA:FALSE', true))
     cert.add_extension(ef.create_extension('keyUsage', 'digitalSignature', true))
     cert.add_extension(ef.create_extension('extendedKeyUsage', 'serverAuth,clientAuth', false))
+    cert.add_extension(ef.create_extension('subjectAltName', "URI:spiffe://#{TRUST_DOMAIN}/#{WORKLOAD_ID}", false))
 
     cert.sign(ca_key, OpenSSL::Digest.new('SHA256'))
     [cert, key]

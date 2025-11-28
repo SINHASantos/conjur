@@ -26,12 +26,6 @@ module Authentication
             optional(:cn).value(:string)
           end
 
-          rule(:host_mode) do
-            unless value.nil? || value == 'request' || value == 'spiffe'
-              key.failure("variable 'host-mode' must be either 'request' or 'spiffe'")
-            end
-          end
-
           rule(:trust_domain, :host_mode) do
             if !values[:host_mode].nil? && values[:host_mode] == 'spiffe' && (values[:trust_domain].nil? || values[:trust_domain].empty?)
               key.failure("variable 'trust-domain' must be used when 'host-mode' is set to 'spiffe'")
