@@ -106,7 +106,7 @@ if [[ "${PUBLISH_EDGE}" = true ]]; then
 
   # Push image to internal registry
   tag_and_push "edge-${ARCH}" "${LOCAL_IMAGE}" "registry.tld/${IMAGE_NAME}"
-  tag_and_push "edge-${ARCH}" "conjur-source:${LOCAL_TAG}" "registry.tld/${IMAGE_NAME}"
+  tag_and_push "edge-${ARCH}" "conjur-source:${LOCAL_TAG}" "registry.tld/conjur-source"
   tag_and_push "edge-${ARCH}" "${RH_LOCAL_IMAGE}" "registry.tld/conjur-ubi"
 
   # Publish release specific and edge tags to dockerhub
