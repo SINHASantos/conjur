@@ -17,7 +17,7 @@ module Authentication
         class AuthenticatorConfiguration
         end
 
-        class RoleValidation
+        class Constraints
         end
 
         class RoleCredentialValidation
@@ -76,16 +76,16 @@ RSpec.describe(Authentication::Util::V2::KlassLoader) do
       end
     end
   end
-  describe '.role_validation' do
-    context 'when the role validation class exists' do
+  describe '.constraint_validation' do
+    context 'when the constraints class exists' do
       it 'returns the desired class' do
-        expect(loader.role_validation).to eq(Authentication::KlassTest::V2::Validations::RoleValidation)
+        expect(loader.constraint_validation).to eq(Authentication::KlassTest::V2::Validations::Constraints)
       end
     end
-    context 'when the role validation class does not exist' do
+    context 'when the constraints class does not exist' do
       let(:authenticator_type) { 'Foo' }
       it 'returns a null value' do
-        expect(loader.role_validation).to eq(nil)
+        expect(loader.constraint_validation).to eq(nil)
       end
     end
   end

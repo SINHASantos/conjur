@@ -17,20 +17,18 @@ module AuthenticatorsV2
 
     def to_h
       {
-        type: format_type(type),
+        type: format_type,
         branch: branch,
         name: authenticator_name,
         enabled: enabled,
         owner: parse_owner(owner),
-        data: data, 
+        data: data,
         annotations: @annotations.present? ? annotations : nil
       }.compact
     end
 
-    def format_type(authn_type)
-      return "aws" if authn_type == "authn-iam"
-      
-      authn_type.split("-").last
+    def format_type
+      type.split("-").last
     end
 
     def authenticator_name

@@ -6,12 +6,17 @@ module Authentication
 
       def initialize(*args)
         @constraints = args
+
+        @success = Responses::Success
+        @failure = Responses::Failure
       end
 
       def validate(resource_restrictions:)
         @constraints.each do |constraint|
-          constraint.validate(resource_restrictions: resource_restrictions)
+          response = constraint.validate(resource_restrictions: resource_restrictions)
+          return response unless response.success?
         end
+        @success.new(true)
       end
     end
   end

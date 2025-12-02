@@ -8,16 +8,23 @@ module Authentication
 
       def initialize(permitted:)
         @permitted = permitted
+
+        @success = Responses::Success
+        @failure = Responses::Failure
       end
 
       def validate(resource_restrictions:)
         not_supported_restrictions = resource_restrictions - @permitted
-        if not_supported_restrictions.any?
-          raise Errors::Authentication::Constraints::ConstraintNotSupported.new(
-            not_supported_restrictions,
-            @permitted
-          )
-        end
+        return @success.new(true) unless not_supported_restrictions.any?
+
+        exception = Errors::Authentication::Constraints::ConstraintNotSupported.new(
+          not_supported_restrictions,
+          @permitted
+        )
+        @failure.new(
+          exception.message,
+          exception: exception
+        )
       end
     end
   end

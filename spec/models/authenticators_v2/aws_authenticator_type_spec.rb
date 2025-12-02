@@ -6,22 +6,22 @@ describe AuthenticatorsV2::AwsAuthenticatorType, type: :model do
   include_context "create user"
 
   let(:account) { "rspec" }
+  let(:dict) do
+    {
+      type: 'authn-iam',
+      service_id: 'auth1',
+      subtype: nil,
+      enabled: true,
+      owner_id: "#{account}:policy:conjur/authn-iam",
+      annotations: { description: 'this is my aws authenticator' },
+      variables: variables
+    }
+  end
+  let(:authenticator) { described_class.new(dict) }
 
   describe "Get authenticator - AWS - #as_json" do
-    let(:authenticator) { described_class.new(authenticator_dict) }
-
     context "when aws dictionary received" do
-      let(:authenticator_dict) do
-        {
-          type: "authn-iam",
-          service_id: "auth1",
-          subtype: nil,
-          enabled: true,
-          owner_id: "#{account}:policy:conjur/authn-iam",
-          annotations: { description: "this is my aws authenticator" },
-          variables: {}
-        }
-      end
+      let(:variables) { {} }
 
       it "does not include data attribute in the json" do
         json = authenticator.to_h
@@ -34,6 +34,16 @@ describe AuthenticatorsV2::AwsAuthenticatorType, type: :model do
           annotations: { description: "this is my aws authenticator" }
         }
         expect(json).to eq(expected_json)
+      end
+    end
+  end
+
+  describe '#format_type' do
+    context 'regardless of configuration variable presence' do
+      let(:variables) { {} }
+      it 'returns "aws" rather than "iam"' do
+        formatted_type = authenticator.format_type
+        expect(formatted_type).to eq('aws')
       end
     end
   end

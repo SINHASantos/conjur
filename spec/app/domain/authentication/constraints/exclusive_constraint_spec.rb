@@ -17,8 +17,8 @@ RSpec.describe(Authentication::Constraints::ExclusiveConstraint) do
         constraint.validate(resource_restrictions: [])
       end
 
-      it "does not raise an error" do
-        expect { subject }.to_not raise_error
+      it "returns a success response" do
+        expect(subject.success?).to be(true)
       end
     end
 
@@ -27,8 +27,8 @@ RSpec.describe(Authentication::Constraints::ExclusiveConstraint) do
         constraint.validate(resource_restrictions: [additional_restriction])
       end
 
-      it "does not raise an error" do
-        expect { subject }.to_not raise_error
+      it "returns a success response" do
+        expect(subject.success?).to be(true)
       end
     end
 
@@ -37,45 +37,52 @@ RSpec.describe(Authentication::Constraints::ExclusiveConstraint) do
         constraint.validate(resource_restrictions: [exclusive_three_restriction.first])
       end
 
-      it "does not raise an error" do
-        expect { subject }.to_not raise_error
+      it "returns a success response" do
+        expect(subject.success?).to be(true)
       end
     end
 
     context "when validating with two of the exclusive restrictions" do
       let(:resource_restrictions) { exclusive_three_restriction[1, 2] }
-      let(:expected_error_message) { /#{Regexp.escape(resource_restrictions.to_s)}/ }
 
       subject do
         constraint.validate(resource_restrictions: resource_restrictions)
       end
 
-      it "raises an error" do
-        expect { subject }.to raise_error(raised_error, expected_error_message)
+      it "returns a failure response" do
+        response = subject
+        expect(response.success?).to be(false)
+        expect(response.exception.class).to be(raised_error)
+        expect(response.exception.message).to include(resource_restrictions.to_s)
+        expect(response.status).to eq(:unauthorized)
       end
     end
 
     context "when validating with all of the exclusive restrictions" do
-      let(:expected_error_message) { /#{Regexp.escape(exclusive_three_restriction.to_s)}/ }
-
       subject do
         constraint.validate(resource_restrictions: exclusive_three_restriction)
       end
 
-      it "raises an error" do
-        expect { subject }.to raise_error(raised_error, expected_error_message)
+      it "returns a failure response" do
+        response = subject
+        expect(response.success?).to be(false)
+        expect(response.exception.class).to be(raised_error)
+        expect(response.exception.message).to include(exclusive_three_restriction.to_s)
+        expect(response.status).to eq(:unauthorized)
       end
     end
 
     context "when validating with all of the exclusive restrictions and more" do
-      let(:expected_error_message) { /#{Regexp.escape(exclusive_three_restriction.to_s)}/ }
-
       subject do
         constraint.validate(resource_restrictions: exclusive_three_restriction + [additional_restriction])
       end
 
-      it "raises an error" do
-        expect { subject }.to raise_error(raised_error, expected_error_message)
+      it "returns a failure response" do
+        response = subject
+        expect(response.success?).to be(false)
+        expect(response.exception.class).to be(raised_error)
+        expect(response.exception.message).to include(exclusive_three_restriction.to_s)
+        expect(response.status).to eq(:unauthorized)
       end
     end
   end

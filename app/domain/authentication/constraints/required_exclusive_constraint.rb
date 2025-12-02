@@ -7,11 +7,23 @@ module Authentication
 
       def initialize(required_exclusive:)
         @required_exclusive = required_exclusive
+
+        @success = Responses::Success
+        @failure = Responses::Failure
       end
 
       def validate(resource_restrictions:)
         restrictions_found = resource_restrictions & @required_exclusive
-        raise Errors::Authentication::Constraints::IllegalRequiredExclusiveCombination.new(@required_exclusive, restrictions_found) unless restrictions_found.length == 1
+        return @success.new(true) if restrictions_found.length == 1
+
+        exception = Errors::Authentication::Constraints::IllegalRequiredExclusiveCombination.new(
+          @required_exclusive,
+          restrictions_found
+        )
+        @failure.new(
+          exception.message,
+          exception: exception
+        )
       end
 
     end

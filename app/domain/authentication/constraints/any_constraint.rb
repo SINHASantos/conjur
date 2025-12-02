@@ -8,11 +8,20 @@ module Authentication
 
       def initialize(any:)
         @any = any
+
+        @success = Responses::Success
+        @failure = Responses::Failure
       end
 
       def validate(resource_restrictions:)
         restrictions_found = resource_restrictions & @any
-        raise Errors::Authentication::Constraints::RoleMissingRequiredConstraints, @any if restrictions_found.empty?
+        return @success.new(true) unless restrictions_found.empty?
+
+        exception = Errors::Authentication::Constraints::RoleMissingRequiredConstraints.new(@any)
+        @failure.new(
+          exception.message,
+          exception: exception
+        )
       end
     end
   end

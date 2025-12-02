@@ -10,15 +10,17 @@ module DB
     #   - `find` returns a single role based on the provided role_identifier
     #
     # This class depends on a target authenticator implementing the following:
-    #   - RoleValidation is responsible for checking that a role's annotations
-    #     are properly configured for the desired authentication and authenticator.
-    #   - RoleCredentialValidation is responsible for checking that a role's
-    #     annotations accurately map to traits of the provided credential.
+    #   - V2::Validations::Constraints is responsible for checking that a role's
+    #     annotations are properly configured for the desired authentication and
+    #     authenticator.
+    #   - V2::Validations::RoleCredentialValidation is responsible for checking
+    #     that a role's annotations accurately map to traits of the provided
+    #     credential.
     #
     class AuthenticatorRoleRepository
       def initialize(
         authenticator:,
-        role_validation: nil,
+        constraint_validation: nil,
         role_credential_validation: nil,
         role: ::Role,
         logger: Rails.logger
@@ -26,7 +28,7 @@ module DB
         @authenticator = authenticator
         @role = role
         @logger = logger
-        @role_validation = role_validation
+        @constraint_validation = constraint_validation
         @role_credential_validation = role_credential_validation
 
         @success = Responses::Success
@@ -37,15 +39,15 @@ module DB
       #   The role identifier to use when finding and validating the role.
       def find(role_identifier)
         find_role(role_identifier).bind do |role|
-          # If the target authenticator does not implement role validations,
-          # quickly return a success response. In this case, we don't care
-          # whether the role has annotations configured.
-          return @success.new(role) if @role_validation.nil?
+          # If the target authenticator does not implement role constraint
+          # validations, quickly return a success response. In this case, we
+          # don't care whether the role has annotations configured.
+          return @success.new(role) if @constraint_validation.nil?
 
-          # If the target authenticator implements role validations, but the
-          # target role is incapable of being assigned annotations, quickly
-          # return a failure response.
-          if !role.resource? && !@role_validation.nil?
+          # If the target authenticator implements role constraint validations,
+          # but the target role is incapable of being assigned annotations,
+          # quickly return a failure response.
+          if !role.resource? && !@constraint_validation.nil?
             exception = Errors::Authentication::Constraints::RoleMissingAnyRestrictions.new
             return @failure.new(
               exception.message,
@@ -60,7 +62,7 @@ module DB
             # Verify that the relevant annotations set on the role satisfy the
             # authenticators requirements.
             role_annotations_valid?(
-              annotations: role_authenticator_annotations
+              annotations: role_authenticator_annotations[:all]
             ).bind do
               # If the target authenticator does not implement role credential
               # validations, return a success response. In this case, we don't
@@ -124,15 +126,10 @@ module DB
       end
 
       def role_annotations_valid?(annotations:)
-        role_annotation_validation = @role_validation.new(
-          annotations: annotations[:all],
-          specific_annotations: annotations[:specific],
+        @constraint_validation.new.run(
+          annotations: annotations,
           authenticator: @authenticator
         )
-
-        run_validations(role_annotation_validation).bind do
-          @success.new(annotations)
-        end
       end
 
       # Need to account for the following two options:

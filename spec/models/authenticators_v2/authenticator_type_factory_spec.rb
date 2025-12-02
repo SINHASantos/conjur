@@ -82,6 +82,19 @@ describe AuthenticatorsV2::AuthenticatorTypeFactory do
       end
     end
 
+    context "when type is 'cert'" do
+      let(:type) { "cert" }
+      let(:authenticator_instance) { instance_double(AuthenticatorsV2::CertAuthenticatorType) }
+
+      it "creates a certificate authenticator successfully" do
+        expect(AuthenticatorsV2::CertAuthenticatorType).to receive(:new)
+          .with(authenticator_dict)
+          .and_return(authenticator_instance)
+        authenticator = factory.call(authenticator_dict)
+        expect(authenticator.result).to be(authenticator_instance)
+      end
+    end
+
     context "when type is unsupported" do
       let(:type) { "test" }
       it "raises an error for an unsupported type" do

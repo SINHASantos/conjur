@@ -13,14 +13,16 @@ RSpec.describe(Authentication::Constraints::RequiredExclusiveConstraint) do
     end
 
     context "when validating with no ReqX restrictions" do
-      let(:expected_error_message) { /#{Regexp.escape(reqx_restrictions.to_s)}/ }
-
       subject do
         constraint.validate(resource_restrictions: [additional_restriction])
       end
 
-      it "raises an error" do
-        expect { subject }.to raise_error(raised_error, expected_error_message)
+      it "returns a failure response" do
+        response = subject
+        expect(response.success?).to be(false)
+        expect(response.exception.class).to be(raised_error)
+        expect(response.exception.message).to include(reqx_restrictions.to_s)
+        expect(response.status).to eq(:unauthorized)
       end
     end
 
@@ -29,35 +31,39 @@ RSpec.describe(Authentication::Constraints::RequiredExclusiveConstraint) do
         constraint.validate(resource_restrictions: [reqx_restrictions.first, additional_restriction])
       end
 
-      it "does not raise an error" do
-        expect { subject }.to_not raise_error
+      it "returns a success response" do
+        expect(subject.success?).to be(true)
       end
     end
 
     context "when validating with many ReqX restrictions" do
       let(:resource_restrictions) { reqx_restrictions[1, 2] }
-      let(:expected_error_message) { /#{Regexp.escape(resource_restrictions.to_s)}/ }
 
       subject do
         constraint.validate(resource_restrictions: resource_restrictions + [additional_restriction])
       end
 
-      it "raises an error" do
-        expect { subject }.to raise_error(raised_error, expected_error_message)
+      it "returns a failure response" do
+        response = subject
+        expect(response.success?).to be(false)
+        expect(response.exception.class).to be(raised_error)
+        expect(response.exception.message).to include(resource_restrictions.to_s)
+        expect(response.status).to eq(:unauthorized)
       end
     end
 
     context "when validating with all ReqX restrictions" do
-      let(:expected_error_message) { /#{Regexp.escape(reqx_restrictions.to_s)}/ }
-
       subject do
         constraint.validate(resource_restrictions: reqx_restrictions + [additional_restriction])
       end
 
-      it "raises an error" do
-        expect { subject }.to raise_error(raised_error, expected_error_message)
+      it "returns a failure response" do
+        response = subject
+        expect(response.success?).to be(false)
+        expect(response.exception.class).to be(raised_error)
+        expect(response.exception.message).to include(reqx_restrictions.to_s)
+        expect(response.status).to eq(:unauthorized)
       end
     end
-
   end
 end
