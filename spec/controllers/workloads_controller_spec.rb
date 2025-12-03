@@ -29,6 +29,136 @@ describe WorkloadsController, :type => :request do
     POLICY
   end
 
+  let(:gcp_policy) do
+    <<~POLICY
+      - !policy
+        id: conjur/authn-gcp
+        body:
+        - !webservice
+        - !group apps
+        - !permit
+          role: !group apps
+          privilege: [ read, authenticate ]
+          resource: !webservice
+    POLICY
+  end
+
+  let(:azure_policy) do
+    <<~POLICY
+      - !policy
+        id: conjur
+        body:
+        - !policy
+          id: authn-azure
+          body:
+          - !policy
+            id: AzureWS1
+            body:
+               - !webservice
+               - !group
+                 id: apps
+               - !permit
+                 role: !group apps
+                 privilege: [ read, authenticate ]
+                 resource: !webservice
+
+    POLICY
+  end
+
+  let(:jwt_policy) do
+    <<~POLICY
+      - !policy
+       id: conjur
+       body:
+       - !policy
+         id: authn-jwt
+         body:
+         - !policy
+           id: jwtservice
+           body:
+             - !webservice status
+             - !webservice
+               annotations:
+                 description: "this is my jwt authenticator"
+             - !group apps
+             - !permit
+               role: !group apps
+               privilege: [ read, authenticate ]
+               resource: !webservice
+    POLICY
+  end
+
+  let(:certificate_policy) do
+    <<~POLICY
+      - !policy
+        id: conjur
+        body:
+        - !policy
+          id: authn-cert
+          body:
+          - !policy
+            id: x509-cert-authn
+            body:
+               - !webservice
+               - !group
+                 id: apps
+               - !permit
+                 role: !group apps
+                 privilege: [ read, authenticate ]
+                 resource: !webservice
+
+    POLICY
+  end
+
+  def setup_authenticator_policy(policy)
+    return unless policy
+    post('/policies/rspec/policy/root',
+         env: token_auth_header(role: admin_user)
+                .merge({ 'RAW_POST_DATA' => policy }))
+
+    assert_response :success
+  end
+
+  def create_workload_with_authenticator(type, service_id, data, role = nil, workload_type = nil, owner = nil)
+    allow(Rails.application.config.conjur_config).to receive(:conjur_pubsub_enabled).and_return(true)
+
+    # Use admin_user as default if role is not provided
+    role ||= admin_user
+
+    params = valid_params.clone
+    params[:type] = workload_type if workload_type
+    params[:owner] = owner if owner
+    params[:authn_descriptors] = [{ type: type,
+                                    service_id: service_id,
+                                    data: data }]
+
+    post(url, env: token_auth_header(role: role)
+                     .merge(v2_beta_api_header)
+                     .merge({ 'CONTENT_TYPE' => "application/json",
+                              'RAW_POST_DATA' => params.to_json }))
+
+    assert_response :created
+    [params, JSON.parse(response.body)]
+  end
+
+  # Helper to verify response basics
+  def verify_response(response_body, params, type = 'other')
+    expect(response_body['name']).to eq(name)
+    expect(response_body['branch']).to eq(branch)
+    expect(response_body['type']).to eq(type)
+    expect(response_body['annotations']).to eq(params[:annotations].stringify_keys)
+    expect(response_body['restricted_to']).to eq(params[:restricted_to])
+
+    # Verify authn descriptor structure
+    expect(response_body['authn_descriptors']).to be_an(Array)
+    expect(response_body['authn_descriptors'].length).to eq(1)
+
+    descriptor = response_body['authn_descriptors'][0]
+    expect(descriptor['type']).to eq(params[:authn_descriptors][0][:type])
+    expect(descriptor['service_id']).to eq(params[:authn_descriptors][0][:service_id])
+    expect(descriptor['data']).to include(params[:authn_descriptors][0][:data].stringify_keys)
+  end
+
   before do
     Slosilo["authn:rspec"] ||= Slosilo::Key.new
 
@@ -87,87 +217,6 @@ describe WorkloadsController, :type => :request do
           "owner": { "id" : "data/creator-host", "kind": "host" }
         }
       BODY
-    end
-
-    let(:gcp_policy) do
-      <<~POLICY
-        - !policy
-          id: conjur/authn-gcp
-          body:
-          - !webservice
-          - !group apps
-          - !permit
-            role: !group apps
-            privilege: [ read, authenticate ]
-            resource: !webservice
-      POLICY
-    end
-
-    let(:azure_policy) do
-      <<~POLICY
-        - !policy
-          id: conjur
-          body:
-          - !policy
-            id: authn-azure
-            body:
-            - !policy
-              id: AzureWS1
-              body:
-                 - !webservice
-                 - !group
-                   id: apps
-                 - !permit
-                   role: !group apps
-                   privilege: [ read, authenticate ]
-                   resource: !webservice
-
-      POLICY
-    end
-
-    let(:certificate_policy) do
-      <<~POLICY
-        - !policy
-          id: conjur
-          body:
-          - !policy
-            id: authn-cert
-            body:
-            - !policy
-              id: x509-cert-authn
-              body:
-                 - !webservice
-                 - !group
-                   id: apps
-                 - !permit
-                   role: !group apps
-                   privilege: [ read, authenticate ]
-                   resource: !webservice
-
-      POLICY
-    end
-
-    let(:jwt_policy) do
-      <<~POLICY
-        - !policy
-         id: conjur
-         body:
-         - !policy
-           id: authn-jwt
-           body:
-           - !policy
-             id: jwtservice
-             body:
-               - !webservice status
-               - !webservice
-                 annotations:
-                   description: "this is my jwt authenticator"
-               - !group apps
-               - !permit
-                 role: !group apps
-                 privilege: [ read, authenticate ]
-                 resource: !webservice
-      POLICY
     end
 
     let(:permission_policy) do
@@ -250,53 +299,6 @@ describe WorkloadsController, :type => :request do
       expect(membership).not_to be_nil
     end
 
-    # Helper to setup authenticator policy if needed
-    def setup_authenticator_policy(policy)
-      return unless policy
-      post('/policies/rspec/policy/root',
-           env: token_auth_header(role: admin_user)
-                  .merge({ 'RAW_POST_DATA' => policy }))
-
-      assert_response :success
-    end
-
-    # Helper to create workload with authenticator
-    def create_workload_with_authenticator(type, service_id, data, role = admin_user, workload_type = nil, owner = nil)
-      allow(Rails.application.config.conjur_config).to receive(:conjur_pubsub_enabled).and_return(true)
-
-      params = valid_params.clone
-      params[:type] = workload_type if workload_type
-      params[:owner] = owner if owner
-      params[:authn_descriptors] = [{ type: type,
-                                      service_id: service_id,
-                                      data: data }]
-
-      post(url, env: token_auth_header(role: role)
-                       .merge(v2_beta_api_header)
-                       .merge({ 'CONTENT_TYPE' => "application/json",
-                                'RAW_POST_DATA' => params.to_json }))
-
-      assert_response :created
-      [params, JSON.parse(response.body)]
-    end
-
-    # Helper to verify response basics
-    def verify_response(response_body, params, type = 'other')
-      expect(response_body['name']).to eq(name)
-      expect(response_body['branch']).to eq(branch)
-      expect(response_body['type']).to eq(type)
-      expect(response_body['annotations']).to eq(params[:annotations].stringify_keys)
-      expect(response_body['restricted_to']).to eq(params[:restricted_to])
-
-      # Verify authn descriptor structure
-      expect(response_body['authn_descriptors']).to be_an(Array)
-      expect(response_body['authn_descriptors'].length).to eq(1)
-
-      descriptor = response_body['authn_descriptors'][0]
-      expect(descriptor['type']).to eq(params[:authn_descriptors][0][:type])
-      expect(descriptor['service_id']).to eq(params[:authn_descriptors][0][:service_id])
-      expect(descriptor['data']).to include(params[:authn_descriptors][0][:data].stringify_keys)
-    end
 
     before do
       allow(Rails.application.config.conjur_config)
@@ -360,7 +362,6 @@ describe WorkloadsController, :type => :request do
                          .merge({ 'RAW_POST_DATA' => valid_params.to_json,
                                   'CONTENT_TYPE' => "application/json" }))
 
-        # assert_response :forbidden
         assert_response :not_found
       end
 
@@ -411,7 +412,6 @@ describe WorkloadsController, :type => :request do
                          .merge({ 'CONTENT_TYPE' => "application/json",
                                   'RAW_POST_DATA' => params.to_json }))
 
-        # assert_response :forbidden
         assert_response :not_found
       end
     end
@@ -584,17 +584,23 @@ describe WorkloadsController, :type => :request do
       end
 
       it 'creates a workload with AZURE authenticator' do
-        # Setup JWT authenticator policy
+        # Setup Azure authenticator policy
         setup_authenticator_policy(azure_policy)
-        # AWS IAM authenticator data
-        azure_data = { "subscription_id": "subscr1pt10n-1dmy-subsc-r1pt10n1d", "resource_group": "myResourceGroup", "system_assigned_identity": "0000aaaa-00aa-00aa-00aa-00000aaaaa", "user_assigned_identity": "test-ua-managed-identity" }
 
-        # Create workload with AWS authenticator
-        aws_params, response_body = create_workload_with_authenticator(
+        # Azure authenticator data
+        azure_data = {
+          "subscription_id": "subscr1pt10n-1dmy-subsc-r1pt10n1d",
+          "resource_group": "myResourceGroup",
+          "system_assigned_identity": "0000aaaa-00aa-00aa-00aa-00000aaaaa",
+          "user_assigned_identity": "test-ua-managed-identity"
+        }
+
+        # Create workload with Azure authenticator
+        azure_params, response_body = create_workload_with_authenticator(
           "azure", "AzureWS1", azure_data)
 
         # Verify response structure
-        verify_response(response_body, aws_params)
+        verify_response(response_body, azure_params)
       end
 
       it 'creates a workload with kubernetes type' do
@@ -640,6 +646,482 @@ describe WorkloadsController, :type => :request do
                                   'RAW_POST_DATA' => nonexistent_params.to_json }))
 
         assert_response :not_found
+      end
+    end
+  end
+
+  describe 'DELETE #destroy' do
+    let(:branch) { 'data/work' }
+    let(:name) { 'workload-to-delete' }
+    let(:url) { "/workloads/rspec" }
+    let(:delete_url) { "/workloads/rspec/#{branch}/#{name}" }
+
+    # Define creator host
+    let(:creator_host_id) { 'rspec:host:data/creator-host' }
+    let(:creator_host) { Role.find_or_create(role_id: creator_host_id) }
+
+    # Define a host with read-only access
+    let(:read_host_id) { 'rspec:host:data/read-only-host' }
+    let(:read_host) { Role.find_or_create(role_id: read_host_id) }
+
+    # Define a host with no relevant permissions
+    let(:unprivileged_host_id) { 'rspec:host:data/no-access-host' }
+    let(:unprivileged_host) { Role.find_or_create(role_id: unprivileged_host_id) }
+
+    let(:valid_params) do
+      {
+        name: name,
+        branch: branch,
+        owner: {
+          kind: "host",
+          id: "data/creator-host"
+        },
+        authn_descriptors: [
+          type: "api_key"
+        ],
+        annotations: {
+          "app": "web",
+          "env": "test"
+        },
+        restricted_to: ["192.168.1.0/24", "192.163.1.0/24"]
+      }
+    end
+
+    let(:workload_policy_work) do
+      <<~POLICY
+        - !policy
+          id: work
+      POLICY
+    end
+
+    let(:host_policy) do
+      <<~POLICY
+        # Creator host with full permissions
+        - !host
+          id: data/creator-host
+          
+        # Read-only host
+        - !host
+          id: data/read-only-host
+          
+        # No access host
+        - !host
+          id: data/no-access-host
+
+        # Grant permissions to creator host
+        - !permit
+          role: !host data/creator-host
+          privileges: [ read, update, create ]
+          resource: !policy data/work
+
+        # Grant read-only permissions to read host
+        - !permit
+          role: !host data/read-only-host
+          privileges: [ read ]
+          resource: !policy data/work
+
+        - !policy
+          id: conjur
+          body:
+            - !policy
+              id: authn-iam
+
+      POLICY
+    end
+
+    # Helper to create a workload for deletion tests
+    def create_test_workload(role = creator_host, params = valid_params)
+      post("/workloads/rspec",
+           env: token_auth_header(role: role)
+                  .merge(v2_beta_api_header)
+                  .merge({ 'CONTENT_TYPE' => "application/json",
+                           'RAW_POST_DATA' => params.to_json }))
+      assert_response :created
+    end
+
+    # Helper to verify workload exists in database
+    def workload_exists?(branch, name)
+      resource_id = "rspec:host:#{branch}/#{name}"
+      ::Resource[resource_id].present? && ::Role[resource_id].present?
+    end
+
+    # Helper to get workload resource
+    def get_workload_resource(branch, name)
+      resource_id = "rspec:host:#{branch}/#{name}"
+      ::Resource[resource_id]
+    end
+
+    # Helper to get workload role
+    def get_workload_role(branch, name)
+      resource_id = "rspec:host:#{branch}/#{name}"
+      ::Role[resource_id]
+    end
+
+    before do
+      allow(Rails.application.config.conjur_config)
+        .to receive(:conjur_restricted_ip_enabled).and_return(true)
+
+      # Create the policy structure
+      post('/policies/rspec/policy/data',
+           env: token_auth_header(role: admin_user)
+                  .merge({ 'RAW_POST_DATA' => workload_policy_work }))
+      assert_response :success
+
+      # Create hosts and grant permissions
+      post('/policies/rspec/policy/root',
+           env: token_auth_header(role: admin_user)
+                  .merge({ 'RAW_POST_DATA' => host_policy }))
+      assert_response :success
+    end
+
+    context 'when the workload exists' do
+      before do
+        create_test_workload
+      end
+
+      it 'deletes the workload and returns no content' do
+        expect(workload_exists?(branch, name)).to be true
+
+        delete(delete_url,
+               env: token_auth_header(role: creator_host).merge(v2_beta_api_header))
+
+        assert_response :no_content
+        expect(workload_exists?(branch, name)).to be false
+      end
+
+      it 'removes the workload from database completely' do
+        resource_id = "rspec:host:#{branch}/#{name}"
+
+        # Verify workload exists before deletion
+        expect(::Resource[resource_id]).not_to be_nil
+        expect(::Role[resource_id]).not_to be_nil
+        expect(::Annotation.where(resource_id: resource_id).count).to be > 0
+
+        delete(delete_url,
+               env: token_auth_header(role: creator_host).merge(v2_beta_api_header))
+
+        assert_response :no_content
+
+        # Verify complete removal
+        expect(::Resource[resource_id]).to be_nil
+        expect(::Role[resource_id]).to be_nil
+        expect(::Annotation.where(resource_id: resource_id).count).to eq(0)
+      end
+
+      it 'deletes workload with special characters in name' do
+        special_name = 'workload_with-special.chars'
+        special_params = valid_params.merge(name: special_name)
+        create_test_workload(creator_host, special_params)
+
+        special_delete_url = "/workloads/rspec/#{branch}/#{special_name}"
+
+        expect(workload_exists?(branch, special_name)).to be true
+
+        delete(special_delete_url,
+               env: token_auth_header(role: creator_host).merge(v2_beta_api_header))
+
+        assert_response :no_content
+        expect(workload_exists?(branch, special_name)).to be false
+      end
+
+      it 'returns forbidden when host has only read permissions' do
+        delete(delete_url,
+               env: token_auth_header(role: read_host).merge(v2_beta_api_header))
+
+        assert_response :not_found
+        expect(workload_exists?(branch, name)).to be true
+      end
+
+      it 'returns not found when host has no permissions' do
+        delete(delete_url,
+               env: token_auth_header(role: unprivileged_host).merge(v2_beta_api_header))
+
+        assert_response :not_found
+        expect(workload_exists?(branch, name)).to be true
+      end
+
+      it 'successfully deletes workload using admin user' do
+        expect(workload_exists?(branch, name)).to be true
+
+        delete(delete_url,
+               env: token_auth_header(role: admin_user).merge(v2_beta_api_header))
+
+        assert_response :no_content
+        expect(workload_exists?(branch, name)).to be false
+      end
+    end
+
+    context 'when the workload does not exist' do
+      it 'returns not found for non-existent workload' do
+        nonexistent_url = "/workloads/rspec/#{branch}/nonexistent-workload"
+
+        delete(nonexistent_url,
+               env: token_auth_header(role: creator_host).merge(v2_beta_api_header))
+
+        assert_response :not_found
+      end
+
+      it 'returns not found when branch does not exist' do
+        nonexistent_branch_url = "/workloads/rspec/data/nonexistent-branch/#{name}"
+
+        delete(nonexistent_branch_url,
+               env: token_auth_header(role: creator_host).merge(v2_beta_api_header))
+
+        assert_response :not_found
+      end
+    end
+
+    context 'when workload has owned resources' do
+      let(:owned_resource_policy) do
+        <<~POLICY
+          - !host
+            id: owned-host
+            owner: !host #{name}
+          
+          # Grant update permission to creator_host on the owned resource
+          - !permit
+            role: !host ../creator-host
+            privileges: [ update ]
+            resource: !host owned-host
+        POLICY
+      end
+
+      before do
+        create_test_workload
+
+        # Create a resource owned by the workload
+        post("/policies/rspec/policy/#{branch}",
+             env: token_auth_header(role: admin_user)
+                    .merge({ 'RAW_POST_DATA' => owned_resource_policy }))
+        assert_response :success
+      end
+
+      it 'deletes workload and all owned resources recursively' do
+        workload_id = "rspec:host:#{branch}/#{name}"
+        owned_id = "rspec:host:#{branch}/owned-host"
+
+        # Verify both exist
+        expect(::Resource[workload_id]).not_to be_nil
+        expect(::Resource[owned_id]).not_to be_nil
+        expect(::Resource[owned_id].owner_id).to eq(workload_id)
+
+        delete(delete_url,
+               env: token_auth_header(role: creator_host).merge(v2_beta_api_header))
+
+        assert_response :no_content
+
+        # Verify both are deleted
+        expect(::Resource[workload_id]).to be_nil
+        expect(::Resource[owned_id]).to be_nil
+      end
+    end
+
+    context 'when deleting workload with different authenticators' do
+      it 'deletes workload with JWT authenticator' do
+        # Setup JWT authenticator policy
+        setup_authenticator_policy(jwt_policy)
+
+        # JWT authenticator data
+        jwt_data = { sub: "system:serviceaccount:jwttoken" }
+
+        # Create workload with JWT authenticator
+        jwt_params, response_body = create_workload_with_authenticator(
+          "jwt", "jwtservice", jwt_data)
+
+        # Verify workload was created successfully
+        expect(response_body['name']).to eq(name)
+
+        # Verify membership in JWT apps group
+        group_id = "rspec:group:conjur/authn-jwt/jwtservice/apps"
+        workload_id = "rspec:host:#{branch}/#{name}"
+        expect(::RoleMembership.where(role_id: group_id, member_id: workload_id).count).to eq(1)
+
+        # Delete the workload
+        jwt_delete_url = "/workloads/rspec/#{branch}/#{name}"
+        delete(jwt_delete_url,
+               env: token_auth_header(role: admin_user).merge(v2_beta_api_header))
+
+        assert_response :no_content
+
+        # Verify workload and membership are deleted
+        expect(workload_exists?(branch, name)).to be false
+        expect(::RoleMembership.where(role_id: group_id, member_id: workload_id).count).to eq(0)
+      end
+
+      it 'deletes workload with API key authenticator' do
+        api_key_params = valid_params.clone
+        api_key_name = 'api-key-workload'
+        api_key_params[:name] = api_key_name
+        api_key_delete_url = "/workloads/rspec/#{branch}/#{api_key_name}"
+
+        create_test_workload(creator_host, api_key_params)
+
+        workload_id = "rspec:host:#{branch}/#{api_key_name}"
+        role = ::Role[workload_id]
+
+        # Verify API key exists
+        expect(role.api_key).not_to be_nil
+
+        delete(api_key_delete_url,
+               env: token_auth_header(role: creator_host).merge(v2_beta_api_header))
+
+        assert_response :no_content
+
+        # Verify complete deletion
+        expect(::Role[workload_id]).to be_nil
+      end
+
+      it 'deletes workload with Azure authenticator' do
+        # Setup Azure authenticator policy
+        setup_authenticator_policy(azure_policy)
+
+        # Azure authenticator data
+        azure_data = {
+          "subscription_id": "subscr1pt10n-1dmy-subsc-r1pt10n1d",
+          "resource_group": "myResourceGroup",
+          "system_assigned_identity": "0000aaaa-00aa-00aa-00aa-00000aaaaa",
+          "user_assigned_identity": "test-ua-managed-identity"
+        }
+
+        # Create workload with Azure authenticator
+        azure_params, response_body = create_workload_with_authenticator(
+          "azure", "AzureWS1", azure_data)
+
+        # Verify workload was created successfully
+        expect(response_body['name']).to eq(name)
+
+        # Verify membership in Azure apps group
+        group_id = "rspec:group:conjur/authn-azure/AzureWS1/apps"
+        workload_id = "rspec:host:#{branch}/#{name}"
+        expect(::RoleMembership.where(role_id: group_id, member_id: workload_id).count).to eq(1)
+
+
+        # Delete the workload
+        azure_delete_url = "/workloads/rspec/#{branch}/#{name}"
+        delete(azure_delete_url,
+               env: token_auth_header(role: admin_user).merge(v2_beta_api_header))
+
+        assert_response :no_content
+
+        # Verify workload, membership, and annotations are deleted
+        expect(workload_exists?(branch, name)).to be false
+        expect(::RoleMembership.where(role_id: group_id, member_id: workload_id).count).to eq(0)
+        expect(::Annotation.where(resource_id: workload_id).count).to eq(0)
+      end
+
+      it 'deletes workload with GCP authenticator' do
+        # Setup GCP authenticator policy
+        setup_authenticator_policy(gcp_policy)
+
+        # GCP authenticator data
+        gcp_data = {
+          instance_name: "web-app-01",
+          project_id: "my-gcp-project",
+          service_account_email: "com-np-int-h-cloudsec-cnjcloud@appspot.gserviceaccount.com",
+          service_account_id: "77777777777777778"
+        }
+
+        # Create workload with GCP authenticator
+        gcp_params, response_body = create_workload_with_authenticator(
+          "gcp", "default", gcp_data)
+
+        # Verify workload was created successfully
+        expect(response_body['name']).to eq(name)
+
+        # Verify membership in GCP apps group
+        group_id = "rspec:group:conjur/authn-gcp/apps"
+        workload_id = "rspec:host:#{branch}/#{name}"
+        expect(::RoleMembership.where(role_id: group_id, member_id: workload_id).count).to eq(1)
+
+
+        # Delete the workload
+        gcp_delete_url = "/workloads/rspec/#{branch}/#{name}"
+        delete(gcp_delete_url,
+               env: token_auth_header(role: admin_user).merge(v2_beta_api_header))
+
+        assert_response :no_content
+
+        # Verify workload, membership, and annotations are deleted
+        expect(workload_exists?(branch, name)).to be false
+        expect(::RoleMembership.where(role_id: group_id, member_id: workload_id).count).to eq(0)
+        expect(::Annotation.where(resource_id: workload_id).count).to eq(0)
+      end
+    end
+
+    context 'when deleting workload with annotations and role data' do
+      before do
+        create_test_workload
+      end
+
+      it 'deletes all annotations with the workload' do
+        workload_id = "rspec:host:#{branch}/#{name}"
+
+        # Verify annotations exist
+        annotations = ::Annotation.where(resource_id: workload_id).all
+        expect(annotations.count).to be > 0
+
+        delete(delete_url,
+               env: token_auth_header(role: creator_host).merge(v2_beta_api_header))
+
+        assert_response :no_content
+
+        # Verify annotations are deleted
+        expect(::Annotation.where(resource_id: workload_id).count).to eq(0)
+      end
+
+      it 'deletes restricted_to with the workload role' do
+        workload_id = "rspec:host:#{branch}/#{name}"
+        role = ::Role[workload_id]
+
+        # Verify restricted_to exists
+        expect(role.restricted_to).not_to be_nil
+        expect(role.restricted_to.length).to be > 0
+
+        delete(delete_url,
+               env: token_auth_header(role: creator_host).merge(v2_beta_api_header))
+
+        assert_response :no_content
+
+        # Verify role is deleted
+        expect(::Role[workload_id]).to be_nil
+      end
+    end
+
+    context 'when the URL is misconfigured' do
+      it 'returns unprocessable entity for workload without branch' do
+        invalid_url = "/workloads/rspec/#{name}"
+
+        delete(invalid_url,
+               env: token_auth_header(role: creator_host).merge(v2_beta_api_header))
+
+        assert_response :unprocessable_entity
+      end
+    end
+
+    context 'admin protection' do
+      it 'allows admin to delete admin-created workload' do
+        # Create workload as admin
+        admin_params = valid_params.merge(name: 'admin-workload')
+        create_test_workload(admin_user, admin_params)
+
+        admin_delete_url = "/workloads/rspec/#{branch}/admin-workload"
+
+        delete(admin_delete_url,
+               env: token_auth_header(role: admin_user).merge(v2_beta_api_header))
+
+        assert_response :no_content
+        expect(workload_exists?(branch, 'admin-workload')).to be false
+      end
+
+      it 'allows non-admin to delete their own workload' do
+        # Create workload as creator_host
+        create_test_workload(creator_host, valid_params)
+
+        delete(delete_url,
+               env: token_auth_header(role: creator_host).merge(v2_beta_api_header))
+
+        assert_response :no_content
+        expect(workload_exists?(branch, name)).to be false
       end
     end
   end

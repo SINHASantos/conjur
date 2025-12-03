@@ -14,6 +14,7 @@ module Workloads
       annotation_service: Annotations::AnnotationService.instance,
       owner_service: Branches::OwnerService.instance,
       res_service: Resources::ResourceService.instance,
+      membership_service: Memberships::MembershipService.instance,
       role_repo: ::Role,
       config: Rails.application.config.conjur_config,
       logger: Rails.logger
@@ -22,6 +23,7 @@ module Workloads
       @annotation_service = annotation_service
       @owner_service = owner_service
       @res_service = res_service
+      @membership_service = membership_service
       @role_repo = role_repo
       @config = config
       @logger = logger
@@ -59,7 +61,86 @@ module Workloads
       workload_as_json(host_role, owner_id, workload)
     end
 
+    def delete_workload(role, account, branch_identifier, workload_name)
+      log_debug("role.id = #{role.id}", account:, branch_identifier:, workload_name:)
+
+      # Construct identifiers
+      host_id = full_id(account, 'host', to_identifier(branch_identifier, workload_name))
+      log_debug(host_id:)
+
+      # Perform deletion in a transaction for all-or-nothing semantics
+      ::Resource.db.transaction do
+        # Fetch host resource to verify existence
+        host_res = @res_service.get_res(account, 'host', to_identifier(branch_identifier, workload_name))
+        raise Exceptions::RecordNotFound, host_id unless host_res
+
+        log_debug("Starting recursive deletion for: #{host_id}")
+
+        # Recursively delete the workload and all owned resources
+        delete_resource_recursively!(host_id, role, Set.new)
+
+        log_debug("Successfully deleted workload: #{host_id}")
+      end
+
+    rescue Sequel::ForeignKeyConstraintViolation
+      raise Exceptions::Forbidden.new("Cannot delete workload due to existing dependencies")
+    end
+
     private
+
+    # Recursively delete a resource and all its owned resources
+    # @param record_id [String] Full resource ID
+    # @param role [Role] Current user's role
+    # @param visited [Set] Set of already-visited resource IDs for cycle prevention
+    def delete_resource_recursively!(record_id, role, visited)
+      # Prevent infinite recursion from circular ownership
+      return if visited.include?(record_id)
+      visited.add(record_id)
+
+      log_debug("Processing deletion for: #{record_id}")
+
+      # Check permission before deletion
+      check_update_permission!(record_id, role)
+
+      # Find all resources owned by this resource
+      owned_resources = ::Resource.where(owner_id: record_id).all
+      log_debug("Found #{owned_resources.count} owned resources for #{record_id}")
+
+      # Recursively delete each owned resource (with permission checks on each)
+      owned_resources.each do |resource|
+        delete_resource_recursively!(resource.resource_id, role, visited)
+      end
+
+      # Delete the resource itself (CASCADE will handle annotations, permissions)
+      resource = ::Resource[record_id]
+      if resource
+        log_debug("Deleting resource: #{record_id}")
+        resource.destroy
+      end
+
+      # Delete the associated role (CASCADE will handle credentials, memberships)
+      role_record = ::Role[record_id]
+      if role_record
+        log_debug("Deleting role: #{record_id}")
+        role_record.destroy
+      end
+    end
+
+    # Check if the user has update permission on the resource
+    # @param record_id [String] Full resource ID
+    # @param role [Role] Current user's role
+    # @raise [Exceptions::Forbidden] if user doesn't have update permission
+    def check_update_permission!(record_id, role)
+      resource = ::Resource[record_id]
+      return unless resource
+
+      unless role.allowed_to?(:update, resource)
+        raise Exceptions::Forbidden.new(
+          "Insufficient permissions to delete resource '#{record_id}'. " \
+          "Update permission required."
+        )
+      end
+    end
 
     def workload_as_json(host_role, owner_id, workload)
       owner = Branches::Owner.from_model_id(owner_id).as_json
@@ -115,5 +196,6 @@ module Workloads
 
       { 'type' => value }
     end
+
   end
 end

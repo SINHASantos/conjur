@@ -46,10 +46,51 @@ class WorkloadsController < V2RestController
     handle_exception(e)
   end
 
+  def destroy
+    log_debug("Deleting workload: #{path_identifier}")
+
+    url_params = permit_destroy_url_params
+    log_debug(url_params:)
+
+    branch_identifier, workload_name = parse_workload_identifier(path_identifier)
+    log_debug(branch_identifier:, workload_name:)
+
+    authorize_delete_in_parent(branch_identifier)
+
+    delete_workload(branch_identifier, workload_name)
+
+    head :no_content
+    audit_success('workload', :delete, path_identifier)
+  rescue Exceptions::Forbidden => e
+    # Map admin protection errors to 403 with JSON error message
+    render(json: { error: e.message }, status: :forbidden)
+    audit_failure('workload', :delete, path_identifier, e.message)
+  rescue => e
+    audit_failure('workload', :delete, path_identifier, e.message)
+    handle_exception(e)
+  end
+
   private
 
   def permit_create_url_params
     permit_url_params(URL_REQUIRED_PARAMS)
+  end
+
+  def permit_destroy_url_params
+    permit_url_params(URL_REQUIRED_PARAMS_IDFR)
+  end
+
+  def parse_workload_identifier(identifier)
+    # Parse the identifier in the format "branch/workload-name"
+    # The branch itself can contain slashes
+    parts = identifier.split('/')
+
+    raise ApplicationController::InvalidParameter, "Invalid workload identifier format" if parts.length < 2
+
+    workload_name = parts.last
+    branch_identifier = parts[0...-1].join('/')
+
+    [branch_identifier, workload_name]
   end
 
   def restricted_ip_enabled?
@@ -73,12 +114,20 @@ class WorkloadsController < V2RestController
     read_and_auth_branch(:create, workload.branch)
   end
 
+  def authorize_delete_in_parent(branch_identifier)
+    read_and_auth_branch(:update, branch_identifier)
+  end
+
   def check_workload_not_exists(workload)
     @workload_service.check_workload_not_exists(account, workload)
   end
 
   def create_workload(workload)
     @workload_service.create_workload(current_user, account, workload)
+  end
+
+  def delete_workload(branch_identifier, workload_name)
+    @workload_service.delete_workload(current_user, account, branch_identifier, workload_name)
   end
 
   def check_owner_exists_if_set(workload)
