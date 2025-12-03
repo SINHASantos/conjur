@@ -13,9 +13,9 @@ COPY ./gems/ ./gems/
 
 RUN bundle config set --local without 'test development' && \
     bundle config set --local deployment true && \
-    bundle config set --local path vendor/bundle && \
+    bundle config set --local path /usr/local/bundle && \
     bundle config --local jobs "$(nproc --all)" && \
-    bundle install && \
+    bundle install --prefer-local && \
     # Remove private keys brought in by gems in their test data
     find / -name 'openid_connect-*' -type d -exec find {} -name '*.pem' -type f -delete \; && \
     find / -name 'httpclient-*' -type d -exec find {} -name '*.key' -type f -delete \; && \
@@ -46,6 +46,7 @@ RUN mkdir -p $TMP_DIR \
 
 COPY . .
 COPY --from=builder ${CONJUR_HOME} ${CONJUR_HOME}
+COPY --from=builder /usr/local/bundle /usr/local/bundle
 
 EXPOSE ${PORT}
 

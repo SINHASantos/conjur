@@ -1,4 +1,7 @@
-FROM cyberark/ubuntu-ruby-builder:latest AS builder
+ARG BASE_TAG=latest
+ARG REGISTRY=docker.io
+
+FROM ${REGISTRY}/cyberark/ubuntu-ruby-builder:${BASE_TAG} AS builder
 
 RUN mkdir -p /src/conjur-server
 WORKDIR /src/conjur-server

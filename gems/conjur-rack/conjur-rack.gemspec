@@ -7,7 +7,6 @@ Gem::Specification.new do |spec|
   spec.version                = Conjur::Rack::VERSION
   spec.authors                = ['Cyberark R&D']
   spec.summary                = 'Rack authenticator and basic User struct'
-  spec.homepage               = 'http://github.com/conjurinc/conjur-rack'
 
   spec.files                  = Dir.glob("lib/**/*") + %w[README.md]
   spec.executables            = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
@@ -15,8 +14,8 @@ Gem::Specification.new do |spec|
   spec.require_paths          = ['lib']
   spec.required_ruby_version  = '>= 2.5'
 
-  spec.add_dependency('conjur-api', '< 6')
-  spec.add_dependency('rack', '~> 2')
+  spec.add_dependency('conjur-api', '< 6.0.1')
+  spec.add_dependency('rack', '> 2')
   spec.add_dependency('slosilo', '~> 3.0')
 
   spec.add_development_dependency('activesupport', '< 7')
