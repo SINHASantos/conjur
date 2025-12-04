@@ -4,7 +4,14 @@ module Authentication
   module AuthnCert
     module V2
       class SaasAuthClient
-        def initialize
+        def initialize(
+          http_client: Authentication::Util::NetworkTransporter,
+          saas_authenticator_url: Rails.application.config.conjur_config.saas_authenticator_url
+        )
+          @http_client = http_client.new(
+            hostname: saas_authenticator_url
+          )
+
           @success = Responses::Success
           @failure = Responses::Failure
         end
@@ -31,18 +38,86 @@ module Authentication
         #   Configuration of a Certificate authenticator instance.
         #
         # @return [Hash] A map of the client certificate's identifying attributes.
-        def do(certificate:, authenticator:) # rubocop:disable Lint/UnusedMethodArgument
-          @success.new({
-            attributes: {
-              subject: 'CN=client',
-              issuer: 'CN=CyberArk CA',
-              san_uri: ['spiffe://trust.com/workload'],
-              not_before: '2023-01-01T00:00:00Z',
-              not_after: '2024-01-01T00:00:00Z',
-              serial_number: '1234567890',
-              thumbprint: 'abcdef1234567890abcdef1234567890abcdef12'
-            }
-          })
+        def validate_certificate(certificate:, authenticator:)
+          response = @http_client.post(
+            path: "/authentications/cert",
+            body: post_body(certificate, authenticator),
+            request_type: :json,
+            error_type: :json
+          ).bind do |certificate_attributes|
+            return @success.new(certificate_attributes)
+          end
+
+          failure_from_service_response(response.message)
+        end
+
+        private
+
+        # Convert an authenticator instance and client X.509 certificate into
+        # a request body for the authenticator service.
+        def post_body(certificate, authenticator)
+          {}.tap do |body|
+            body['payload'] = certificate
+            body['configuration'] = configuration_object(authenticator)
+          end
+        end
+
+        def configuration_object(authenticator)
+          {}.tap do |obj|
+            obj['ca_cert'] = authenticator.variables[:ca_cert] unless authenticator.variables[:ca_cert].nil?
+            obj['crl'] = authenticator.variables[:crl] unless authenticator.variables[:crl].nil?
+            obj['crl_url'] = authenticator.variables[:crl_url] unless authenticator.variables[:crl_url].nil?
+          end
+        end
+
+        # The authenticator service's API responses include failure details
+        # meant to be logged for audit and debug purposes. These API responses
+        # are groups of parallel errors on failure in the following format:
+        #
+        #   {
+        #     code: "TOP_LEVEL_ERROR_CODE",
+        #     message: "Top level error message",
+        #     errors: [
+        #       {
+        #         code: "LOW_LEVEL_ERROR_CODE",
+        #         message: "Low level error message",
+        #         field: "/related/input/field"
+        #       }
+        #     ]
+        #   }
+        #
+        # The service is responsible for making sure that LOW_LEVEL_AUDIT_CODES
+        # are valid Conjur audit codes in contexts where backward compatibility
+        # needs to be considered.
+        #
+        # This function converts an error group JSON object into a Failure
+        # response that other components can consume.
+        def failure_from_service_response(response_body)
+          unless valid_error_group?(response_body)
+            return @failure.new(
+              "Malformed error response from authenticator service",
+              exception: Errors::Authentication::Service::MalformedError.new,
+              status: :unauthorized
+            )
+          end
+
+          error = response_body['errors'].first
+          @failure.new(
+            'Credential validation failed',
+            exception: Errors::Authentication::Service::DynamicError.new(
+              error['code'], error['message']
+            ),
+            status: :unauthorized
+          )
+        end
+
+        def valid_error_group?(body)
+          body.is_a?(Hash) &&
+            !body['errors'].nil? &&
+            body['errors'].is_a?(Array) &&
+            body['errors'].length.positive? &&
+            body['errors'].first['code'].present? &&
+            body['errors'].first['message'].present?
         end
       end
     end

@@ -21,6 +21,17 @@ Given(/^I generate a client certificate signed by the CA$/) do
   @scenario_context.add(:client_key, client_key)
 end
 
+Given(/^I generate a client certificate signed by a different CA$/) do
+  ca_cert, ca_key = generate_ca_certificate(common_name: 'CN=Test CA 2')
+  client_cert, client_key = generate_client_certificate(
+    ca_cert: ca_cert,
+    ca_key: ca_key,
+    common_name: 'CN=Test Client 2'
+  )
+  @scenario_context.add(:client_cert, client_cert)
+  @scenario_context.add(:client_key, client_key)
+end
+
 When(/^I authenticate via Certificate with service-id "([^"]*)" and role id "([^"]*)"$/) do |service_id, user_id|
   authenticate_with_certificate(
     service_id: service_id,

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'cgi'
+
 module Authentication
   module AuthnCert
     module V2
@@ -48,15 +50,23 @@ module Authentication
           certificate = headers[CERTIFICATE_HEADER]
           return @failure.new("request header #{CERTIFICATE_HEADER} missing or empty") unless certificate.present?
 
-          @success.new(certificate)
+          # As a Rails app, Conjur relies on a proxy to terminate TLS and stash
+          # the client certificate in a request header. When stored as a header,
+          # newlines in the the client certificate must be escaped in some
+          # fashion. Here, we expect the client certificate to have been URL
+          # encoded, similar to the value of NGINX's $ssl_client_escaped_cert
+          # embedded variable.
+          #
+          # https://nginx.org/en/docs/http/ngx_http_ssl_module.html#variables
+          @success.new(CGI.unescape(certificate))
         end
 
         def validate_certificate(certificate:)
-          @saas_auth_client.new.do(
+          @saas_auth_client.new.validate_certificate(
             certificate: certificate,
             authenticator: @authenticator
           ).bind do |response|
-            @success.new(response[:attributes])
+            @success.new(response['attributes'])
           end
         end
 

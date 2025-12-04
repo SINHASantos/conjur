@@ -792,6 +792,15 @@ module Errors
         code: "CONJ00131E"
       )
     end
+
+    module Service
+      DynamicError = ::Util::TrackableErrorClass.new(code: "{0}", msg: "{1}")
+
+      MalformedError = ::Util::TrackableErrorClass.new(
+        msg: "Malformed error response from authenticator service",
+        code: "CONJ00190E"
+      )
+    end
   end
 
   module Util

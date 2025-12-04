@@ -8,7 +8,7 @@ RSpec.describe(DB::Repository::AuthenticatorRoleRepository) do
   let(:account) { 'rspec' }
 
   before(:each) do
-    ::Role.create(role_id: "#{account}:policy:root")
+    ::Role.create(role_id: "#{account}:policy:root") if ::Role["#{account}:policy:root"].nil?
     ::Role.create(role_id: "#{account}:user:admin") if ::Role["#{account}:user:admin"].nil?
     ::Resource.create(resource_id: "#{account}:policy:root", owner_id: "#{account}:user:admin")
   end
