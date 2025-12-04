@@ -24,7 +24,7 @@ Feature: Limit the number of policy versions
     Then there are 20 "policy_versions" in the response
     And The following appears in the log after my savepoint:
     """
-    Deleting policy version: {:version=>1, :resource_id=>"cucumber:policy:policy_test_version",
+    Deleting policy version: {version: 1, resource_id: "cucumber:policy:policy_test_version",
     """
 
   @acceptance

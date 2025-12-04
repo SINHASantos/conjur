@@ -80,7 +80,7 @@ The members of a role can be listed, searched, and paged.
       [subject@43868 account="cucumber" kind="group" role="cucumber:group:dev"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="list"]
-      cucumber:user:admin successfully listed members with parameters: {:account=>"cucumber", :kind=>"group", :role=>"cucumber:group:dev"}
+      cucumber:user:admin successfully listed members with parameters: {account: "cucumber", kind: "group", role: "cucumber:group:dev"}
     """
 
   @smoke
@@ -106,7 +106,7 @@ The members of a role can be listed, searched, and paged.
       [subject@43868 account="cucumber" kind="group" search="alice" role="cucumber:group:dev"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="list"]
-      cucumber:user:admin successfully listed members with parameters: {:account=>"cucumber", :kind=>"group", :search=>"alice", :role=>"cucumber:group:dev"}
+      cucumber:user:admin successfully listed members with parameters: {account: "cucumber", kind: "group", search: "alice", role: "cucumber:group:dev"}
     """
 
 
@@ -125,7 +125,7 @@ The members of a role can be listed, searched, and paged.
       [subject@43868 account="cucumber" kind="group" search="non_existent_user" role="cucumber:group:dev"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="list"]
-      cucumber:user:admin successfully listed members with parameters: {:account=>"cucumber", :kind=>"group", :search=>"non_existent_user", :role=>"cucumber:group:dev"}
+      cucumber:user:admin successfully listed members with parameters: {account: "cucumber", kind: "group", search: "non_existent_user", role: "cucumber:group:dev"}
     """
 
 
@@ -166,7 +166,7 @@ The members of a role can be listed, searched, and paged.
       [subject@43868 account="cucumber" kind="group" limit="3" role="cucumber:group:dev"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="list"]
-      cucumber:user:admin successfully listed members with parameters: {:account=>"cucumber", :kind=>"group", :limit=>"3", :role=>"cucumber:group:dev"}
+      cucumber:user:admin successfully listed members with parameters: {account: "cucumber", kind: "group", limit: "3", role: "cucumber:group:dev"}
     """
 
     Given I save my place in the audit log file for remote
@@ -197,7 +197,7 @@ The members of a role can be listed, searched, and paged.
       [subject@43868 account="cucumber" kind="group" limit="3" offset="3" role="cucumber:group:dev"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="list"]
-      cucumber:user:admin successfully listed members with parameters: {:account=>"cucumber", :kind=>"group", :limit=>"3", :offset=>"3", :role=>"cucumber:group:dev"}
+      cucumber:user:admin successfully listed members with parameters: {account: "cucumber", kind: "group", limit: "3", offset: "3", role: "cucumber:group:dev"}
     """
 
   @smoke
@@ -217,7 +217,7 @@ The members of a role can be listed, searched, and paged.
       [subject@43868 account="cucumber" count="true" kind="group" role="cucumber:group:dev"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="list"]
-      cucumber:user:admin successfully listed members with parameters: {:account=>"cucumber", :count=>"true", :kind=>"group", :role=>"cucumber:group:dev"}
+      cucumber:user:admin successfully listed members with parameters: {account: "cucumber", count: "true", kind: "group", role: "cucumber:group:dev"}
     """
 
     Given I save my place in the audit log file for remote
@@ -235,7 +235,7 @@ The members of a role can be listed, searched, and paged.
       [subject@43868 account="cucumber" count="true" kind="group" limit="3" role="cucumber:group:dev"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="list"]
-      cucumber:user:admin successfully listed members with parameters: {:account=>"cucumber", :count=>"true", :kind=>"group", :limit=>"3", :role=>"cucumber:group:dev"}
+      cucumber:user:admin successfully listed members with parameters: {account: "cucumber", count: "true", kind: "group", limit: "3", role: "cucumber:group:dev"}
     """
 
   @smoke
@@ -275,7 +275,7 @@ The members of a role can be listed, searched, and paged.
       [subject@43868 account="cucumber" kind="group" role="cucumber:group:employees"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="list"]
-      cucumber:user:admin successfully listed members with parameters: {:account=>"cucumber", :kind=>"group", :role=>"cucumber:group:employees"}
+      cucumber:user:admin successfully listed members with parameters: {account: "cucumber", kind: "group", role: "cucumber:group:employees"}
     """
 
     Given I save my place in the audit log file for remote
@@ -299,7 +299,7 @@ The members of a role can be listed, searched, and paged.
       [subject@43868 account="cucumber" kind="group" role="cucumber:group:employees"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="list"]
-      cucumber:user:admin successfully listed members with parameters: {:account=>"cucumber", :kind=>"group", :role=>"cucumber:group:employees"}
+      cucumber:user:admin successfully listed members with parameters: {account: "cucumber", kind: "group", role: "cucumber:group:employees"}
     """
 
     Given I save my place in the audit log file for remote
@@ -323,7 +323,7 @@ The members of a role can be listed, searched, and paged.
       [subject@43868 account="cucumber" kind="group" role="cucumber:group:employees"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="list"]
-      cucumber:user:admin successfully listed members with parameters: {:account=>"cucumber", :kind=>"group", :role=>"cucumber:group:employees"}
+      cucumber:user:admin successfully listed members with parameters: {account: "cucumber", kind: "group", role: "cucumber:group:employees"}
     """
 
 
@@ -339,7 +339,6 @@ The members of a role can be listed, searched, and paged.
       [subject@43868 account="cucumber" kind="group" limit="abc" role="cucumber:group:dev"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="failure" operation="list"]
-      cucumber:user:admin failed to list members with parameters: {:account=>"cucumber", :kind=>"group", :limit=>"abc", :role=>"cucumber:group:dev"}:
+      cucumber:user:admin failed to list members with parameters: {account: "cucumber", kind: "group", limit: "abc", role: "cucumber:group:dev"}:
       Limits must be greater than or equal to 1
     """
-

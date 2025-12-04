@@ -68,7 +68,7 @@ describe Responses::Failure do
       context 'when message is a hash' do
         let(:message) { { foo: 'baz' } }
         it 'returns the expected string' do
-          expect(failure.to_s).to eq('{:foo=>"baz"}')
+          expect(failure.to_s).to eq('{foo: "baz"}')
         end
       end
       context 'when message is an array' do

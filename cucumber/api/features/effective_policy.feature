@@ -22,7 +22,7 @@ Feature: Fetching effective policy
       [subject@43868 account="cucumber" identifier="root" role_id="cucumber:user:admin"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="read"]
-      cucumber:user:admin readed {:account=>"cucumber", :identifier=>"root", :role_id=>"cucumber:user:admin"}
+      cucumber:user:admin readed {account: "cucumber", identifier: "root", role_id: "cucumber:user:admin"}
     """
 
   @acceptance
@@ -39,7 +39,7 @@ Feature: Fetching effective policy
       [subject@43868 account="cucumber" identifier="rootpolicy" role_id="cucumber:user:admin"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="read"]
-      cucumber:user:admin readed {:account=>"cucumber", :identifier=>"rootpolicy", :role_id=>"cucumber:user:admin"}
+      cucumber:user:admin readed {account: "cucumber", identifier: "rootpolicy", role_id: "cucumber:user:admin"}
     """
 
   @acceptance
