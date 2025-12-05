@@ -261,12 +261,10 @@ describe AuthenticateController, type: :request do
                 client_certificate: 'my-cert-pem'
               )
 
-              # TODO: Nothing about these expectations is right.
-              # Why is this resulting in 500 with a bad audit log?
-              expect(response).to have_http_status(:internal_server_error)
+              expect(response).to have_http_status(:unauthorized)
               expect(@info_logs).to satisfy do |logs|
                 logs.any? do |log|
-                  log.to_s.include?('CONJ00048I Authentication Error: nil')
+                  log.to_s.include?('CONJ00179E Variable \'trust-domain\' is required when variable \'host-mode\' is set to \'spiffe\'')
                 end
               end
             end
