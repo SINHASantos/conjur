@@ -4,9 +4,15 @@
 # loaded. This means that feature flags that make certain API endpoint available
 # (like ours) cannot be enabled and disabled on an example-by-example basis.
 #
-# Setting this environment variable here enables the flag before loading
-# spec_helper, and by extension the projects routes.
-ENV['CONJUR_FEATURE_CERTIFICATE_AUTHENTICATION_ENABLED'] = 'true'
+# When this test suite is run in isolation, setting this environment variable
+# here enables the flag before loading spec_helper, and by extension the
+# projects routes.
+#
+# When this test suite is run in parallel or in series with other suites,
+# chances are that config/routes.rb has already been loaded. To address this,
+# we need to enable certificate authentication on the environment level.
+#
+# ENV['CONJUR_FEATURE_CERTIFICATE_AUTHENTICATION_ENABLED'] = 'true'
 
 require 'spec_helper'
 require 'parallel'
