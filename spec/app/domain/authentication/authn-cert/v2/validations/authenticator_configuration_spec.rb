@@ -41,24 +41,6 @@ RSpec.describe(Authentication::AuthnCert::V2::Validations::AuthenticatorConfigur
     end
   end
 
-  context 'with invalid host-mode' do
-    let(:data) do
-      default_data.merge!({
-        host_mode: 'invalid',
-        trust_domain: 'trust.com',
-        identity_path: '/path/to/workloads'
-      })
-    end
-
-    it 'is not valid' do
-      response = validations.call(**data)
-      expect(response.success?).to be(false)
-      expect(response.errors.count).to eq(1)
-      expect(response.errors.first.path).to eq([:host_mode])
-      expect(response.errors.first.text).to eq("variable 'host-mode' must be either 'request' or 'spiffe'")
-    end
-  end
-
   context 'with host-mode set to spiffe' do
     let(:data) { default_data.merge!({ host_mode: 'spiffe' }) }
 

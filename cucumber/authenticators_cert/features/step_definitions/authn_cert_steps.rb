@@ -9,6 +9,7 @@ Given(/^I create a CA certificate$/) do
   @scenario_context.add(:ca_cert, ca_cert)
   @scenario_context.add(:ca_key, ca_key)
   @scenario_context.add(:ca_cert_string, ca_cert.to_pem)
+  @scenario_context.add(:spiffe_trust_domain, AuthnCertHelper::TRUST_DOMAIN)
 end
 
 Given(/^I generate a client certificate signed by the CA$/) do
@@ -32,12 +33,21 @@ Given(/^I generate a client certificate signed by a different CA$/) do
   @scenario_context.add(:client_key, client_key)
 end
 
-When(/^I authenticate via Certificate with service-id "([^"]*)" and role id "([^"]*)"$/) do |service_id, user_id|
+When(/^I authenticate via Certificate with service-id "([^"]*)" and role id "([^"]*)"$/) do |service_id, role_id|
   authenticate_with_certificate(
     service_id: service_id,
     account: AuthnCertHelper::ACCOUNT,
     client_cert: @scenario_context.get(:client_cert),
     client_key: @scenario_context.get(:client_key),
-    user_id: user_id
+    role_id: role_id
+  )
+end
+
+When(/^I authenticate via Certificate with service-id "([^"]*)"$/) do |service_id|
+  authenticate_with_certificate(
+    service_id: service_id,
+    account: AuthnCertHelper::ACCOUNT,
+    client_cert: @scenario_context.get(:client_cert),
+    client_key: @scenario_context.get(:client_key)
   )
 end

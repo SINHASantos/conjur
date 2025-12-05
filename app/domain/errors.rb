@@ -801,6 +801,48 @@ module Errors
         code: "CONJ00190E"
       )
     end
+
+    module Certificate
+      InvalidConfig = ::Util::TrackableErrorClass.new(
+        msg: "Failed to parse certificate authenticator configuration: {0-message}",
+        code: "CONJ00172E"
+      )
+
+      NoTrustDomain = ::Util::TrackableErrorClass.new(
+        msg: "Variable 'trust-domain' is required when variable 'host-mode' is set to 'spiffe'",
+        code: "CONJ00179E"
+      )
+
+      InvalidTrustDomain = ::Util::TrackableErrorClass.new(
+        msg: "Variable 'trust-domain' must be a valid domain",
+        code: "CONJ00180E"
+      )
+
+      NoIdentityPath = ::Util::TrackableErrorClass.new(
+        msg: "Variable 'identity-path' is required when variable 'host-mode' is set to 'spiffe'",
+        code: "CONJ00185E"
+      )
+
+      BadURISANCount = ::Util::TrackableErrorClass.new(
+        msg: "Client certificate must contain exactly one URI SAN: contains {0-count}",
+        code: "CONJ00182E"
+      )
+
+      NoSPIFFEID = ::Util::TrackableErrorClass.new(
+        msg: "Client certificate must contain SPIFFE ID",
+        code: "CONJ00181E"
+      )
+
+      MalformedSPIFFEID = ::Util::TrackableErrorClass.new(
+        msg: "Client certificate SPIFFE ID {0-spiffe-id} does not meet requirements: {1-reason}",
+        code: "CONJ00183E"
+      )
+
+      TrustDomainMismatch = ::Util::TrackableErrorClass.new(
+        msg: "Client certificate SPIFFE ID {0-spiffe-id} does not match expected trust domain {1-trust-domain}",
+        code: "CONJ00184E"
+      )
+    end
   end
 
   module Util
