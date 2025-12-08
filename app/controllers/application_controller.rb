@@ -74,7 +74,7 @@ class ApplicationController < ActionController::API
   rescue_from Exceptions::PolicyLoadRecordNotFound, with: :policy_invalid
   rescue_from Conjur::PolicyParser::Invalid, with: :policy_invalid
   rescue_from Conjur::PolicyParser::ResolverError, with: :policy_invalid
-  rescue_from NoMethodError, with: :validation_failed
+  rescue_from NoMethodError, with: :internal_server_error
   rescue_from ArgumentError, with: :argument_error
   rescue_from ActionController::ParameterMissing, with: :argument_error
   rescue_from UnprocessableEntity, with: :unprocessable_entity

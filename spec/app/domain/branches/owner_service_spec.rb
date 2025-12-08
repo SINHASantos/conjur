@@ -8,7 +8,7 @@ RSpec.describe(Branches::OwnerService) do
 
   describe '#resource_owner' do
     let(:parent_identifier) { 'data' }
-    let(:owner) { Branches::Owner.new('user', 'alice', is_set: true) }
+    let(:owner) { Branches::Owner.new(**{kind: 'user', id: 'alice'}) }
 
     it 'returns the given owner if already set' do
       result = service.resource_owner(parent_identifier, owner)
@@ -33,7 +33,7 @@ RSpec.describe(Branches::OwnerService) do
 
   describe '#check_owner_exists' do
     let(:account) { 'rspec' }
-    let(:owner) { Branches::Owner.new('user', 'alice', is_set: true) }
+    let(:owner) { Branches::Owner.new(**{kind: 'user', id: 'alice'}) }
     let(:role_id) { 'rspec:user:alice' }
 
     before do

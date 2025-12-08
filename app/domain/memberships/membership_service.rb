@@ -57,20 +57,6 @@ module Memberships
       Memberships::Member.from_model(membership_db)
     end
 
-    private
-
-    def read_member_res(role, account, member)
-      @res_service.read_res(role, account, member.kind, member.id)
-    rescue Exceptions::RecordNotFound => e
-      raise ApplicationController::InvalidParameter, e.message
-    end
-
-    def check_group_is_not_own_member(group_identifier, member)
-      return if member.kind != "group" || group_identifier != member.id
-
-      raise Errors::Conjur::ParameterValueInvalid.new("Member ID", "The '#{group_identifier}' group cannot be a member of itself")
-    end
-
     def check_membership_not_exist(group_res, member_res)
       membership = fetch_membership_db(group_res, member_res)
       return if membership.nil?
@@ -86,6 +72,20 @@ module Memberships
         ownership: false,
         policy_id: group_res.policy_id
       ).save
+    end
+
+    private
+
+    def read_member_res(role, account, member)
+      @res_service.read_res(role, account, member.kind, member.id)
+    rescue Exceptions::RecordNotFound => e
+      raise ApplicationController::InvalidParameter, e.message
+    end
+
+    def check_group_is_not_own_member(group_identifier, member)
+      return if member.kind != "group" || group_identifier != member.id
+
+      raise Errors::Conjur::ParameterValueInvalid.new("Member ID", "The '#{group_identifier}' group cannot be a member of itself")
     end
 
     def fetch_membership_db(group_res, member_res)

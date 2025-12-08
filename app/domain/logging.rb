@@ -9,23 +9,28 @@
 
 require 'active_support/concern'
 module Logging
-  def log_info(msg)
+
+  def to_log_msg(hash)
+    hash.nil? ? '' : hash.map { |k, v| "#{k} = #{v.inspect}" }.join(', ')
+  end
+
+  def log_info(msg=nil, msg_hash = {})
     l = use_logger
     return unless l&.info?
 
-    l.info(log_msg(msg))
+    l.info(log_msg("#{msg}, #{to_log_msg(msg_hash)}"))
   end
 
-  def log_debug(msg)
+  def log_debug(msg=nil, msg_hash = {})
     l = use_logger
     return unless l&.debug?
 
-    l.debug(log_msg(msg))
+    l.debug(log_msg("#{msg}, #{to_log_msg(msg_hash)}"))
   end
 
-  def log_error(msg)
+  def log_error(msg=nil, msg_hash = {})
     l = use_logger || Rails.logger
-    l&.error(log_msg(msg))
+    l&.error(log_msg("#{msg}, #{to_log_msg(msg_hash)}"))
   end
 
   private

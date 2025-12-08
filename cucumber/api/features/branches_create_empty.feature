@@ -115,7 +115,7 @@ Feature: Branches APIv2 tests - create empty
     And the JSON should be:
     """
     { "code": "422",
-      "message": "The number of identifier nesting exceeds maximum depth of 15" }
+      "message": "Identifier(branch/name) The number of identifier nesting exceeds maximum depth of 15" }
     """
 
   @negative @acceptance
@@ -248,7 +248,7 @@ Feature: Branches APIv2 tests - create empty
     And the JSON should be:
     """
     { "code": "422",
-      "message": "Branch2-ann-key1 should have string value but got 6" }
+      "message": "Branch2-ann-key1 must be of 'type=string'" }
     """
 
   @negative @acceptance
@@ -403,7 +403,7 @@ Feature: Branches APIv2 tests - create empty
     And the JSON should be:
     """
     { "code": "422",
-      "message": "Name Wrong name 'branch1<wrong>'" }
+      "message": "Name Wrong value 'branch1<wrong>'" }
     """
 
   @acceptance

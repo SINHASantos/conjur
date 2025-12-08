@@ -94,3 +94,24 @@ Then(/^the yaml result is like in file: "([^"]*)"$/) do |filename|
     expect(YAML.safe_load(@result.body)).to eq(YAML.safe_load(file.read))
   end
 end
+
+Then(/^the JSON result except "([^"]*)" contains:$/) do |except_path, value|
+  expect(@result).to be
+  rh = @result.dup.deep_symbolize_keys
+
+  keys = except_path.split(',')
+  keys[...-1]
+    .reduce(rh) { |acc, k| acc[to_int_or_sym(k)] }
+    .delete(to_int_or_sym(keys.last))
+
+  vh = JSON.parse(value).deep_symbolize_keys
+  expect(rh).to eq(vh)
+end
+
+private
+
+def to_int_or_sym(str)
+  Integer(str)
+rescue ArgumentError, TypeError
+  str.to_sym
+end

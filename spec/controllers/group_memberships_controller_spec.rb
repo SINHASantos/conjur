@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'spec_helper'
 
 DatabaseCleaner.allow_remote_database_url = true
@@ -31,7 +33,6 @@ describe GroupMembershipsController, type: :request do
 
       - !policy
         id: data
-
         owner: !group admins
         body:
         - !host host2
@@ -232,8 +233,8 @@ describe GroupMembershipsController, type: :request do
       let(:payload_add_members) do
         <<~BODY
           {
-              "kind": "host",
-              "id": "/data/host2"
+            "kind": "host",
+            "id": "/data/host2"
           }
         BODY
       end

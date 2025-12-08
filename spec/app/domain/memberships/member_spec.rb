@@ -8,7 +8,7 @@ RSpec.describe Memberships::Member do
 
   describe '#initialize' do
     it 'creates a valid user member' do
-      member = described_class.new('user', valid_user_id)
+      member = described_class.new(**{kind: 'user', id: valid_user_id})
       expect(member.kind).to eq('user')
       expect(member.id).to eq(valid_user_id)
     end
@@ -19,45 +19,36 @@ RSpec.describe Memberships::Member do
 
     it 'raises error for invalid kind' do
       expect {
-        described_class.new('invalid_kind', valid_user_id)
+        described_class.new(**{kind: 'invalid_kind', id: valid_user_id})
       }.to raise_error(Validation::DomainValidationError)
     end
 
     it 'raises error for invalid id format for user' do
       expect {
-        described_class.new('user', invalid_id)
+        described_class.new(**{kind: 'user', id: invalid_id})
       }.to raise_error(Validation::DomainValidationError)
     end
 
     it 'raises error for invalid id format for group' do
       expect {
-        described_class.new('group', invalid_id)
+        described_class.new(**{kind: 'group', id: invalid_id})
       }.to raise_error(Validation::DomainValidationError)
     end
   end
 
   describe '#to_s' do
     it 'returns string representation' do
-      member = described_class.new('user', valid_user_id)
+      member = described_class.new(**{kind: 'user', id: valid_user_id})
       expect(member.to_s).to eq("#<Member kind=user id=#{valid_user_id}>")
     end
   end
 
   describe '#as_json' do
     it 'returns json without validation_context and errors' do
-      member = described_class.new('user', valid_user_id)
+      member = described_class.new(**{kind: 'user', id: valid_user_id})
       json = member.as_json
       expect(json).not_to have_key('validation_context')
       expect(json).not_to have_key('errors')
-    end
-  end
-
-  describe '.from_input' do
-    it 'creates member from input hash' do
-      input = { kind: 'user', id: valid_user_id }
-      member = described_class.from_input(input)
-      expect(member.kind).to eq('user')
-      expect(member.id).to eq(valid_user_id)
     end
   end
 

@@ -17,13 +17,13 @@ module Annotations
     end
 
     def fetch_annotation(resource_id, name)
-      log_debug("resource_id = #{resource_id}, name = #{name}")
+      log_debug(resource_id:, name:)
 
       @annotation_repo.where(resource_id: resource_id, name: name.to_s).first
     end
 
     def create_annotation(resource_id, name, value, policy_id)
-      log_debug("resource_id = #{resource_id}, name = #{name}, value = #{value}")
+      log_debug(resource_id:, name:, value:, policy_id:)
 
       @annotation_repo.create(
         resource_id: resource_id,
@@ -34,10 +34,10 @@ module Annotations
     end
 
     def upsert_annotation(resource_id, policy_id, a_key, a_value)
-      log_debug("resource_id = #{resource_id}, policy_id = #{policy_id}, a_key = #{a_key}, a_value = #{a_value}")
+      log_debug(resource_id:, policy_id:, a_key:, a_value:)
 
       annotation = fetch_annotation(resource_id, a_key)
-      log_debug("annotation = #{annotation}")
+      log_debug(annotation:)
 
       if annotation.nil?
         create_annotation(resource_id, a_key, a_value, policy_id)
@@ -47,14 +47,15 @@ module Annotations
     end
 
     def delete_annotation(resource_id, annotation_name)
-      log_debug("resource_id = #{resource_id}, annotation_name = #{annotation_name}")
+      log_debug(resource_id:, annotation_name:)
 
       annotation = fetch_annotation(resource_id, annotation_name)
-      log_debug("annotation = #{annotation}")
+      log_debug(annotation:)
 
       return annotation.destroy unless annotation.nil?
 
-      raise ApplicationController::RecordNotFound.new(resource_id.to_s, message: "Annotation '#{annotation_name}' not found in resource '#{resource_id}'")
+      raise ApplicationController::RecordNotFound.new(resource_id.to_s,
+                                                      message: "Annotation '#{annotation_name}' not found in resource '#{resource_id}'")
     end
   end
 end

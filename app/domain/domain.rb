@@ -13,7 +13,7 @@ module Domain
   def domain_id(identifier)
     return '/' if root?(identifier)
 
-    identifier.starts_with?('/') ? identifier : "/#{identifier}"
+    identifier.start_with?('/') ? identifier : "/#{identifier}"
   end
 
   def to_identifier(parent_identifier, identifier)

@@ -6,7 +6,7 @@ class QueryParameterActionRecognizer
   end
 
   def matches?(request)
-    request.params.has_key?(@action)
+    request.params.key?(@action)
   end
 end
 
@@ -91,6 +91,9 @@ Rails.application.routes.draw do
         # groups
         post "/groups/:account/*identifier/members" => 'group_memberships#create'
         delete "/groups/:account/*identifier/members/:kind/(*id)" => 'group_memberships#delete'
+
+        # workload
+        post "workloads/:account" => "workloads#create"
 
         constraints kind: /user|host|layer|group|policy|host_factory/ do
           get     "/roles/:account/:kind/*identifier" => "roles#graph", :constraints => QueryParameterActionRecognizer.new("graph")

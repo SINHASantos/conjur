@@ -31,12 +31,11 @@ module Branches
     # rubocop:enable Metrics/ParameterLists
 
     def read_and_auth_branch(role, action, account, identifier)
-      log_debug("role = #{role.id}, action = #{action},
-        account = #{account}, identifier = #{identifier}")
+      log_debug("role.id = #{role.id}", action:, account:, identifier:)
 
       policy = @res_service.read_and_auth_policy(role, action, account, identifier)
       Branch.from_model(policy)
-    rescue Exceptions::Forbidden, Exceptions::RecordNotFound
+    rescue Exceptions::Forbidden, Exceptions::RecordNotFound => e
       raise Exceptions::RecordNotFound, full_id(account, 'branch', identifier)
     end
 
@@ -60,7 +59,7 @@ module Branches
     end
 
     def check_parent_branch_exists(account, identifier)
-      log_debug("account = #{account}, identifier = #{identifier}")
+      log_debug(account:, identifier:)
 
       return if root?(identifier)
 
@@ -68,13 +67,12 @@ module Branches
     end
 
     def create_branch(account, branch)
-      log_debug("account = #{account}, branch = #{branch}")
+      log_debug(account:, branch:)
 
-      branch_id = full_id(account, 'policy', branch.identifier)
-      owner_id = res_owner_id(account, branch.branch, branch.owner)
       policy_id = full_id(account, 'policy', branch.branch)
-
-      log_debug("branch_id = #{branch_id}, owner_id = #{owner_id}, policy_id = #{policy_id}")
+      branch_id = full_id(account, 'policy', branch.identifier)
+      owner_id = @owner_service.resource_owner_id(account, branch.branch, branch.owner)
+      log_debug(policy_id:, branch_id:, owner_id:)
 
       # policy
       policy = @res_service.save_res(policy_id, owner_id, branch_id)
@@ -83,12 +81,7 @@ module Branches
       @role_repo.create(role_id: branch_id, policy_id: policy_id).save
 
       # role memberships
-      @role_membership_repo.create(
-        role_id: branch_id,
-        member_id: owner_id,
-        policy_id: policy_id,
-        admin_option: true, ownership: true
-      ).save
+      create_role_membership(policy_id, owner_id, branch_id)
 
       # annotations
       branch.annotations.each do |a_key, a_value|
@@ -98,8 +91,17 @@ module Branches
       Branch.from_model(policy)
     end
 
+    def create_role_membership(policy_id, owner_id, branch_id)
+      @role_membership_repo.create(
+        role_id: branch_id,
+        member_id: owner_id,
+        policy_id: policy_id,
+        admin_option: true, ownership: true
+      ).save
+    end
+
     def update_branch(account, branch_up_part, identifier)
-      log_debug("account = #{account}, branch_up_part = #{branch_up_part}, identifier = #{identifier}")
+      log_debug(account:, branch_up_part:, identifier:)
 
       policy = get_branch_pol(account, identifier)
 
@@ -109,7 +111,7 @@ module Branches
     end
 
     def check_branch_not_conflict(account, identifier)
-      log_debug("account = #{account}, identifier = #{identifier}")
+      log_debug(account:, identifier:)
 
       return if fetch_branch(account, identifier).nil?
 
@@ -117,7 +119,7 @@ module Branches
     end
 
     def read_branches(role_id, account, paging, identifier)
-      log_debug("role_id = #{role_id}, account = #{account}, paging = #{paging}, identifier = #{identifier}")
+      log_debug(role_id:, account:, paging:, identifier:)
 
       base_scope = @res_scopes_service.visible_resources_scope(account, role_id, identifier)
       total_count = base_scope.count
@@ -134,7 +136,7 @@ module Branches
     end
 
     def delete_branch(account, role, identifier)
-      log_debug("account = #{account}, role = #{role.id}, identifier = #{identifier}")
+      log_debug("role.id = #{role.id}", account:, identifier:)
 
       resources = @res_scopes_service.resources_to_del_scope(account, identifier)
         .order(Sequel.lit("length(resource_id)").desc)
@@ -159,10 +161,10 @@ module Branches
     end
 
     def update_annotations(policy, annotations)
-      log_debug("policy = #{policy}, annotations = #{annotations}")
+      log_debug(policy:, annotations:)
 
       merged_annotations = get_saved_annotations(policy).merge(annotations)
-      log_debug("merged_annotations = #{merged_annotations}")
+      log_debug(merged_annotations:)
 
       annotations.each do |ann_key, ann_value|
         @annotation_service.upsert_annotation(policy.id, policy.policy_id, ann_key, ann_value)
@@ -176,18 +178,13 @@ module Branches
     end
 
     def update_owner(account, policy, owner)
-      log_debug("account = #{account}, policy = #{policy.id} owner = #{owner}")
+      log_debug(account:, policy:, owner:)
 
       parent = parent_of(policy.identifier)
-      owner_id = res_owner_id(account, parent, owner)
-      log_debug("parent = #{parent}, owner_id = #{owner_id}")
+      owner_id = @owner_service.resource_owner_id(account, parent, owner)
+      log_debug(parent:, owner_id:)
 
       policy.update(owner_id: owner_id).save
-    end
-
-    def res_owner_id(account, parent_identifier, owner)
-      res_owner = @owner_service.resource_owner(parent_identifier, owner)
-      full_id(account, res_owner.kind, res_owner.id)
     end
   end
 end
