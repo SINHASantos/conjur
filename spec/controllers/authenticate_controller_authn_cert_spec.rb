@@ -1,19 +1,5 @@
 # frozen_string_literal: true
 
-# The config/routes.rb file is loaded when spec_helper and rails_helper are
-# loaded. This means that feature flags that make certain API endpoint available
-# (like ours) cannot be enabled and disabled on an example-by-example basis.
-#
-# When this test suite is run in isolation, setting this environment variable
-# here enables the flag before loading spec_helper, and by extension the
-# projects routes.
-#
-# When this test suite is run in parallel or in series with other suites,
-# chances are that config/routes.rb has already been loaded. To address this,
-# we need to enable certificate authentication on the environment level.
-#
-# ENV['CONJUR_FEATURE_CERTIFICATE_AUTHENTICATION_ENABLED'] = 'true'
-
 require 'spec_helper'
 require 'parallel'
 
@@ -48,7 +34,16 @@ describe AuthenticateController, type: :request do
 
   describe 'POST /authn-cert/${service_id}/${account}/${id}/authenticate' do
     before do
-      load_policy(
+        # Enable certificate authentication feature flag for these tests
+        allow_any_instance_of(Conjur::FeatureFlags::Features)
+          .to receive(:enabled?)
+          .and_call_original
+        allow_any_instance_of(Conjur::FeatureFlags::Features)
+          .to receive(:enabled?)
+          .with(:certificate_authentication)
+          .and_return(true)
+
+        load_policy(
         account: account,
         branch: 'root',
         yaml: authenticator_policy(

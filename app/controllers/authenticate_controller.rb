@@ -4,6 +4,8 @@ class AuthenticateController < ApplicationController
   include BasicAuthenticator
   include AuthorizeResource
 
+  before_action :check_authn_cert_feature_flag, only: [:authenticate_via_post]
+
   def authenticate_via_get
     handler = Authentication::CommandHandlers::Authentication.new(
       authenticator_type: params[:authenticator]
@@ -282,6 +284,13 @@ class AuthenticateController < ApplicationController
   end
 
   private
+
+  def check_authn_cert_feature_flag
+    return unless params[:authenticator]&.start_with?('authn-cert')
+    return if Rails.application.config.feature_flags.enabled?(:certificate_authentication)
+
+    raise ActionController::RoutingError, "Not Found"
+  end
 
   def update_config_params
     body_allowed_params = %i[enabled]

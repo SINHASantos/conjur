@@ -371,6 +371,7 @@ show_usage() {
     echo ""
     echo "Container Operations:"
     echo "  exec [options]            - Enter Conjur container shell"
+    echo "  exec -- <command>         - Execute command in container"
     echo "  key                       - Display admin API key"
     echo "  policy load <account> <file> - Load policy into account (file relative to repo root or full container path)"
     echo ""
@@ -411,6 +412,8 @@ show_usage() {
 cmd_exec() {
     local container="conjur"
     local env_args=()
+    local exec_command=()
+    local interactive=true
     
     # Get admin API key for authentication
     local api_key=$(docker compose exec -T conjur conjurctl role retrieve-key cucumber:user:admin 2>/dev/null | tr -d '\r')
@@ -449,6 +452,13 @@ cmd_exec() {
                 print_exec_help
                 return 0
                 ;;
+            --)
+                # Everything after -- is the command to execute
+                shift
+                exec_command=("$@")
+                interactive=false
+                break
+                ;;
             *)
                 echo -e "${RED}Error: Unknown exec option '$1'${NC}"
                 echo -e "${YELLOW}Use './conjur-dev exec --help' for usage information.${NC}"
@@ -457,8 +467,15 @@ cmd_exec() {
         esac
     done
     
-    echo -e "${BLUE}Entering $container container...${NC}"
-    docker exec "${env_args[@]}" -it --detach-keys 'ctrl-\' "$(docker compose ps -q "$container")" bash
+    if [[ ${#exec_command[@]} -gt 0 ]]; then
+        # Execute command non-interactively
+        echo -e "${BLUE}Executing command in $container container: ${exec_command[*]}${NC}"
+        docker exec "${env_args[@]}" "$(docker compose ps -q "$container")" "${exec_command[@]}"
+    else
+        # Enter interactive shell
+        echo -e "${BLUE}Entering $container container...${NC}"
+        docker exec "${env_args[@]}" -it --detach-keys 'ctrl-\' "$(docker compose ps -q "$container")" bash
+    fi
 }
 
 cmd_key() {
@@ -495,14 +512,23 @@ NAME
 
 SYNOPSIS
     exec [global options] command [command options] [arguments...]
+    exec [global options] -- <command> [args...]
+    
 GLOBAL OPTIONS
     --help                                    - Show this message
+    
 COMMANDS
     --authn-oidc    Enables OIDC features
     --authn-azure   Enables Azure features
     --authn-gcp     Enables GCP features
     --authn-jwt     Enables JWT features
     --client        Steps into the running Conjur CLI container, instead, as a bash shell.
+    --              Execute a command in the container (non-interactive)
+    
+EXAMPLES
+    ./cli exec                                # Enter interactive shell
+    ./cli exec -- rspec spec/                 # Run rspec tests
+    ./cli exec -- bundle exec rake db:migrate # Run rake task
 EOF
 }
 

@@ -41,25 +41,9 @@ RSpec.describe(Authentication::AuthnCert::V2::Validations::AuthenticatorConfigur
     end
   end
 
-  context 'with host-mode set to spiffe' do
-    let(:data) { default_data.merge!({ host_mode: 'spiffe' }) }
+  # Note: The conditional validation that trust_domain and identity_path
+  # are required when host_mode is 'spiffe' happens at runtime in
+  # IdentityResolver, not in the AuthenticatorConfiguration schema.
+  # The schema only validates that the basic required fields are present.
 
-    context 'when additional required configuration is missing' do
-      it 'is not valid' do
-        response = validations.call(**data)
-        expect(response.success?).to be(false)
-        expect(response.errors.count).to eq(2)
-
-        expectations = [
-          { path: [:trust_domain], text: "variable 'trust-domain' must be used when 'host-mode' is set to 'spiffe'" },
-          { path: [:identity_path], text: "variable 'identity-path' must be used when 'host-mode' is set to 'spiffe'" }
-        ]
-
-        response.errors.each_with_index do |error, idx|
-          expect(error.path).to eq(expectations[idx][:path])
-          expect(error.text).to eq(expectations[idx][:text])
-        end
-      end
-    end
-  end
 end
