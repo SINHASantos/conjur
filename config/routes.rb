@@ -44,10 +44,8 @@ Rails.application.routes.draw do
             post '/:authenticator/:account/:id/authenticate' => 'authenticate#authenticate_via_post'
           end
 
-          if Rails.application.config.feature_flags.enabled?(:certificate_authentication)
-            constraints authenticator: /authn-cert/ do
-              post '/:authenticator/:service_id/:account(/:id)/authenticate' => 'authenticate#authenticate_via_post'
-            end
+          constraints authenticator: /authn-cert/ do
+            post '/:authenticator/:service_id/:account(/:id)/authenticate' => 'authenticate#authenticate_via_post'
           end
 
           constraints authenticator: /authn|authn-azure|authn-iam|authn-k8s|authn-ldap/ do
