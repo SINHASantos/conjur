@@ -34,16 +34,16 @@ describe AuthenticateController, type: :request do
 
   describe 'POST /authn-cert/${service_id}/${account}/${id}/authenticate' do
     before do
-        # Enable certificate authentication feature flag for these tests
-        allow_any_instance_of(Conjur::FeatureFlags::Features)
-          .to receive(:enabled?)
-          .and_call_original
-        allow_any_instance_of(Conjur::FeatureFlags::Features)
-          .to receive(:enabled?)
-          .with(:certificate_authentication)
-          .and_return(true)
+      # Enable certificate authentication feature flag for these tests
+      allow_any_instance_of(Conjur::FeatureFlags::Features)
+        .to receive(:enabled?)
+        .and_call_original
+      allow_any_instance_of(Conjur::FeatureFlags::Features)
+        .to receive(:enabled?)
+        .with(:certificate_authentication)
+        .and_return(true)
 
-        load_policy(
+      load_policy(
         account: account,
         branch: 'root',
         yaml: authenticator_policy(
@@ -87,7 +87,6 @@ describe AuthenticateController, type: :request do
       let(:config_variables) { %w[] }
 
       it 'fails to authenticate' do
-        @info_logs.clear
         authenticate(
           account: account,
           service_id: service_id,
@@ -131,7 +130,6 @@ describe AuthenticateController, type: :request do
         end
 
         it 'fails to authenticate' do
-          @info_logs.clear
           authenticate(
             account: account,
             service_id: service_id,
@@ -166,7 +164,6 @@ describe AuthenticateController, type: :request do
             let(:host_annotations) { nil }
 
             it 'fails to authenticate' do
-              @info_logs.clear
               authenticate(
                 account: account,
                 service_id: service_id,
@@ -195,7 +192,6 @@ describe AuthenticateController, type: :request do
                 # TODO: Enable this test case once we've implemented annotation
                 # checking.
                 #
-                # @info_logs.clear
                 # authenticate(
                 #   account: account,
                 #   service_id: service_id,
@@ -220,7 +216,6 @@ describe AuthenticateController, type: :request do
               end
 
               it 'authenticates successfully' do
-                @info_logs.clear
                 authenticate(
                   account: account,
                   service_id: service_id,
@@ -248,7 +243,6 @@ describe AuthenticateController, type: :request do
             let(:config_variables) { default_spiffe_config_variables - %w[trust-domain] }
 
             it 'fails to authenticate' do
-              @info_logs.clear
               authenticate(
                 account: account,
                 service_id: service_id,
@@ -298,7 +292,6 @@ describe AuthenticateController, type: :request do
               end
 
               it 'fails to authenticate' do
-                @info_logs.clear
                 authenticate(
                   account: account,
                   service_id: service_id,
@@ -326,7 +319,6 @@ describe AuthenticateController, type: :request do
               end
 
               it 'fails to authenticate' do
-                @info_logs.clear
                 authenticate(
                   account: account,
                   service_id: service_id,
