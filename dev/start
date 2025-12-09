@@ -64,7 +64,7 @@ main() {
 
   # Install gems, create DB, and create cucumber account.
   docker compose up -d --no-deps "${services[@]}"
-  docker compose exec conjur bundle
+  docker compose exec -e OPENSSL_CONF=/usr/lib/ssl/openssl_non_fips.cnf conjur bundle
   docker compose exec conjur conjurctl db migrate
   docker compose exec conjur conjurctl account create cucumber || true
 

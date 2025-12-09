@@ -95,7 +95,8 @@ RSpec.describe(Authentication::AuthnOidc::V2::OidcClient) do
               path: 'https://dev-92899796.okta.com/oauth2/default/v1/token',
               body: transport_post_form_data,
               basic_auth: %w[super-secret-client-id super-secret-client-secret],
-              headers: { 'Content-Type' => 'application/x-www-form-urlencoded' }
+              headers: { 'Content-Type' => 'application/x-www-form-urlencoded' },
+              error_type: :oidc
             )
             .and_return(
               Responses::Success.new(
@@ -141,7 +142,8 @@ RSpec.describe(Authentication::AuthnOidc::V2::OidcClient) do
                   path: 'https://dev-92899796.okta.com/oauth2/default/v1/token',
                   body: transport_post_form_data,
                   basic_auth: %w[super-secret-client-id super-secret-client-secret],
-                  headers: { 'Content-Type' => 'application/x-www-form-urlencoded' }
+                  headers: { 'Content-Type' => 'application/x-www-form-urlencoded' },
+                  error_type: :oidc
                 )
                 .and_return(
                   Responses::Success.new(
@@ -179,7 +181,8 @@ RSpec.describe(Authentication::AuthnOidc::V2::OidcClient) do
                   path: 'https://dev-92899796.okta.com/oauth2/default/v1/token',
                   body: transport_post_form_data,
                   basic_auth: %w[super-secret-client-id super-secret-client-secret],
-                  headers: { 'Content-Type' => 'application/x-www-form-urlencoded' }
+                  headers: { 'Content-Type' => 'application/x-www-form-urlencoded' },
+                  error_type: :oidc
                 )
                 .and_return(
                   Responses::Success.new(
@@ -232,7 +235,8 @@ RSpec.describe(Authentication::AuthnOidc::V2::OidcClient) do
               path: 'https://dev-92899796.okta.com/oauth2/default/v1/token',
               body: transport_post_form_data,
               basic_auth: %w[super-secret-client-id super-secret-client-secret],
-              headers: { 'Content-Type' => 'application/x-www-form-urlencoded' }
+              headers: { 'Content-Type' => 'application/x-www-form-urlencoded' },
+              error_type: :oidc
             )
             .and_return(
               Responses::Failure.new('empty response')
@@ -250,8 +254,9 @@ RSpec.describe(Authentication::AuthnOidc::V2::OidcClient) do
           end
 
         expect(response.success?).to eq(false)
-        expect(response.message).to eq('empty response')
+        expect(response.message).to eq('Failed to retrieve token from OIDC provider')
         expect(response.exception.class).to eq(Errors::Authentication::AuthnOidc::TokenRetrievalFailed)
+        expect(response.exception.to_s).to eq("CONJ00133E Access Token retrieval failure: 'empty response'")
         expect(response.status).to eq(:bad_request)
       end
     end
@@ -263,7 +268,8 @@ RSpec.describe(Authentication::AuthnOidc::V2::OidcClient) do
               path: 'https://dev-92899796.okta.com/oauth2/default/v1/token',
               body: transport_post_form_data,
               basic_auth: %w[super-secret-client-id super-secret-client-secret],
-              headers: { 'Content-Type' => 'application/x-www-form-urlencoded' }
+              headers: { 'Content-Type' => 'application/x-www-form-urlencoded' },
+              error_type: :oidc
             )
             .and_return(
               Responses::Success.new(

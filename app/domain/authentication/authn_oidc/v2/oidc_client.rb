@@ -57,7 +57,8 @@ module Authentication
               path: config['token_endpoint'],
               body: args,
               basic_auth: [@authenticator.client_id, @authenticator.client_secret],
-              headers: { 'Content-Type' => 'application/x-www-form-urlencoded' }
+              headers: { 'Content-Type' => 'application/x-www-form-urlencoded' },
+              error_type: :oidc
             ).bind do |token|
               bearer_token = token['id_token'] || token['access_token']
               return @success.new(bearer_token) if bearer_token.present?
@@ -69,7 +70,7 @@ module Authentication
               )
             end
             @failure.new(
-              response.message,
+              'Failed to retrieve token from OIDC provider',
               exception: Errors::Authentication::AuthnOidc::TokenRetrievalFailed.new(response.message),
               status: :bad_request
             )

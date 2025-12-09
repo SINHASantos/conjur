@@ -42,9 +42,12 @@ module Authentication
       #   - If request_type is :form, the body expected to be a hash. It is
       #     converted to form data and the Content-Type header is set
       #     to 'application/x-www-form-urlencoded'.
-      # Possible error response types are :none and :json. Default is :none.
+      # Possible error response types are :none, :json and :oidc. Default is :none.
       #   - If error_type is :json, the body is expected to be a hash. It is
       #     converted to JSON and returned to the client consumer.
+      #   - If error_type is :oidc, the body is expected to contain keys
+      #     error and error_description. It is returned to the logs in
+      #     human-readable form.
       #   - If error_type is :none, the body is expected to be empty or
       #     negligible. The client consumer receives a canned, templated message.
       def post(path:, body: '', basic_auth: [], headers: {}, request_type: :form, error_type: :none)
@@ -100,9 +103,17 @@ module Authentication
           return @success.new(JSON.parse(response.body.to_s))
         end
 
-        return @failure.new(JSON.parse(response.body.to_s)) if error_type == :json
-
-        @failure.new("Error Response Code: '#{response.code}' from '#{response.uri}'")
+        case error_type
+        when :oidc
+          error_body = JSON.parse(response.body.to_s)
+          oidc_error = "OIDC Error: #{error_body['error'] || 'invalid_request'} - #{error_body['error_description'] ||
+            "Error Response Code: '#{response.code}' from '#{response.uri}'"}"
+          return @failure.new(oidc_error, status: response.code.to_i)
+        when :json
+          return @failure.new(JSON.parse(response.body.to_s))
+        else
+          @failure.new("Error Response Code: '#{response.code}' from '#{response.uri}'")
+        end
       rescue JSON::ParserError => e
         @failure.new("Invalid JSON: #{e.message}", exception: e, status: :bad_request)
       rescue => e
