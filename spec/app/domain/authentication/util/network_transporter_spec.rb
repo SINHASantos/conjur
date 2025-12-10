@@ -237,5 +237,65 @@ RSpec.describe(Authentication::Util::NetworkTransporter) do
         expect(response.success?).to be(true)
       end
     end
+
+    context 'OIDC error handling - positive' do
+      let(:path) { '/df242c82-fe4a-47e0-b0f4-e3cb7f8104f1/v2.0' }
+      let(:response_code) { '400' }
+      let(:response_message) {
+        '{"error": "invalid_client", "error_description": "AADSTS700025: Client is public so neither \'client_assertion\' nor \'client_secret\' should be presented."}'
+      }
+      it 'correctly parses the error response' do
+        expect(post).to receive(:body=).with('')
+        response = transport.post(
+          path: 'https://login.microsoftonline.com/df242c82-fe4a-47e0-b0f4-e3cb7f8104f1/v2.0',
+          error_type: :oidc
+        )
+        expect(response.success?).to be(false)
+        expect(response.message).to include('OIDC Error: invalid_client - AADSTS700025: Client is public so neither')
+      end
+    end
+    context 'OIDC error handling - missing error_description field' do
+      let(:path) { '/df242c82-fe4a-47e0-b0f4-e3cb7f8104f1/v2.0' }
+      let(:response_code) { '401' }
+      let(:response_message) { '{"error": "invalid_client"}' }
+      it 'response is missing error_description field' do
+        expect(post).to receive(:body=).with('')
+        response = transport.post(
+          path: 'https://login.microsoftonline.com/df242c82-fe4a-47e0-b0f4-e3cb7f8104f1/v2.0',
+          error_type: :oidc
+        )
+        expect(response.success?).to be(false)
+        expect(response.message).to include("OIDC Error: invalid_client - Error Response Code: '401' from ''")
+      end
+    end
+    context 'OIDC error handling - empty response' do
+      let(:path) { '/df242c82-fe4a-47e0-b0f4-e3cb7f8104f1/v2.0' }
+      let(:response_code) { '400' }
+      let(:response_message) { '{}' }
+      it 'response is empty' do
+        expect(post).to receive(:body=).with('')
+        response = transport.post(
+          path: 'https://login.microsoftonline.com/df242c82-fe4a-47e0-b0f4-e3cb7f8104f1/v2.0',
+          error_type: :oidc
+        )
+        expect(response.success?).to be(false)
+        expect(response.message).to include('OIDC Error: invalid_request - Error Response Code: \'400\' from \'\'')
+      end
+    end
+    context 'OIDC error handling - invalid JSON' do
+      let(:path) { '/df242c82-fe4a-47e0-b0f4-e3cb7f8104f1/v2.0' }
+      let(:response_code) { '400' }
+      let(:response_message) { 'invalid json {' }
+      it 'response is invalid JSON' do
+        expect(post).to receive(:body=).with('')
+        response = transport.post(
+          path: 'https://login.microsoftonline.com/df242c82-fe4a-47e0-b0f4-e3cb7f8104f1/v2.0',
+          error_type: :oidc
+        )
+        expect(response.success?).to be(false)
+        expect(response.message).to start_with('Invalid JSON:')
+        expect(response.exception.class).to eq(JSON::ParserError)
+      end
+    end
   end
 end

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - Misconfigured OIDC provider denying access to details for properly configured providers. CNJR-11824
+- Allow meaningful error messages to be logged when OIDC provider is responding with error. CNJR-11863
 
 ### Security
 - Upgrade Rails to 8.1.1 CNJR-11753
