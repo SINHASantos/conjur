@@ -847,6 +847,16 @@ module Errors
         msg: "Client certificate SPIFFE ID {0-spiffe-id} does not match expected trust domain {1-trust-domain}",
         code: "CONJ00184E"
       )
+
+      AttributeConstraintMismatch = ::Util::TrackableErrorClass.new(
+        msg: "Certificate {0-attribute} is missing or mismatched with applicable restrictions",
+        code: "CONJ00176E"
+      )
+
+      InvalidWildcards = ::Util::TrackableErrorClass.new(
+        msg: "Restriction {0-restriction} employs unacceptable wildcard usage: {1-list}",
+        code: "CONJ00186E"
+      )
     end
   end
 
