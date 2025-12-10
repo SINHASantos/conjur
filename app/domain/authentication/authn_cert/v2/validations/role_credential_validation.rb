@@ -39,6 +39,7 @@ module Authentication
             @logger = logger
 
             @dns_matcher = Authentication::AuthnCert::V2::Wildcard::DnsName
+            @uri_matcher = Authentication::AuthnCert::V2::Wildcard::Uri
             @base_matcher = Authentication::AuthnCert::V2::Wildcard::Base
           end
 
@@ -96,6 +97,8 @@ module Authentication
             case annotation
             when 'san-dns'
               @dns_matcher
+            when 'san-uri'
+              @uri_matcher
             when 'san-ip', 'cn'
               @base_matcher
             else
@@ -108,6 +111,8 @@ module Authentication
             case annotation
             when 'san-dns'
               @credential_attributes['san_dns']
+            when 'san-uri'
+              @credential_attributes['san_uri']
             when 'san-ip'
               @credential_attributes['san_ip']
             when 'cn'

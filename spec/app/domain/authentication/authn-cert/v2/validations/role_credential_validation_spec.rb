@@ -24,6 +24,7 @@ RSpec.describe(Authentication::AuthnCert::V2::Validations::RoleCredentialValidat
     let(:default_credential_attributes) do
       {
         'san_dns' => [ 'my.example.com', 'conjur.org' ],
+        'san_uri' => [ 'https://example.org/service/foo' ],
         'san_ip' => [ '256.256.256.256', '127.0.0.1' ],
         'common_name' => 'Test Server'
       }
@@ -40,6 +41,7 @@ RSpec.describe(Authentication::AuthnCert::V2::Validations::RoleCredentialValidat
       let(:annotations) do
         {
           'san-dns' => '*.example.com,conjur.org',
+          'san-uri' => 'https://example.org/service/*',
           'san-ip' => '127.0.0.1,256.256.256.256',
           'cn' => 'Test Server'
         }
@@ -48,6 +50,13 @@ RSpec.describe(Authentication::AuthnCert::V2::Validations::RoleCredentialValidat
       context 'when credential attributes do not match annotations' do
         context 'for DNS names' do
           let(:credential_attributes) { default_credential_attributes.tap { |h| h['san_dns'][0] = 'notmatching.com' } }
+          it 'fails validation' do
+            expect(validation.valid?).to be(false)
+          end
+        end
+
+        context 'for URIs' do
+          let(:credential_attributes) { default_credential_attributes.tap { |h| h['san_uri'][0] = 'https://example.org/x/foo' } }
           it 'fails validation' do
             expect(validation.valid?).to be(false)
           end
