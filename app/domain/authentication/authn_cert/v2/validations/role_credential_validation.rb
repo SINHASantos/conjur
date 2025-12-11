@@ -110,11 +110,11 @@ module Authentication
           def attribute_for(annotation)
             case annotation
             when 'san-dns'
-              @credential_attributes['san_dns']
+              @credential_attributes['sans_dns']
             when 'san-uri'
-              @credential_attributes['san_uri']
+              @credential_attributes['sans_uri']
             when 'san-ip'
-              @credential_attributes['san_ip']
+              @credential_attributes['sans_ip']
             when 'cn'
               [@credential_attributes['common_name']]
             else

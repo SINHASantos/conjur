@@ -23,9 +23,9 @@ RSpec.describe(Authentication::AuthnCert::V2::Validations::RoleCredentialValidat
     let(:variables) { {} }
     let(:default_credential_attributes) do
       {
-        'san_dns' => [ 'my.example.com', 'conjur.org' ],
-        'san_uri' => [ 'https://example.org/service/foo' ],
-        'san_ip' => [ '256.256.256.256', '127.0.0.1' ],
+        'sans_dns' => [ 'my.example.com', 'conjur.org' ],
+        'sans_uri' => [ 'https://example.org/service/foo' ],
+        'sans_ip' => [ '256.256.256.256', '127.0.0.1' ],
         'common_name' => 'Test Server'
       }
     end
@@ -49,21 +49,21 @@ RSpec.describe(Authentication::AuthnCert::V2::Validations::RoleCredentialValidat
 
       context 'when credential attributes do not match annotations' do
         context 'for DNS names' do
-          let(:credential_attributes) { default_credential_attributes.tap { |h| h['san_dns'][0] = 'notmatching.com' } }
+          let(:credential_attributes) { default_credential_attributes.tap { |h| h['sans_dns'][0] = 'notmatching.com' } }
           it 'fails validation' do
             expect(validation.valid?).to be(false)
           end
         end
 
         context 'for URIs' do
-          let(:credential_attributes) { default_credential_attributes.tap { |h| h['san_uri'][0] = 'https://example.org/x/foo' } }
+          let(:credential_attributes) { default_credential_attributes.tap { |h| h['sans_uri'][0] = 'https://example.org/x/foo' } }
           it 'fails validation' do
             expect(validation.valid?).to be(false)
           end
         end
 
         context 'for IP addresses' do
-          let(:credential_attributes) { default_credential_attributes.tap { |h| h['san_ip'][0] = '0.0.0.0' } }
+          let(:credential_attributes) { default_credential_attributes.tap { |h| h['sans_ip'][0] = '0.0.0.0' } }
           it 'fails validation' do
             expect(validation.valid?).to be(false)
           end
@@ -92,7 +92,7 @@ RSpec.describe(Authentication::AuthnCert::V2::Validations::RoleCredentialValidat
     end
 
     context 'when a required credential attribute is missing' do
-      context 'when san_dns is missing from credential' do
+      context 'when sans_dns is missing from credential' do
         let(:annotations) { { 'san-dns' => '*.example.com' } }
         let(:credential_attributes) { { 'common_name' => 'test' } }
 
@@ -101,9 +101,9 @@ RSpec.describe(Authentication::AuthnCert::V2::Validations::RoleCredentialValidat
         end
       end
 
-      context 'when san_dns is empty array' do
+      context 'when sans_dns is empty array' do
         let(:annotations) { { 'san-dns' => '*.example.com' } }
-        let(:credential_attributes) { { 'san_dns' => [] } }
+        let(:credential_attributes) { { 'sans_dns' => [] } }
 
         it 'fails validation' do
           expect(validation.valid?).to be(false)
@@ -114,7 +114,7 @@ RSpec.describe(Authentication::AuthnCert::V2::Validations::RoleCredentialValidat
     context 'when handling whitespace in patterns' do
       context 'when patterns have leading/trailing whitespace' do
         let(:annotations) { { 'san-dns' => ' *.example.com , conjur.org ' } }
-        let(:credential_attributes) { { 'san_dns' => ['api.example.com', 'conjur.org'] } }
+        let(:credential_attributes) { { 'sans_dns' => ['api.example.com', 'conjur.org'] } }
 
         it 'handles whitespace correctly and passes validation' do
           expect(validation.valid?).to be(true)

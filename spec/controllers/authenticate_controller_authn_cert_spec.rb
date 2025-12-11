@@ -155,7 +155,8 @@ describe AuthenticateController, type: :request do
               'attributes' => {
                 'sans_uri' => [ 'https://conjur.org/secrets-manager' ],
                 'sans_dns' => [ 'conjur.org' ],
-                'sans_ip': '127.238.349.450'
+                'sans_ip' => [ '127.238.349.450' ],
+                'common_name' => 'my-workload-id'
               }
             }
           end
@@ -189,21 +190,18 @@ describe AuthenticateController, type: :request do
               end
 
               it 'fails to authenticate' do
-                # TODO: Enable this test case once we've implemented annotation
-                # checking.
-                #
-                # authenticate(
-                #   account: account,
-                #   service_id: service_id,
-                #   host_id: "#{host_policy_branch}/#{host_id}",
-                #   client_certificate: 'my-cert-pem'
-                # )
-                # expect(response).to have_http_status(:unauthorized)
-                # expect(@info_logs).to satisfy do |logs|
-                #   logs.any? do |log|
-                #     log.to_s.include?('CONJ00049E Resource restriction \'san-dns\' does not match with the corresponding value in the request')
-                #   end
-                # end
+                authenticate(
+                  account: account,
+                  service_id: service_id,
+                  host_id: "#{host_policy_branch}/#{host_id}",
+                  client_certificate: 'my-cert-pem'
+                )
+                expect(response).to have_http_status(:unauthorized)
+                expect(@info_logs).to satisfy do |logs|
+                  logs.any? do |log|
+                    log.to_s.include?('CONJ00049E Resource restriction \'san-dns\' does not match with the corresponding value in the request')
+                  end
+                end
               end
             end
 
@@ -211,7 +209,9 @@ describe AuthenticateController, type: :request do
               let(:host_annotations) do
                 {
                   "authn-cert/#{service_id}/san-uri" => 'https://conjur.org/secrets-manager',
-                  "authn-cert/#{service_id}/san-dns" => 'conjur.org'
+                  "authn-cert/#{service_id}/san-dns" => 'conjur.org',
+                  "authn-cert/#{service_id}/san-ip" => '127.238.349.450',
+                  "authn-cert/#{service_id}/cn" => 'my-workload-id'
                 }
               end
 
