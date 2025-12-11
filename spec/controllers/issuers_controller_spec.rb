@@ -818,6 +818,23 @@ describe IssuersController, type: :request do
         expect(response.body).to include("\"id\":\"valid-issuer\"")
       end
 
+      context "when the content type isn't set" do
+        # The default is assumed to be application/json
+        it 'returns created' do
+          post(
+            "/issuers/rspec",
+            # With the rspec helper, we have to set an empty content type
+            # to test no content type
+            headers: { 'CONTENT_TYPE' => '' },
+            env: token_auth_header(role: admin_user).merge(
+              'RAW_POST_DATA' => payload_create_issuers_valid_input
+            )
+          )
+          assert_response :created
+          expect(response.body).to include("\"id\":\"valid-issuer\"")
+        end
+      end
+
       context "but without permissions" do
         it 'returns forbidden' do
           post("/issuers/rspec",
