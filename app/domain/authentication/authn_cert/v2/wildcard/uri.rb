@@ -26,7 +26,7 @@ module Authentication
 
             begin
               uri = Addressable::URI.parse(pattern)
-            rescue URI::InvalidURIError
+            rescue Addressable::URI::InvalidURIError
               return false
             end
 
@@ -38,8 +38,7 @@ module Authentication
             return false if uri.userinfo.to_s.include?('*')
 
             # Validate path segments: wildcard only allowed as entire segment.
-            path = uri.path.to_s
-            segments = path.split('/').reject(&:empty?)
+            segments =  uri.path.split('/')
             return false if segments.any? { |seg| seg.include?('*') && seg != '*' }
 
             true
@@ -56,7 +55,7 @@ module Authentication
             begin
               candidate_uri = Addressable::URI.parse(candidate)
               pattern_uri = Addressable::URI.parse(pattern)
-            rescue Addressable::URI::InvalidURIError => e
+            rescue Addressable::URI::InvalidURIError
               return false
             end
 
@@ -71,11 +70,9 @@ module Authentication
             # Must match port
             return false unless candidate_uri.port == pattern_uri.port
 
-            puts "Pattern Path: #{pattern_uri.path}, Candidate Path: #{candidate_uri.path}"
-
             # Compare path segments
-            pattern_segments = raw_path(pattern, pattern_uri.host).split('/')
-            candidate_segments = raw_path(candidate, candidate_uri.host).split('/')
+            pattern_segments = pattern_uri.path.split('/')
+            candidate_segments = candidate_uri.path.split('/')
             return false unless path_segment_match?(pattern_segments, candidate_segments)
             true
           end
@@ -86,28 +83,11 @@ module Authentication
 
             pattern_segments.zip(candidate_segments).all? do |pattern_segment, candidate_segment|
               if pattern_segment == '*'
-                candidate_segment && !candidate_segment.empty?
+                candidate_segment.present?
               else
                 pattern_segment == candidate_segment
               end
             end
-          end
-
-          def self.raw_path(uri_str, host)
-            host_index = uri_str.index(host)
-            return  URI::InvalidURIError unless host_index
-
-            # Find the first slash after the host
-            slash_index = uri_str.index('/', host_index + host.length)
-            path = slash_index ? uri_str[slash_index..-1] : ''
-
-            # Remove query parameters and fragment if present
-            path_end = [path.index('?'), path.index('#')].compact.min
-            path = path_end ? path[0...path_end] : path
-
-            # Default to root if path is empty
-            path = '/' if path.empty?
-            path
           end
 
         end
