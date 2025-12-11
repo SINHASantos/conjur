@@ -835,6 +835,30 @@ describe IssuersController, type: :request do
         end
       end
 
+      context "when the JSON is empty" do
+        it 'returns unprocessable entity' do
+          post("/issuers/rspec",
+               env: token_auth_header(role: admin_user).merge(
+                 'RAW_POST_DATA' => '',
+                 'CONTENT_TYPE' => "application/json"
+               ))
+          assert_response :unprocessable_entity
+          expect(response.body).to eq("{\"error\":{\"code\":\"unprocessable_entity\",\"message\":\"Unable to parse request json body: \\\"\\\"\"}}")
+        end
+      end
+
+      context "when the JSON is invalid" do
+        it 'returns unprocessable entity' do
+          post("/issuers/rspec",
+               env: token_auth_header(role: admin_user).merge(
+                 'RAW_POST_DATA' => 'not json',
+                 'CONTENT_TYPE' => "application/json"
+               ))
+          assert_response :unprocessable_entity
+          expect(response.body).to eq("{\"error\":{\"code\":\"unprocessable_entity\",\"message\":\"Unable to parse request json body: \\\"not json\\\"\"}}")
+        end
+      end
+
       context "but without permissions" do
         it 'returns forbidden' do
           post("/issuers/rspec",

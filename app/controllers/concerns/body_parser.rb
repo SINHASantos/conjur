@@ -14,6 +14,11 @@ module BodyParser
   #
   # :reek:NilCheck should be acceptable here
   def body_params
+    # GET/DELETE/HEAD requests have no body to parse
+    if request.get? || request.delete? || request.head?
+      return ActionController::Parameters.new({}).permit!
+    end
+
     @body_params ||= ActionController::Parameters.new(
       case request.media_type
       when nil, 'application/x-www-form-urlencoded'
@@ -23,7 +28,7 @@ module BodyParser
         begin
           @body_payload = JSON.parse(body)
         rescue JSON::JSONError
-          raise ApplicationController::BadRequest, "Unable to parse request json body: #{body}"
+          raise ApplicationController::UnprocessableEntity, "Unable to parse request json body: #{body.inspect}"
         end
       else
         {}
