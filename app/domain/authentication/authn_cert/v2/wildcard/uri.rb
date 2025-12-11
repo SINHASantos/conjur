@@ -45,9 +45,9 @@ module Authentication
           end
 
           def self.match?(pattern, candidate)
-            # Trim at most 1 leading/trailing slash
-            pattern = pattern.delete_prefix('/').delete_suffix('/')
-            candidate = candidate.delete_prefix('/').delete_suffix('/')
+            # Trim trailing slash
+            pattern = pattern.delete_suffix('/')
+            candidate = candidate.delete_suffix('/')
 
             # Sanitize whitespace from candidate SAN URI
             candidate = candidate.strip
