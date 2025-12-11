@@ -30,15 +30,17 @@ module Authentication
               return false
             end
 
-            # SPIFFE URIs cannot include wildcards
-            return false if uri.scheme&.downcase == 'spiffe' && pattern.include?('*')
+            # Must be hierarchical URI and contain scheme and host
+            return false unless required_components_present?(uri)
 
-            # Wildcard not allowed in host or userinfo.
-            return false if uri.host.to_s.include?('*')
-            return false if uri.userinfo.to_s.include?('*')
+            # SPIFFE URIs cannot include wildcards
+            return false if uri.scheme.downcase == 'spiffe' && pattern.include?('*')
+
+            # Wildcards only allowed in path.
+            return false unless pattern.count('*') == uri.path.count('*')
 
             # Validate path segments: wildcard only allowed as entire segment.
-            segments =  uri.path.split('/')
+            segments = uri.path.split('/')
             return false if segments.any? { |seg| seg.include?('*') && seg != '*' }
 
             true
@@ -60,20 +62,22 @@ module Authentication
             end
 
             # Must be hierarchical URI and contain scheme and host
-            return false unless candidate_uri.scheme && candidate_uri.host
+            return false unless required_components_present?(pattern_uri)
+            return false unless required_components_present?(candidate_uri)
+
             # Must match scheme - case-insensitive
-            return false unless pattern_uri.scheme && candidate_uri.scheme.downcase == pattern_uri.scheme.downcase
-            # Must match userinfo
-            return false unless candidate_uri.userinfo == pattern_uri.userinfo
-            # Must match host
-            return false unless candidate_uri.host && !candidate_uri.host.empty? && pattern_uri.host && !pattern_uri.host.empty? && candidate_uri.host == pattern_uri.host
-            # Must match port
-            return false unless candidate_uri.port == pattern_uri.port
+            return false unless pattern_uri.scheme.downcase == candidate_uri.scheme.downcase
+
+            # Must match host, userinfo, port - case-sensitive
+            return false unless pattern_uri.host == candidate_uri.host
+            return false unless pattern_uri.userinfo == candidate_uri.userinfo
+            return false unless pattern_uri.port == candidate_uri.port
 
             # Compare path segments
             pattern_segments = pattern_uri.path.split('/')
             candidate_segments = candidate_uri.path.split('/')
             return false unless path_segment_match?(pattern_segments, candidate_segments)
+
             true
           end
 
@@ -90,6 +94,12 @@ module Authentication
             end
           end
 
+          def self.required_components_present?(uri)
+            return false unless uri.scheme.present?
+            return false unless uri.host.present?
+
+            true
+          end
         end
       end
     end
