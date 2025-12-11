@@ -808,6 +808,16 @@ describe IssuersController, type: :request do
         BODY
       end
 
+      it 'returns created' do
+        post("/issuers/rspec",
+             env: token_auth_header(role: admin_user).merge(
+               'RAW_POST_DATA' => payload_create_issuers_valid_input,
+               'CONTENT_TYPE' => "application/json"
+             ))
+        assert_response :created
+        expect(response.body).to include("\"id\":\"valid-issuer\"")
+      end
+
       context "but without permissions" do
         it 'returns forbidden' do
           post("/issuers/rspec",
