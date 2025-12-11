@@ -95,11 +95,11 @@ module Authentication
 
           def matcher_for(annotation)
             case annotation
-            when 'san-dns'
+            when 'san-dns', 'cn'
               @dns_matcher
             when 'san-uri'
               @uri_matcher
-            when 'san-ip', 'cn'
+            when 'san-ip'
               @base_matcher
             else
               # This case should never be reached according to assumption #1.

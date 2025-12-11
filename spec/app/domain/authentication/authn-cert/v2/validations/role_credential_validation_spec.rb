@@ -26,7 +26,7 @@ RSpec.describe(Authentication::AuthnCert::V2::Validations::RoleCredentialValidat
         'sans_dns' => [ 'my.example.com', 'conjur.org' ],
         'sans_uri' => [ 'https://example.org/service/foo' ],
         'sans_ip' => [ '256.256.256.256', '127.0.0.1' ],
-        'common_name' => 'Test Server'
+        'common_name' => 'onprem.secretsmanager.cyberark.com'
       }
     end
     let(:credential_attributes) { default_credential_attributes }
@@ -43,7 +43,7 @@ RSpec.describe(Authentication::AuthnCert::V2::Validations::RoleCredentialValidat
           'san-dns' => '*.example.com,conjur.org',
           'san-uri' => 'https://example.org/service/*',
           'san-ip' => '127.0.0.1,256.256.256.256',
-          'cn' => 'Test Server'
+          'cn' => '*.*.cyberark.com'
         }
       end
 
@@ -70,7 +70,7 @@ RSpec.describe(Authentication::AuthnCert::V2::Validations::RoleCredentialValidat
         end
 
         context 'for Common Name' do
-          let(:credential_attributes) { default_credential_attributes.tap { |h| h['common_name'] = 'Twister Standard' } }
+          let(:credential_attributes) { default_credential_attributes.tap { |h| h['common_name'] = 'onlyone.cyberark.com' } }
           it 'fails validation' do
             expect(validation.valid?).to be(false)
           end
