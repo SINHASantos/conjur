@@ -75,3 +75,6 @@ key.txt
 
 # Ignore node modules
 node_modules
+
+# Ignore base Gemfile
+/base
