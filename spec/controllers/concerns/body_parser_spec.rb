@@ -4,6 +4,32 @@ require 'spec_helper'
 
 describe BodyParser do
   describe "#body_params" do
+    context "when request isn't expected to have a body" do
+      context "GET" do
+        let(:method) { :get }
+
+        it "returns an empty hash" do
+          expect(controller.body_params.to_h).to eq({})
+        end
+      end
+
+      context "HEAD" do
+        let(:method) { :head }
+
+        it "returns an empty hash" do
+          expect(controller.body_params.to_h).to eq({})
+        end
+      end
+
+      context "DELETE" do
+        let(:method) { :delete }
+
+        it "returns an empty hash" do
+          expect(controller.body_params.to_h).to eq({})
+        end
+      end
+    end
+
     context "with an unrecognized content type" do
       let(:media_type) { 'application/octet-stream' }
       it "returns an empty hash" do
@@ -66,5 +92,14 @@ describe BodyParser do
   before { allow(controller).to receive(:request) { request } }
   let(:media_type) { 'application/x-www-form-urlencoded' }
   let(:body_data) { "id=foo&test=bar%20baz&plus=one+two" }
-  let(:request) { instance_double Rack::Request, media_type: media_type }
+  let(:method) { :post }
+  let(:request) do
+    instance_double(
+      Rack::Request,
+      media_type: media_type,
+      get?: method == :get,
+      head?: method == :head,
+      delete?: method == :delete
+    )
+  end
 end

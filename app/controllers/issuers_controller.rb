@@ -10,6 +10,9 @@ class IssuersController < RestController
   before_action :current_user
   before_action :find_or_create_root_policy
 
+  # This controller expects to receive JSON request data
+  set_default_content_type_for_path(%r{^/issuers}, 'application/json')
+
   rescue_from Sequel::UniqueConstraintViolation, with: :concurrent_load
 
   ISSUER_NOT_FOUND = "Issuer not found"
