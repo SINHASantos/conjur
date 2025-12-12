@@ -28,9 +28,9 @@ module Authentication
 
           # Given assumption #2, the validations below should only be performed
           # if the annotations set is non-empty.
-          validate :annotations_have_values, if: -> { annotations_present_and_valid? }
-          validate :annotation_values_valid, if: -> { annotations_present_and_valid? }
-          validate :annotations_match_credential, if: -> { annotations_present_and_valid? }
+          validate :annotations_have_values, if: -> { annotations_present? && errors.empty? }
+          validate :annotation_values_valid, if: -> { annotations_present? && errors.empty? }
+          validate :annotations_match_credential, if: -> { annotations_present? && errors.empty? }
 
           def initialize(annotations:, authenticator:, credential_attributes:, logger: Rails.logger)
             @annotations = annotations
@@ -38,15 +38,17 @@ module Authentication
             @credential_attributes = credential_attributes
             @logger = logger
 
-            @dns_matcher = Authentication::AuthnCert::V2::Wildcard::DnsName
-            @uri_matcher = Authentication::AuthnCert::V2::Wildcard::Uri
-            @base_matcher = Authentication::AuthnCert::V2::Wildcard::Base
+            @enforcer = Authentication::AuthnCert::V2::Wildcard::Enforcer
           end
 
           private
 
-          def annotations_present_and_valid?
-            @annotations.any? && errors.empty?
+          def no_prior_errors?
+            errors.empty?
+          end
+
+          def annotations_present?
+            @annotations.any?
           end
 
           def annotations_have_values
@@ -59,67 +61,17 @@ module Authentication
 
           def annotation_values_valid
             @annotations.each do |annotation, value|
-              validate_value(annotation, value, matcher_for(annotation))
+              next if @enforcer.value_valid?(value, @enforcer.matcher_for(annotation))
+
+              errors.add(:base, Errors::Authentication::Certificate::InvalidWildcards.new('Annotation', annotation, value))
             end
           end
 
           def annotations_match_credential
             @annotations.each do |annotation, value|
-              compare_value_to_credential(annotation, value, attribute_for(annotation), matcher_for(annotation))
-            end
-          end
-
-          def validate_value(annotation, patterns_s, matcher)
-            patterns = patterns_s.split(',').map(&:strip)
-            invalid_patterns = patterns.reject { |pattern| matcher.valid?(pattern)}
-            return if invalid_patterns.empty?
-
-            errors.add(:base, Errors::Authentication::Certificate::InvalidWildcards.new(annotation, invalid_patterns))
-          end
-
-          def compare_value_to_credential(annotation, patterns_s, names, matcher)
-            patterns = patterns_s.split(',').map(&:strip)
-            patterns.each do |pattern|
-              next if pattern_matches_any_name?(pattern, names, matcher)
+              next if @enforcer.value_matches_credential?(value, @enforcer.attribute_for(annotation, @credential_attributes), @enforcer.matcher_for(annotation))
 
               errors.add(:base, Errors::Authentication::ResourceRestrictions::InvalidResourceRestrictions.new(annotation))
-              break
-            end
-          end
-
-          def pattern_matches_any_name?(pattern, names, matcher)
-            return false if names.nil? || names.empty?
-
-            names.any? { |name| matcher.match?(pattern, name) }
-          end
-
-          def matcher_for(annotation)
-            case annotation
-            when 'san-dns', 'cn'
-              @dns_matcher
-            when 'san-uri'
-              @uri_matcher
-            when 'san-ip'
-              @base_matcher
-            else
-              # This case should never be reached according to assumption #1.
-              @base_matcher
-            end
-          end
-
-          def attribute_for(annotation)
-            case annotation
-            when 'san-dns'
-              @credential_attributes['sans_dns']
-            when 'san-uri'
-              @credential_attributes['sans_uri']
-            when 'san-ip'
-              @credential_attributes['sans_ip']
-            when 'cn'
-              [@credential_attributes['common_name']]
-            else
-              # This case should never be reached according to assumption #1.
-              []
             end
           end
         end

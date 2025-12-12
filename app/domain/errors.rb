@@ -849,12 +849,12 @@ module Errors
       )
 
       AttributeConstraintMismatch = ::Util::TrackableErrorClass.new(
-        msg: "Certificate {0-attribute} is missing or mismatched with applicable restrictions",
+        msg: "Certificate {0-attribute} is missing or mismatched with webservice-scoped restriction",
         code: "CONJ00176E"
       )
 
       InvalidWildcards = ::Util::TrackableErrorClass.new(
-        msg: "Restriction {0-restriction} employs unacceptable wildcard usage: {1-list}",
+        msg: "{0-type}-based restriction {1-restriction} employs unacceptable wildcard usage: {2-list}",
         code: "CONJ00186E"
       )
     end
