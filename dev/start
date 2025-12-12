@@ -85,6 +85,9 @@ main() {
   start_auth_services
   create_alice
   kill_conjur # so dev's can restart it manually
+
+  # Copy Gemfile from conjur /base to local base folder for better dev experience
+  copy_base_gemfile
   
   if [[ $NO_ENTER != true ]]; then
     enter_container
@@ -549,6 +552,14 @@ enter_container() {
   env_args+=(-e "CONJUR_AUTHN_API_KEY=$api_key")
   docker exec "${env_args[@]}" -it --detach-keys ctrl-\\ \
     "$(docker compose ps -q conjur)" bash
+}
+
+copy_base_gemfile() {
+  echo "Removing existing ../base directory (if any)..."
+  rm -rf ../base
+  mkdir -p ../base
+  echo "Copying /base contents from conjur container to local ../base folder"
+  docker compose cp conjur:/base/. ../base/
 }
 
 main "$@"

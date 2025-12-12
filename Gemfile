@@ -5,8 +5,15 @@ source 'https://rubygems.org'
 # ruby=ruby-3.2
 # ruby-gemset=conjur
 
-# include gems from the base image
-eval_gemfile '/base/Gemfile'
+if File.exist?('/base/Gemfile')
+  # Include Gemfile from the base image (container use case)
+  eval_gemfile '/base/Gemfile'
+else
+  # If /base does not exist, we are probably installing
+  # gems in a local development environment. In that case, try to include gems
+  # from the local base directory (not in git, created during dev/start).
+  eval_gemfile 'base/Gemfile'
+end
 
 gem 'base58'
 gem 'http', '~> 4.2'
