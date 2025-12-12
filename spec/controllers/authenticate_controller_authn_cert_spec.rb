@@ -23,6 +23,10 @@ describe AuthenticateController, type: :request do
     default_config_variables + %w[host-mode trust-domain identity-path]
   end
 
+  def default_global_restriction_config_variables
+    default_config_variables + %w[san-uri san-dns san-ip cn]
+  end
+
   before do
     DatabaseCleaner.clean_with(:truncation)
     Slosilo["authn:#{account}"] ||= Slosilo::Key.new
@@ -103,7 +107,7 @@ describe AuthenticateController, type: :request do
     end
 
     context 'when "ca-cert" variable is present' do
-      let(:config_variables) { default_config_variables }
+      let(:config_variables) { default_config_variables + %w[san-uri]}
 
       before do
         load_variable_value(
@@ -402,6 +406,93 @@ describe AuthenticateController, type: :request do
                   client_certificate: 'my-cert-pem'
                 )
                 expect(response).to have_http_status(:success)
+              end
+            end
+          end
+        end
+
+        context 'when global restrictions are set' do
+          let(:config_variables) {default_global_restriction_config_variables}
+          let(:host_annotations) do
+            {
+              "authn-cert/#{service_id}/san-dns" => 'conjur.org'
+            }
+          end
+          before do
+            load_variable_value(
+              account: account,
+              resource_id: "conjur/authn-cert/#{service_id}/san-uri",
+              value: "https://conjur.org/*"
+            )
+            load_variable_value(
+              account: account,
+              resource_id: "conjur/authn-cert/#{service_id}/san-dns",
+              value: "conjur.org"
+            )
+            load_variable_value(
+              account: account,
+              resource_id: "conjur/authn-cert/#{service_id}/san-ip",
+              value: "127.238.349.450"
+            )
+            load_variable_value(
+              account: account,
+              resource_id: "conjur/authn-cert/#{service_id}/cn",
+              value: "onprem.secretsmanager.cyberark.com"
+            )
+
+            stub_request(:post, "http://host.docker.internal:8080/authentications/cert").to_return(
+              status: saas_authn_code,
+              body: saas_authn_response.to_json
+            )
+          end
+
+          context 'when client certificate attributes match' do
+            let(:saas_authn_response) do
+              {
+                'attributes' => {
+                  'sans_uri' => ['https://conjur.org/secrets-manager'],
+                  'sans_dns' => ['conjur.org'],
+                  'sans_ip' => ['127.238.349.450'],
+                  'common_name' => 'onprem.secretsmanager.cyberark.com'
+                }
+              }
+            end
+
+            it 'authenticates successfully' do
+              authenticate(
+                account: account,
+                service_id: service_id,
+                host_id: "#{host_policy_branch}/#{host_id}",
+                client_certificate: 'my-cert-pem'
+              )
+              expect(response).to have_http_status(:success)
+            end
+          end
+
+          context 'when client certificate attributes mismatch' do
+            let(:saas_authn_response) do
+              {
+                'attributes' => {
+                  'sans_uri' => ['https://conjur.org/secrets-manager/foo'],
+                  'sans_dns' => ['conjur.org'],
+                  'sans_ip' => ['127.238.349.450'],
+                  'common_name' => 'onprem.secretsmanager.cyberark.com'
+                }
+              }
+            end
+
+            it 'fails to authenticate' do
+              authenticate(
+                account: account,
+                service_id: service_id,
+                host_id: "#{host_policy_branch}/#{host_id}",
+                client_certificate: 'my-cert-pem'
+              )
+              expect(response).to have_http_status(:unauthorized)
+              expect(@info_logs).to satisfy do |logs|
+                logs.any? do |log|
+                  log.to_s.include?('CONJ00176E Certificate URI Subject Alternative Name is missing or mismatched with webservice-scoped restriction')
+                end
               end
             end
           end
