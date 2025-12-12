@@ -90,6 +90,11 @@ module Errors
       msg: "Resource '{0-resource}' requested by role '{1-role}' not found",
       code: "CONJ00123E"
     )
+
+    BatchRequestExceededMaxSize = ::Util::TrackableErrorClass.new(
+      msg: "Batch request size exceeded the maximum allowed number of {0} secrets",
+      code: "CONJ00162E"
+    )
   end
 
   module Authorization

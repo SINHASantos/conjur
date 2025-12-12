@@ -159,8 +159,12 @@ class Role < Sequel::Model
   end
 
   def allowed_to?(privilege, resource)
+    check_allowed_to?(privilege, resource.id)
+  end
+
+  def check_allowed_to?(privilege, resource_id)
     Role.from(
-      Sequel.function(:is_role_allowed_to, id, privilege.to_s, resource.id)
+      Sequel.function(:is_role_allowed_to, id, privilege.to_s, resource_id)
     ).first[:is_role_allowed_to]
   end
 

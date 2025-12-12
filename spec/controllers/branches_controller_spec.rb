@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
-require 'spec_helper_policy'
 
 DatabaseCleaner.allow_remote_database_url = true
 DatabaseCleaner.strategy = :truncation
@@ -29,7 +28,7 @@ describe(BranchesController, type: :request) do
   end
 
   def headers_with_auth(payload = nil)
-    headers = { 'Accept' => V2RestController::API_V2_HEADER }
+    headers = { 'Accept' => V2RestController::API_V2_BETA_HEADER }
     headers.merge!({ 'RAW_POST_DATA' => payload }, 'Content-Type' => 'application/json') if payload
     token_auth_header(role: admin_user).merge(headers)
   end

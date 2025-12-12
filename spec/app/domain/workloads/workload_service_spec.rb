@@ -74,13 +74,6 @@ RSpec.describe Workloads::WorkloadService do
       expect(authn_descriptor_service).to receive(:add_descriptor_to_authenticators_group).at_least(:once)
       service.create_workload(role, account, workload)
     end
-
-    it 'raises RecordExists on Sequel::UniqueConstraintViolation' do
-      allow(res_service).to receive(:save_res).and_raise(Sequel::UniqueConstraintViolation)
-      expect {
-        service.create_workload(role, account, workload)
-      }.to raise_error(Exceptions::RecordExists)
-    end
   end
 
   describe '#save_restricted_to' do

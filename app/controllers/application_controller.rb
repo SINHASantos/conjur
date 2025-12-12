@@ -102,11 +102,11 @@ class ApplicationController < ActionController::API
   private
 
   def v2_header?
-    request.headers['Accept'] == V2RestController::API_V2_HEADER
+    request.headers['Accept'] == V2RestController::API_V2_BETA_HEADER
   end
 
   def render_v2_error(status, msg = '')
-    response.headers['Content-Type'] = V2RestController::API_V2_HEADER
+    response.headers['Content-Type'] = V2RestController::API_V2_BETA_HEADER
     code = Rack::Utils.status_code(status)
     msg.empty? ? head(status) : render(json: { code: code.to_s, message: msg }, status: status)
   end

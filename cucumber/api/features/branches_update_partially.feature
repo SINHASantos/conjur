@@ -196,7 +196,7 @@ Feature: Branches APIv2 tests - patch
     And the JSON should be:
     """
     { "code": "400",
-      "message": "Invalid JSON body: unexpected end of input at line 1 column 1" }
+      "message": "Empty request body" }
     """
 
   @negative @acceptance

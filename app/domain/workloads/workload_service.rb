@@ -32,12 +32,12 @@ module Workloads
 
       branch_identifier = workload.branch
       policy_id = full_id(account, 'policy', branch_identifier)
-      host_id = full_id(account, 'host', to_identifier(branch_identifier, workload.name))
+      host_id = full_id(account, 'host', workload.identifier)
       owner_id = @owner_service.resource_owner_id(account, branch_identifier, workload.owner)
       log_debug(policy_id:, host_id:, owner_id:)
 
       # host
-      host_res = @res_service.save_res(policy_id, owner_id, host_id)
+      host_res = @res_service.save_res(policy_id, owner_id, host_id, kind_msg: 'workload')
 
       # host role
       host_role = @role_repo.create(policy_id:, role_id: host_id)
@@ -57,9 +57,6 @@ module Workloads
 
       # result
       workload_as_json(host_role, owner_id, workload)
-
-    rescue Sequel::UniqueConstraintViolation
-      raise Exceptions::RecordExists.new("workload", workload.identifier)
     end
 
     private

@@ -362,11 +362,6 @@ describe WorkloadsController, :type => :request do
 
         # assert_response :forbidden
         assert_response :not_found
-
-        # audit_message = "#{read_host_id} failed to create workload data/work/new-workload with URI path: '/workloads'"
-        # audit_body = "{\"name\":\"#{name}\",\"branch\":\"#{branch}\",\"authn_descriptors\":[{\"type\":\"api_key\"}],\"annotations\":{\"app\":\"web\",\"env\":\"test\"},\"restricted_to\":[\"192.168.1.0/24\",\"192.163.1.0/24\"]}"
-        # error = "Forbidden"
-        # verify_audit_message(audit_message, audit_body, error)
       end
 
       it 'returns not found when host has no permissions' do
@@ -418,10 +413,6 @@ describe WorkloadsController, :type => :request do
 
         # assert_response :forbidden
         assert_response :not_found
-
-        # audit_message = "#{creator_host_id} failed to create workload #{branch}/#{name} with URI path: '/workloads'"
-        # error = "CONJ00504E Missing permissions for authenticators branch: conjur:policy:conjur/authn-iam/#{unauthorized_service_id}"
-        # verify_audit_message(audit_message, params.to_json, error)
       end
     end
     context 'when the host has permissions' do
@@ -497,11 +488,6 @@ describe WorkloadsController, :type => :request do
                                   'RAW_POST_DATA' => valid_params.to_json }))
 
         assert_response :conflict
-
-        # audit_message = "#{creator_host_id} failed to create workload data/work/new-workload with URI path: '/workloads'"
-        # error = "workload '#{name}' already exists"
-        # body_data = valid_params.to_json
-        # verify_audit_message(audit_message, body_data, error)
       end
 
       it 'returns unprocessable entity when annotation value has invalid format' do
@@ -654,11 +640,6 @@ describe WorkloadsController, :type => :request do
                                   'RAW_POST_DATA' => nonexistent_params.to_json }))
 
         assert_response :not_found
-
-        # audit_message = "#{creator_host_id} failed to create workload data/test/#{name} with URI path: '/workloads'"
-        # error = "Policy 'data/test' not found in account 'rspec'"
-        # body_data = nonexistent_params.to_json
-        # verify_audit_message(audit_message, body_data, error)
       end
     end
   end

@@ -10,7 +10,7 @@ Given(/^I set the "([^"]*)" header to "([^"]*)"$/) do |header, value|
 end
 
 Given(/^I set the Accept header to APIv2$/) do
-  headers["Accept"] = V2RestController::API_V2_HEADER
+  headers["Accept"] = V2RestController::API_V2_BETA_HEADER
 end
 
 Given(/^I clear the "([^"]*)" header$/) do |header|
@@ -227,7 +227,7 @@ Then(/^the HTTP response content type is "([^"]*)"$/) do |content_type|
 end
 
 Then(/^the HTTP response content type is APIv2$/) do
-  expect(@content_type).to match(V2RestController::API_V2_HEADER)
+  expect(@content_type).to match(V2RestController::API_V2_BETA_HEADER)
 end
 
 Then(/^the HTTP response is base64 encoded$/) do
