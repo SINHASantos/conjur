@@ -151,7 +151,7 @@ describe AuthenticateController, type: :request do
 
       context 'when client certificate is signed by the ca bundle' do
         let(:saas_authn_code) { 200 }
-        let(:saas_authn_response) { {} }
+        let(:saas_authn_response) { { 'attributes' => { 'some-attr' => 'some-value' } } }
 
         context 'when operating in "request" host mapping mode' do
           let(:saas_authn_response) do

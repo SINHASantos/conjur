@@ -36,20 +36,43 @@ RSpec.describe(Authentication::AuthnCert::V2::SaasAuthClient) do
 
     context 'when http client returns a success response' do
       let(:saas_authn_response) do
-        Responses::Success.new({ 'attributes' => {} })
+        Responses::Success.new(saas_authn_response_body)
       end
 
-      it 'is returned by the saas core client' do
-        expect(transporter).to receive(:post).with(
-          path: '/authentications/cert',
-          body: { 'payload' => 'some-cert', 'configuration' => {} },
-          request_type: :json,
-          error_type: :json
-        )
+      context 'when the body is malformed' do
+        let(:saas_authn_response_body) { {} }
 
-        response = client.validate_certificate(certificate: 'some-cert', authenticator: authenticator)
-        expect(response.success?).to be(true)
-        expect(response.result).to eq({ 'attributes' => {} })
+        it 'returns a failure response' do
+          expect(transporter).to receive(:post).with(
+            path: '/authentications/cert',
+            body: { 'payload' => 'some-cert', 'configuration' => {} },
+            request_type: :json,
+            error_type: :json
+          )
+
+          response = client.validate_certificate(certificate: 'some-cert', authenticator: authenticator)
+          expect(response.success?).to be(false)
+          expect(response.message).to eq('Empty or malformed certificate attributes')
+          expect(response.exception.class).to be(Errors::Authentication::Service::BadResponse)
+          expect(response.status).to eq(:unauthorized)
+        end
+      end
+
+      context 'when the body is well-formed' do
+        let(:saas_authn_response_body) { { 'attributes' => { 'some-attr' => 'some-value' } } }
+
+        it 'is returned by the saas core client' do
+          expect(transporter).to receive(:post).with(
+            path: '/authentications/cert',
+            body: { 'payload' => 'some-cert', 'configuration' => {} },
+            request_type: :json,
+            error_type: :json
+          )
+
+          response = client.validate_certificate(certificate: 'some-cert', authenticator: authenticator)
+          expect(response.success?).to be(true)
+          expect(response.result).to eq({ 'attributes' => { 'some-attr' => 'some-value' } })
+        end
       end
     end
 

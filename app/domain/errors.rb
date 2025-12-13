@@ -805,6 +805,11 @@ module Errors
         msg: "Malformed error response from authenticator service",
         code: "CONJ00190E"
       )
+
+      BadResponse = ::Util::TrackableErrorClass.new(
+        msg: "Malformed successful response from authenticator service: {0-reason}",
+        code: "CONJ00191E"
+      )
     end
 
     module Certificate
