@@ -42,7 +42,12 @@ Rails.application.configure do
 
     # When enabled, the Certificate Authentication API is available. This
     # requires an available credential validation service.
-    certificate_authentication: false
+    certificate_authentication: false,
+
+    # When enabled, slosilo encryption key will be cached to prevent requesting
+    # it from db for each use.
+    slosilo_key_cache: true
+
   }.freeze
 
   config.feature_flags = Conjur::FeatureFlags::Features.new(

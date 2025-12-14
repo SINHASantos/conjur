@@ -41,4 +41,22 @@ describe 'Feature flag initializer' do
       expect(config.feature_flags.enabled?(:dynamic_secrets)).to be(true)
     end
   end
+
+  # Slosilo cache feature
+  it 'returns slosilo cache enabled by defaults' do
+    expect(config.feature_flags.enabled?(:slosilo_key_cache)).to be(true)
+  end
+
+  context 'when the slosilo cache is disabled with the environment variable' do
+    around do |example|
+      with_environment('CONJUR_FEATURE_SLOSILO_KEY_CACHE_ENABLED', 'false') do
+        load Rails.root.join('config/initializers/feature_flags.rb')
+        example.run
+      end
+    end
+
+    it 'returns slosilo cache disabled' do
+      expect(config.feature_flags.enabled?(:slosilo_key_cache)).to be(false)
+    end
+  end
 end
