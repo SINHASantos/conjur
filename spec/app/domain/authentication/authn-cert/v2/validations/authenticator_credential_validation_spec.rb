@@ -23,7 +23,7 @@ RSpec.describe(Authentication::AuthnCert::V2::Validations::AuthenticatorCredenti
       {
         'sans_dns' => [ 'my.example.com', 'conjur.org' ],
         'sans_uri' => [ 'https://example.org/service/foo' ],
-        'sans_ip' => [ '256.256.256.256', '127.0.0.1' ],
+        'sans_ip' => [ '255.255.255.255', '127.0.0.1' ],
         'common_name' => 'onprem.secretsmanager.cyberark.com'
       }
     end
@@ -40,7 +40,7 @@ RSpec.describe(Authentication::AuthnCert::V2::Validations::AuthenticatorCredenti
         {
           san_dns: '*.example.com,conjur.org',
           san_uri: 'https://example.org/service/*',
-          san_ip: '127.0.0.1,256.256.256.256',
+          san_ip: '127.0.0.1,255.255.255.255',
           cn: '*.*.cyberark.com'
         }
       end

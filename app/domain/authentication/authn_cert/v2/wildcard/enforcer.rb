@@ -41,10 +41,10 @@ module Authentication
             when 'san-uri'
               Authentication::AuthnCert::V2::Wildcard::Uri
             when 'san-ip'
-              Authentication::AuthnCert::V2::Wildcard::Base
+              Authentication::AuthnCert::V2::Wildcard::IpAddress
             else
               # This case should never be reached according to assumptions #1 and 2.
-              Authentication::AuthnCert::V2::Wildcard::Base
+              nil
             end
           end
 

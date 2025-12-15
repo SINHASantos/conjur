@@ -159,7 +159,7 @@ describe AuthenticateController, type: :request do
               'attributes' => {
                 'sans_uri' => [ 'https://conjur.org/secrets-manager' ],
                 'sans_dns' => [ 'conjur.org' ],
-                'sans_ip' => [ '127.238.349.450' ],
+                'sans_ip' => [ '127.255.255.1' ],
                 'common_name' => 'onprem.secretsmanager.cyberark.com'
               }
             }
@@ -241,7 +241,7 @@ describe AuthenticateController, type: :request do
                   {
                     "authn-cert/#{service_id}/san-uri" => 'https://conjur.org/secrets-manager',
                     "authn-cert/#{service_id}/san-dns" => 'conjur.org',
-                    "authn-cert/#{service_id}/san-ip" => '127.238.349.450',
+                    "authn-cert/#{service_id}/san-ip" => '127.255.255.1',
                     "authn-cert/#{service_id}/cn" => 'onprem.secretsmanager.cyberark.com'
                   }
                 end
@@ -262,7 +262,7 @@ describe AuthenticateController, type: :request do
                   {
                     "authn-cert/#{service_id}/san-uri" => 'https://conjur.org/*',
                     "authn-cert/#{service_id}/san-dns" => 'conjur.org',
-                    "authn-cert/#{service_id}/san-ip" => '127.238.349.450',
+                    "authn-cert/#{service_id}/san-ip" => '127.255.255.1',
                     "authn-cert/#{service_id}/cn" => '*.*.cyberark.com'
                   }
                 end
@@ -339,7 +339,7 @@ describe AuthenticateController, type: :request do
                   'attributes' => {
                     'sans_uri' => [ 'https://conjur.org/secrets-manager' ],
                     'sans_dns' => [ 'conjur.org' ],
-                    'sans_ip': '127.238.349.450'
+                    'sans_ip': '127.255.255.1'
                   }
                 }
               end
@@ -366,7 +366,7 @@ describe AuthenticateController, type: :request do
                   'attributes' => {
                     'sans_uri' => [ "spiffe://distrust.org/#{host_id}" ],
                     'sans_dns' => [ 'conjur.org' ],
-                    'sans_ip': '127.238.349.450'
+                    'sans_ip': '127.255.255.1'
                   }
                 }
               end
@@ -393,7 +393,7 @@ describe AuthenticateController, type: :request do
                   'attributes' => {
                     'sans_uri' => [ "spiffe://#{trust_domain}/#{host_id}" ],
                     'sans_dns' => [ 'conjur.org' ],
-                    'sans_ip': '127.238.349.450'
+                    'sans_ip': '127.255.255.1'
                   }
                 }
               end
@@ -432,7 +432,7 @@ describe AuthenticateController, type: :request do
             load_variable_value(
               account: account,
               resource_id: "conjur/authn-cert/#{service_id}/san-ip",
-              value: "127.238.349.450"
+              value: "127.255.255.1"
             )
             load_variable_value(
               account: account,
@@ -452,7 +452,7 @@ describe AuthenticateController, type: :request do
                 'attributes' => {
                   'sans_uri' => ['https://conjur.org/secrets-manager'],
                   'sans_dns' => ['conjur.org'],
-                  'sans_ip' => ['127.238.349.450'],
+                  'sans_ip' => ['127.255.255.1'],
                   'common_name' => 'onprem.secretsmanager.cyberark.com'
                 }
               }
@@ -475,7 +475,7 @@ describe AuthenticateController, type: :request do
                 'attributes' => {
                   'sans_uri' => ['https://conjur.org/secrets-manager/foo'],
                   'sans_dns' => ['conjur.org'],
-                  'sans_ip' => ['127.238.349.450'],
+                  'sans_ip' => ['127.255.255.1'],
                   'common_name' => 'onprem.secretsmanager.cyberark.com'
                 }
               }
