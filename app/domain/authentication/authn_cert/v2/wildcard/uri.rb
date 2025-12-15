@@ -69,7 +69,7 @@ module Authentication
             return false unless pattern_uri.scheme.downcase == candidate_uri.scheme.downcase
 
             # Must match host, userinfo, port - case-sensitive
-            return false unless pattern_uri.host == candidate_uri.host
+            return false unless pattern_uri.host.downcase == candidate_uri.host.downcase
             return false unless pattern_uri.userinfo == candidate_uri.userinfo
             return false unless pattern_uri.port == candidate_uri.port
 

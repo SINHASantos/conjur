@@ -295,9 +295,15 @@ RSpec.describe(Authentication::AuthnCert::V2::Wildcard::Uri) do
       end
     end
 
-    context 'host case mismatch' do
-      it 'fails with host case mismatch' do
-        expect(matcher.match?('https://Api.Example.Com/x/*', 'https://api.example.com/x/a')).to be(false)
+    context 'case sensitivity' do
+      it 'matches with scheme and host case insensitively' do
+        expect(matcher.match?('https://example.com/api/*', 'HTTPS://example.com/api/x')).to be(true)
+        expect(matcher.match?('https://example.com/api/*', 'https://EXAMPLE.COM/api/x')).to be(true)
+      end
+
+      it 'matches with path and userinfo case sensitively' do
+        expect(matcher.match?('https://user:password@example.com/api/*', 'https://User:Password@example.com/api/resource')).to be(false)
+        expect(matcher.match?('https://user:password@example.com/api/*', 'https://user:password@example.com/API/resource')).to be(false)
       end
     end
   end
