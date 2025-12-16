@@ -116,7 +116,7 @@ describe AuthenticateController, type: :request do
           value: "my-ca-pem"
         )
 
-        stub_request(:post, "http://host.docker.internal:8080/authentications/cert").to_return(
+        stub_request(:post, "http://localhost:5618/authentications/cert").to_return(
           status: saas_authn_code,
           body: saas_authn_response.to_json
         )
@@ -440,7 +440,7 @@ describe AuthenticateController, type: :request do
               value: "onprem.secretsmanager.cyberark.com"
             )
 
-            stub_request(:post, "http://host.docker.internal:8080/authentications/cert").to_return(
+            stub_request(:post, "http://localhost:5618/authentications/cert").to_return(
               status: saas_authn_code,
               body: saas_authn_response.to_json
             )
