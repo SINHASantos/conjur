@@ -6,9 +6,12 @@ module Authentication
       class AuthenticatorLoader
         class << self
           def all
+            certificate_authenticator_enabled = Rails.application.config.feature_flags.enabled?(:certificate_authentication)
+
             {}.tap do |rtn|
               group_authenticators(authenticator_klasses).each do |authn_type, authn_klasses|
                 next if authn_klasses[:strategy].nil? || authn_klasses[:authenticator].nil?
+                next if authn_type == 'authn-cert' && !certificate_authenticator_enabled
 
                 rtn[authn_type] = authn_klasses
               end
@@ -17,29 +20,56 @@ module Authentication
 
           def authenticator_klasses
             results = []
+
+            # Authenticator business logic is implemented in the Authentication
+            # module. Authenticator data models are defined in the AuthenticatorsV2
+            # module. For an authenticator to be considered "installed", it must
+            # consist of both a model and its associated business logic.
             load_klasses(mod: Authentication, klasses: results)
+            load_klasses(mod: AuthenticatorsV2, klasses: results)
+
             results.flatten.compact.uniq
           end
 
           private
 
           def group_authenticators(klasses)
-            {}.tap do |grouped_files|
-              klasses.each do |klass|
-                parts = klass.to_s.split('::')
-                next unless parts[1].match(/^Authn/)
-                next unless parts[2] == 'V2'
+            grouped_files = {}
+            process_authenticator_models(klasses, grouped_files)
+            process_strategy_implementations(klasses, grouped_files)
+            grouped_files
+          end
 
-                type = Authentication::Util::NamespaceSelector.module_to_type(parts[1])
+          # Processes AuthenticatorsV2 model classes and maps them to their type.
+          # These are the data model definitions for authenticators.
+          def process_authenticator_models(klasses, groups)
+            klasses.each do |klass|
+              parts = klass.to_s.split('::')
 
-                grouped_files[type] ||= {}
-                case parts.last
-                when 'Authenticator'
-                  grouped_files[type][:authenticator] = klass
-                when 'Strategy'
-                  grouped_files[type][:strategy] = klass
-                end
-              end
+              next unless parts[0] == 'AuthenticatorsV2'
+              next if parts[1] == 'AuthenticatorTypeFactory'
+
+              type = AuthenticatorsV2::AuthenticatorTypeFactory.module_to_type(klass)
+
+              groups[type] ||= {}
+              groups[type][:authenticator] = klass
+            end
+          end
+
+          # Processes Authentication::Authn*::V2::Strategy classes.
+          # These are the business logic implementations for authenticators.
+          def process_strategy_implementations(klasses, groups)
+            klasses.each do |klass|
+              parts = klass.to_s.split('::')
+
+              next unless parts[1].match(/^Authn/)
+              next unless parts[2] == 'V2'
+              next unless parts.last == 'Strategy'
+
+              type = Authentication::Util::NamespaceSelector.module_to_type(parts[1])
+
+              groups[type] ||= {}
+              groups[type][:strategy] = klass
             end
           end
 

@@ -112,6 +112,57 @@ describe AuthenticateController, :type => :request do
     end
   end
 
+  describe '#index' do
+    include_context "create user"
+
+    before do
+      allow_any_instance_of(Conjur::FeatureFlags::Features)
+        .to receive(:enabled?)
+        .and_call_original
+      allow_any_instance_of(Conjur::FeatureFlags::Features)
+        .to receive(:enabled?)
+        .with(:certificate_authentication)
+        .and_return(enabled)
+    end
+
+    def invoke
+      token = Base64.strict_encode64(Slosilo["authn:rspec"].signed_token("admin").to_json)
+      request_env = { 'HTTP_AUTHORIZATION' => "Token token=\"#{token}\"" }
+      get('/authenticators', env: request_env)
+    end
+
+    let(:enabled) { false }
+
+    it 'returns the authenticators' do
+      invoke
+      expect(response).to be_ok
+
+      body = JSON.parse(response.body)
+      expect(body).to be_a(Hash)
+      expect(body.keys).to include('installed', 'enabled', 'configured')
+      expect(body['installed']).to be_an(Array)
+      expect(body['enabled']).to be_an(Array)
+      expect(body['configured']).to be_an(Array)
+    end
+
+    it 'does not list certificate authenticator as installed' do
+      invoke
+      expect(response).to be_ok
+      body = JSON.parse(response.body)
+      expect(body['installed']).not_to include('authn-cert')
+    end
+
+    context 'when certificate authenticator is enabled' do
+      let(:enabled) { true }
+      it 'lists certificate authenticator as installed' do
+        invoke
+        expect(response).to be_ok
+        body = JSON.parse(response.body)
+        expect(body['installed']).to include('authn-cert')
+      end
+    end
+  end
+
   context "when incorrectly using GET method" do
     include_context "create user"
 

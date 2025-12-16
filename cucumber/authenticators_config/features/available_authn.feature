@@ -6,9 +6,10 @@ Feature: The list of available authentication providers is discoverable
   @smoke
   Scenario: ONYX-12104 - Verify installed authenticators
     When I retrieve the list of authenticators
-    Then there are exactly 8 installed authenticators
+    Then there are exactly 9 installed authenticators
     And the installed authenticators contains "authn"
     And the installed authenticators contains "authn-azure"
+    And the installed authenticators contains "authn-cert"
     And the installed authenticators contains "authn-gcp"
     And the installed authenticators contains "authn-iam"
     And the installed authenticators contains "authn-jwt"
