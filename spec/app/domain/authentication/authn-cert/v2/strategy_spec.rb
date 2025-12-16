@@ -49,6 +49,18 @@ RSpec.describe(Authentication::AuthnCert::V2::Strategy) do
     end
   end
 
+  let(:global_credential_validation) do
+    class_double(Authentication::AuthnCert::V2::Validations::AuthenticatorCredentialValidation).tap do |double|
+      allow(double).to receive(:new).and_return(instantiated_global_credential_validation)
+    end
+  end
+  let(:instantiated_global_credential_validation) do
+    instance_double(Authentication::AuthnCert::V2::Validations::AuthenticatorCredentialValidation).tap do |double|
+      allow(double).to receive(:valid?).and_return(true)
+      allow(double).to receive(:errors).and_return([])
+    end
+  end
+
   let(:strategy) do
     described_class.new(
       authenticator: authenticator,

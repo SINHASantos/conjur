@@ -23,6 +23,10 @@ describe AuthenticateController, type: :request do
     default_config_variables + %w[host-mode trust-domain identity-path]
   end
 
+  def default_global_restriction_config_variables
+    default_config_variables + %w[san-uri san-dns san-ip cn]
+  end
+
   before do
     DatabaseCleaner.clean_with(:truncation)
     Slosilo["authn:#{account}"] ||= Slosilo::Key.new
@@ -103,7 +107,7 @@ describe AuthenticateController, type: :request do
     end
 
     context 'when "ca-cert" variable is present' do
-      let(:config_variables) { default_config_variables }
+      let(:config_variables) { default_config_variables + %w[san-uri]}
 
       before do
         load_variable_value(
@@ -147,7 +151,7 @@ describe AuthenticateController, type: :request do
 
       context 'when client certificate is signed by the ca bundle' do
         let(:saas_authn_code) { 200 }
-        let(:saas_authn_response) { {} }
+        let(:saas_authn_response) { { 'attributes' => { 'some-attr' => 'some-value' } } }
 
         context 'when operating in "request" host mapping mode' do
           let(:saas_authn_response) do
@@ -155,7 +159,8 @@ describe AuthenticateController, type: :request do
               'attributes' => {
                 'sans_uri' => [ 'https://conjur.org/secrets-manager' ],
                 'sans_dns' => [ 'conjur.org' ],
-                'sans_ip': '127.238.349.450'
+                'sans_ip' => [ '127.255.255.1' ],
+                'common_name' => 'onprem.secretsmanager.cyberark.com'
               }
             }
           end
@@ -181,48 +186,96 @@ describe AuthenticateController, type: :request do
 
           context 'when authenticating role includes at least one relevant annotation' do
             context 'when certificate attributes do not match annotation restrictions' do
-              let(:host_annotations) do
-                {
-                  "authn-cert/#{service_id}/san-uri" => 'https://conjur.org/secrets-manager',
-                  "authn-cert/#{service_id}/san-dns" => 'unrecognized.org'
-                }
+              context 'statically' do
+                let(:host_annotations) do
+                  {
+                    "authn-cert/#{service_id}/san-uri" => 'https://conjur.org/secrets-manager',
+                    "authn-cert/#{service_id}/san-dns" => 'unrecognized.org'
+                  }
+                end
+
+                it 'fails to authenticate' do
+                  authenticate(
+                    account: account,
+                    service_id: service_id,
+                    host_id: "#{host_policy_branch}/#{host_id}",
+                    client_certificate: 'my-cert-pem'
+                  )
+                  expect(response).to have_http_status(:unauthorized)
+                  expect(@info_logs).to satisfy do |logs|
+                    logs.any? do |log|
+                      log.to_s.include?('CONJ00049E Resource restriction \'san-dns\' does not match with the corresponding value in the request')
+                    end
+                  end
+                end
               end
 
-              it 'fails to authenticate' do
-                # TODO: Enable this test case once we've implemented annotation
-                # checking.
-                #
-                # authenticate(
-                #   account: account,
-                #   service_id: service_id,
-                #   host_id: "#{host_policy_branch}/#{host_id}",
-                #   client_certificate: 'my-cert-pem'
-                # )
-                # expect(response).to have_http_status(:unauthorized)
-                # expect(@info_logs).to satisfy do |logs|
-                #   logs.any? do |log|
-                #     log.to_s.include?('CONJ00049E Resource restriction \'san-dns\' does not match with the corresponding value in the request')
-                #   end
-                # end
+              context 'with wildcards' do
+                let(:host_annotations) do
+                  {
+                    "authn-cert/#{service_id}/san-uri" => 'https://conjur.org/secrets-manager/*',
+                    "authn-cert/#{service_id}/san-dns" => '*.conjur.org'
+                  }
+                end
+
+                it 'fails to authenticate' do
+                  authenticate(
+                    account: account,
+                    service_id: service_id,
+                    host_id: "#{host_policy_branch}/#{host_id}",
+                    client_certificate: 'my-cert-pem'
+                  )
+                  expect(response).to have_http_status(:unauthorized)
+                  expect(@info_logs).to satisfy do |logs|
+                    logs.any? do |log|
+                      log.to_s.include?('CONJ00049E Resource restriction \'san-dns\' does not match with the corresponding value in the request')
+                    end
+                  end
+                end
               end
             end
 
             context 'when certificate attributes match annotation restrictions' do
-              let(:host_annotations) do
-                {
-                  "authn-cert/#{service_id}/san-uri" => 'https://conjur.org/secrets-manager',
-                  "authn-cert/#{service_id}/san-dns" => 'conjur.org'
-                }
+              context 'statically' do
+                let(:host_annotations) do
+                  {
+                    "authn-cert/#{service_id}/san-uri" => 'https://conjur.org/secrets-manager',
+                    "authn-cert/#{service_id}/san-dns" => 'conjur.org',
+                    "authn-cert/#{service_id}/san-ip" => '127.255.255.1',
+                    "authn-cert/#{service_id}/cn" => 'onprem.secretsmanager.cyberark.com'
+                  }
+                end
+
+                it 'authenticates successfully' do
+                  authenticate(
+                    account: account,
+                    service_id: service_id,
+                    host_id: "#{host_policy_branch}/#{host_id}",
+                    client_certificate: 'my-cert-pem'
+                  )
+                  expect(response).to have_http_status(:success)
+                end
               end
 
-              it 'authenticates successfully' do
-                authenticate(
-                  account: account,
-                  service_id: service_id,
-                  host_id: "#{host_policy_branch}/#{host_id}",
-                  client_certificate: 'my-cert-pem'
-                )
-                expect(response).to have_http_status(:success)
+              context 'with wildcards' do
+                let(:host_annotations) do
+                  {
+                    "authn-cert/#{service_id}/san-uri" => 'https://conjur.org/*',
+                    "authn-cert/#{service_id}/san-dns" => 'conjur.org',
+                    "authn-cert/#{service_id}/san-ip" => '127.255.255.1',
+                    "authn-cert/#{service_id}/cn" => '*.*.cyberark.com'
+                  }
+                end
+
+                it 'authenticates successfully' do
+                  authenticate(
+                    account: account,
+                    service_id: service_id,
+                    host_id: "#{host_policy_branch}/#{host_id}",
+                    client_certificate: 'my-cert-pem'
+                  )
+                  expect(response).to have_http_status(:success)
+                end
               end
             end
           end
@@ -286,7 +339,7 @@ describe AuthenticateController, type: :request do
                   'attributes' => {
                     'sans_uri' => [ 'https://conjur.org/secrets-manager' ],
                     'sans_dns' => [ 'conjur.org' ],
-                    'sans_ip': '127.238.349.450'
+                    'sans_ip': '127.255.255.1'
                   }
                 }
               end
@@ -313,7 +366,7 @@ describe AuthenticateController, type: :request do
                   'attributes' => {
                     'sans_uri' => [ "spiffe://distrust.org/#{host_id}" ],
                     'sans_dns' => [ 'conjur.org' ],
-                    'sans_ip': '127.238.349.450'
+                    'sans_ip': '127.255.255.1'
                   }
                 }
               end
@@ -340,7 +393,7 @@ describe AuthenticateController, type: :request do
                   'attributes' => {
                     'sans_uri' => [ "spiffe://#{trust_domain}/#{host_id}" ],
                     'sans_dns' => [ 'conjur.org' ],
-                    'sans_ip': '127.238.349.450'
+                    'sans_ip': '127.255.255.1'
                   }
                 }
               end
@@ -353,6 +406,93 @@ describe AuthenticateController, type: :request do
                   client_certificate: 'my-cert-pem'
                 )
                 expect(response).to have_http_status(:success)
+              end
+            end
+          end
+        end
+
+        context 'when global restrictions are set' do
+          let(:config_variables) {default_global_restriction_config_variables}
+          let(:host_annotations) do
+            {
+              "authn-cert/#{service_id}/san-dns" => 'conjur.org'
+            }
+          end
+          before do
+            load_variable_value(
+              account: account,
+              resource_id: "conjur/authn-cert/#{service_id}/san-uri",
+              value: "https://conjur.org/*"
+            )
+            load_variable_value(
+              account: account,
+              resource_id: "conjur/authn-cert/#{service_id}/san-dns",
+              value: "conjur.org"
+            )
+            load_variable_value(
+              account: account,
+              resource_id: "conjur/authn-cert/#{service_id}/san-ip",
+              value: "127.255.255.1"
+            )
+            load_variable_value(
+              account: account,
+              resource_id: "conjur/authn-cert/#{service_id}/cn",
+              value: "onprem.secretsmanager.cyberark.com"
+            )
+
+            stub_request(:post, "http://host.docker.internal:8080/authentications/cert").to_return(
+              status: saas_authn_code,
+              body: saas_authn_response.to_json
+            )
+          end
+
+          context 'when client certificate attributes match' do
+            let(:saas_authn_response) do
+              {
+                'attributes' => {
+                  'sans_uri' => ['https://conjur.org/secrets-manager'],
+                  'sans_dns' => ['conjur.org'],
+                  'sans_ip' => ['127.255.255.1'],
+                  'common_name' => 'onprem.secretsmanager.cyberark.com'
+                }
+              }
+            end
+
+            it 'authenticates successfully' do
+              authenticate(
+                account: account,
+                service_id: service_id,
+                host_id: "#{host_policy_branch}/#{host_id}",
+                client_certificate: 'my-cert-pem'
+              )
+              expect(response).to have_http_status(:success)
+            end
+          end
+
+          context 'when client certificate attributes mismatch' do
+            let(:saas_authn_response) do
+              {
+                'attributes' => {
+                  'sans_uri' => ['https://conjur.org/secrets-manager/foo'],
+                  'sans_dns' => ['conjur.org'],
+                  'sans_ip' => ['127.255.255.1'],
+                  'common_name' => 'onprem.secretsmanager.cyberark.com'
+                }
+              }
+            end
+
+            it 'fails to authenticate' do
+              authenticate(
+                account: account,
+                service_id: service_id,
+                host_id: "#{host_policy_branch}/#{host_id}",
+                client_certificate: 'my-cert-pem'
+              )
+              expect(response).to have_http_status(:unauthorized)
+              expect(@info_logs).to satisfy do |logs|
+                logs.any? do |log|
+                  log.to_s.include?('CONJ00176E Certificate URI Subject Alternative Name is missing or mismatched with webservice-scoped restriction')
+                end
               end
             end
           end
@@ -404,7 +544,7 @@ def host_policy(id:, annotations: nil)
   unless annotations.nil?
     annotations_yaml += "annotations:\n"
     annotations.each do |k, v|
-      annotations_yaml += "    #{k}: #{v}\n"
+      annotations_yaml += "    #{k}: \"#{v}\"\n"
     end
   end
 

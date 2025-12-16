@@ -45,6 +45,14 @@ module Authentication
             request_type: :json,
             error_type: :json
           ).bind do |certificate_attributes|
+            unless well_formed_response?(certificate_attributes)
+              return @failure.new(
+                "Empty or malformed certificate attributes",
+                exception: Errors::Authentication::Service::BadResponse.new("Empty or malformed certificate attributes"),
+                status: :unauthorized
+              )
+            end
+
             return @success.new(certificate_attributes)
           end
 
@@ -68,6 +76,12 @@ module Authentication
             obj['crl'] = authenticator.variables[:crl] unless authenticator.variables[:crl].nil?
             obj['crl_url'] = authenticator.variables[:crl_url] unless authenticator.variables[:crl_url].nil?
           end
+        end
+
+        def well_formed_response?(body)
+          body.is_a?(Hash) &&
+            body['attributes'].is_a?(Hash) &&
+            body['attributes'].any?
         end
 
         # The authenticator service's API responses include failure details

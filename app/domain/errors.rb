@@ -805,6 +805,11 @@ module Errors
         msg: "Malformed error response from authenticator service",
         code: "CONJ00190E"
       )
+
+      BadResponse = ::Util::TrackableErrorClass.new(
+        msg: "Malformed successful response from authenticator service: {0-reason}",
+        code: "CONJ00191E"
+      )
     end
 
     module Certificate
@@ -846,6 +851,16 @@ module Errors
       TrustDomainMismatch = ::Util::TrackableErrorClass.new(
         msg: "Client certificate SPIFFE ID {0-spiffe-id} does not match expected trust domain {1-trust-domain}",
         code: "CONJ00184E"
+      )
+
+      AttributeConstraintMismatch = ::Util::TrackableErrorClass.new(
+        msg: "Certificate {0-attribute} is missing or mismatched with webservice-scoped restriction",
+        code: "CONJ00176E"
+      )
+
+      InvalidWildcards = ::Util::TrackableErrorClass.new(
+        msg: "{0-type}-based restriction {1-restriction} employs unacceptable wildcard usage: {2-list}",
+        code: "CONJ00186E"
       )
     end
   end

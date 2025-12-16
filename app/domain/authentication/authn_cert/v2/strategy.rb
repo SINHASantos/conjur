@@ -16,11 +16,13 @@ module Authentication
           authenticator:,
           saas_auth_client: SaasAuthClient,
           identity_resolver: Authentication::AuthnCert::V2::IdentityResolver,
+          authenticator_credential_validation: Authentication::AuthnCert::V2::Validations::AuthenticatorCredentialValidation,
           logger: Rails.logger
         )
           @authenticator = authenticator
           @saas_auth_client = saas_auth_client
           @identity_resolver = identity_resolver
+          @authenticator_credential_validation = authenticator_credential_validation
           @logger = logger
 
           @success = Responses::Success
@@ -30,13 +32,15 @@ module Authentication
         def callback(request_headers:, parameters: nil, request_body: nil) # rubocop:disable Lint/UnusedMethodArgument
           get_certificate_from_headers(headers: request_headers).bind do |certificate|
             validate_certificate(certificate: certificate).bind do |certificate_attributes|
-              identity_role(certificate_attributes: certificate_attributes, parameters: parameters).bind do |identity|
-                @success.new(
-                  Authentication::RoleIdentifier.new(
-                    identifier: identity,
-                    attributes: certificate_attributes
+              enforce_global_restrictions(certificate_attributes: certificate_attributes).bind do
+                identity_role(certificate_attributes: certificate_attributes, parameters: parameters).bind do |identity|
+                  @success.new(
+                    Authentication::RoleIdentifier.new(
+                      identifier: identity,
+                      attributes: certificate_attributes
+                    )
                   )
-                )
+                end
               end
             end
           end
@@ -68,6 +72,22 @@ module Authentication
           ).bind do |response|
             @success.new(response['attributes'])
           end
+        end
+
+        def enforce_global_restrictions(certificate_attributes:)
+          validation = @authenticator_credential_validation.new(
+            authenticator: @authenticator,
+            credential_attributes: certificate_attributes
+          )
+
+          return @success.new(true) if validation.valid?
+
+          error = validation.errors.first
+          @failure.new(
+            error.message.to_s,
+            exception: error.type,
+            status: :unauthorized
+          )
         end
 
         def identity_role(certificate_attributes:, parameters:)
