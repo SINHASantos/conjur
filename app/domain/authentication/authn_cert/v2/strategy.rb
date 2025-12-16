@@ -30,10 +30,12 @@ module Authentication
         end
 
         def callback(request_headers:, parameters: nil, request_body: nil) # rubocop:disable Lint/UnusedMethodArgument
+          @logger.info(LogMessages::Authentication::AuthnCert::AuthenticationStarted.new)
           get_certificate_from_headers(headers: request_headers).bind do |certificate|
             validate_certificate(certificate: certificate).bind do |certificate_attributes|
               enforce_global_restrictions(certificate_attributes: certificate_attributes).bind do
                 identity_role(certificate_attributes: certificate_attributes, parameters: parameters).bind do |identity|
+                  @logger.info(LogMessages::Authentication::AuthnCert::AuthenticationSucceeded.new)
                   @success.new(
                     Authentication::RoleIdentifier.new(
                       identifier: identity,

@@ -39,6 +39,7 @@ module Authentication
         #
         # @return [Hash] A map of the client certificate's identifying attributes.
         def validate_certificate(certificate:, authenticator:)
+          Rails.logger.info(LogMessages::Authentication::AuthnCert::CertificateValidationStarted.new(authenticator.service_id))
           response = @http_client.post(
             path: "/authentications/cert",
             body: post_body(certificate, authenticator),
@@ -53,6 +54,7 @@ module Authentication
               )
             end
 
+            Rails.logger.info(LogMessages::Authentication::AuthnCert::CertificateValidationSucceeded.new(authenticator.service_id))
             return @success.new(certificate_attributes)
           end
 

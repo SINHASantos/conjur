@@ -15,7 +15,13 @@ module Authentication
           def run(annotations:, authenticator:)
             host_mode = authenticator.variables[:host_mode]
             constraints = host_mode == 'spiffe' ? spiffe_mode_constraints : request_mode_constraints
-            constraints.validate(resource_restrictions: annotations.keys.map(&:to_s))
+            result = constraints.validate(resource_restrictions: annotations.keys.map(&:to_s))
+            if result.success?
+              @logger.info(LogMessages::Authentication::AuthnCert::ConstraintsValidationSucceeded.new(authenticator.service_id, host_mode))
+            else
+              @logger.info(LogMessages::Authentication::AuthnCert::ConstraintsValidationFailed.new(authenticator.service_id, host_mode))
+            end
+            result
           end
 
           private
