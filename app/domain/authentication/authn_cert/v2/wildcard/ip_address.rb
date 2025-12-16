@@ -17,23 +17,38 @@ module Authentication
             return false if pattern.empty?
 
             # Reject wildcards in IP addresses.
-            return false if pattern.include?('*')
+            if pattern.include?('*')
+              Rails.logger.debug(LogMessages::Authentication::AuthnCert::IPPatternValidationWildcardsNotAllowed.new)
+              return false
+            end
 
             # Reject IP addresses in CIDR notation, as this would require
             # matching a range of IP addresses to the pattern based on the
             # subnet mask.
-            return false if pattern.include?('/')
+            if pattern.include?('/')
+              Rails.logger.debug(LogMessages::Authentication::AuthnCert::IPPatternValidationCIDRNotAllowed.new)
+              return false
+            end
 
             # Confirm that the pattern is in fact a valid IP address. Invalid
             # IPs will raise an exception and be caught below.
             IPAddr.new(pattern)
+
+            Rails.logger.debug(LogMessages::Authentication::AuthnCert::IPPatternValidationSucceeded.new)
             true
           rescue
+            Rails.logger.error(LogMessages::Authentication::AuthnCert::IPPatternValidationInvalidIPError.new)
             false
           end
 
           def self.match?(pattern, candidate)
-            pattern == candidate
+            result = pattern == candidate
+            if result
+              Rails.logger.debug(LogMessages::Authentication::AuthnCert::IPPatternMatchingSucceeded.new)
+            else
+              Rails.logger.debug(LogMessages::Authentication::AuthnCert::IPPatternMatchingFailed.new)
+            end
+            result
           end
         end
       end
