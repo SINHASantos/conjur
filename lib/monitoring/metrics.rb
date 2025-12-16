@@ -81,6 +81,11 @@ module Monitoring
       },
       {
         method: "POST",
+        pattern: %r{^(/authn-cert)(/[^/]+){2,3}(/authenticate)$},
+        operation: "getAccessTokenViaCertificate"
+      },
+      {
+        method: "POST",
         pattern: %r{^(/authn-k8s)(/[^/]+)(/inject_client_cert)$},
         operation: "k8sInjectClientCert"
       },
