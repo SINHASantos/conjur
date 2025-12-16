@@ -1,5 +1,5 @@
-ARG BASE_TAG=latest
-ARG REGISTRY=docker.io
+ARG BASE_TAG=2.0.14-2-750e34f
+ARG REGISTRY=registry.tld
 
 FROM ${REGISTRY}/cyberark/ubuntu-ruby-builder:${BASE_TAG} AS builder
 
@@ -15,7 +15,7 @@ COPY gems/ gems/
 # successful, therefore we try to install again if the first invocation fails
 RUN bundle install || bundle install
 
-FROM cyberark/ubuntu-ruby-postgres-fips:latest
+FROM ${REGISTRY}/cyberark/ubuntu-ruby-postgres-fips:${BASE_TAG}
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y \
     git \

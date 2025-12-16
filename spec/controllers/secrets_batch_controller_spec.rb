@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'parallel'
 
 DatabaseCleaner.allow_remote_database_url = true
 DatabaseCleaner.strategy = :truncation
@@ -13,6 +14,7 @@ describe(SecretsBatchController, type: :request) do
   let(:batch_url_with_base64_encoding) { "#{batch_url}?encode_values=base64" }
   let(:expected_event_object) { instance_double(Audit::Event::Policy) }
   let(:log_object) { instance_double(::Audit::Log::SyslogAdapter, log: expected_event_object) }
+
   let(:test_policy) do
     <<~POLICY
       - !user alice
