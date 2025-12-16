@@ -35,12 +35,14 @@ module Authentication
 
           def group_authenticators(klasses)
             grouped_files = {}
-            process_strategies(klasses, grouped_files)
-            process_models(klasses, grouped_files)
+            process_authenticator_models(klasses, grouped_files)
+            process_strategy_implementations(klasses, grouped_files)
             grouped_files
           end
 
-          def process_strategies(klasses, groups)
+          # Processes AuthenticatorsV2 model classes and maps them to their type.
+          # These are the data model definitions for authenticators.
+          def process_authenticator_models(klasses, groups)
             klasses.each do |klass|
               parts = klass.to_s.split('::')
 
@@ -54,7 +56,9 @@ module Authentication
             end
           end
 
-          def process_models(klasses, groups)
+          # Processes Authentication::Authn*::V2::Strategy classes.
+          # These are the business logic implementations for authenticators.
+          def process_strategy_implementations(klasses, groups)
             klasses.each do |klass|
               parts = klass.to_s.split('::')
 

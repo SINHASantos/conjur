@@ -19,10 +19,14 @@ module AuthenticatorsV2
       "authn-cert" => CertAuthenticatorType
     }.freeze
 
-    # Invert the above hash to enable converting class names back to type strings.
+    # Inverted mapping for efficient reverse lookups from class to type string
+    CLASS_TO_TYPE = AUTHENTICATOR_CLASSES.invert.freeze
+
+    # Converts an authenticator class to its type string
+    # @param [Class] mod_name - The authenticator class
+    # @return [String, nil] The authenticator type string (e.g., "authn-cert") or nil if not found
     def self.module_to_type(mod_name)
-      inverted_mapping = AUTHENTICATOR_CLASSES.invert
-      inverted_mapping[mod_name] || nil
+      CLASS_TO_TYPE[mod_name]
     end
 
     # Creates an authenticator instance based on the given type
