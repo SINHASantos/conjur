@@ -28,13 +28,14 @@ module SlosiloCache
       key
     end
 
-    # Returns [key, id] or nil. Fingerprint lookup goes to wrapped adapter,
-    # and the result is cached by id for future get_key calls.
     def get_by_fingerprint(fingerprint)
-      # Try cache first
+      @logger.debug("SlosiloCacheAdapter.get_by_fingerprint - getting key for fingerprint: [redacted]")
       pair = @cache.get_by_fingerprint(fingerprint)
+
+      @logger.debug("SlosiloCacheAdapter.get_by_fingerprint - SLOSILO_CACHE_HIT for fingerprint: [redacted]") if pair
       return pair if pair
 
+      @logger.debug("SlosiloCacheAdapter.get_by_fingerprint - SLOSILO_CACHE_MISS for fingerprint: [redacted]")
       pair = @wrapped_adapter.get_by_fingerprint(fingerprint)
       return nil unless pair
 
@@ -57,7 +58,7 @@ module SlosiloCache
     end
 
     def clear_cache!
-      @logger.debug("SlosiloCacheAdapter.clear!")
+      @logger.debug("SlosiloCacheAdapter.clear_cache!")
       @cache.clear!
     end
 

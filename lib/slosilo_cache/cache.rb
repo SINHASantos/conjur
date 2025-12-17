@@ -38,14 +38,14 @@ module SlosiloCache
     # Scans committed and current thread transactional cache.
     def get_by_fingerprint(fingerprint)
       invalidate_if_time_passed!
-      @logger.debug("SlosiloCache.get_by_fingerprint - looking up fingerprint: #{fingerprint}")
+      @logger.debug("SlosiloCache.get_by_fingerprint - looking up fingerprint")
 
       # Check transactional cache for current thread first if in tx
       if in_transaction?
         tx = tx_cache_for_current_thread
         tx.each_pair do |id, key|
           if key.respond_to?(:fingerprint) && key.fingerprint == fingerprint
-            @logger.debug("SlosiloCache.get_by_fingerprint - TX_CACHE_HIT for fingerprint: #{fingerprint} id: #{id}")
+            @logger.debug("SlosiloCache.get_by_fingerprint - TX_CACHE_HIT for fingerprint, id: #{id}")
             return [key, id]
           end
         end
@@ -54,12 +54,12 @@ module SlosiloCache
       # Check committed cache
       @committed.each_pair do |id, key|
         if key.respond_to?(:fingerprint) && key.fingerprint == fingerprint
-          @logger.debug("SlosiloCache.get_by_fingerprint - COMMITTED_CACHE_HIT for fingerprint: #{fingerprint} id: #{id}")
+          @logger.debug("SlosiloCache.get_by_fingerprint - COMMITTED_CACHE_HIT for fingerprint, id: #{id}")
           return [key, id]
         end
       end
 
-      @logger.debug("SlosiloCache.get_by_fingerprint - CACHE_MISS for fingerprint: #{fingerprint}")
+      @logger.debug("SlosiloCache.get_by_fingerprint - CACHE_MISS for fingerprint")
       nil
     end
 
