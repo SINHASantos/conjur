@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Updated dependencies to support Ruby 3.4. CNJR-11924
 
+### Added
+- Slosilo in-memory key cache. CNJR-11407
+
 ## [1.24.0] - 2025-11-10
 
 ### Changed
