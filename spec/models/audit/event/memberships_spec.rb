@@ -21,7 +21,7 @@ describe Audit::Event::Memberships do
   context 'when successful' do
     it 'produces the expected message' do
       expect(subject.message).to eq(
-                                   'rspec:user:my_user successfully listed memberships with parameters: {"limit"=>"1000"}'
+                                   'rspec:user:my_user successfully listed memberships with parameters: {"limit" => "1000"}'
                                  )
     end
 
@@ -31,7 +31,7 @@ describe Audit::Event::Memberships do
 
     it 'renders to string correctly' do
       expect(subject.to_s).to eq(
-                                'rspec:user:my_user successfully listed memberships with parameters: {"limit"=>"1000"}'
+                                'rspec:user:my_user successfully listed memberships with parameters: {"limit" => "1000"}'
                               )
     end
 
@@ -59,7 +59,7 @@ describe Audit::Event::Memberships do
 
     it 'produces the expected message' do
       expect(subject.message).to eq(
-                                   'rspec:user:my_user failed to list memberships with parameters: {"limit"=>"1000"}'
+                                   'rspec:user:my_user failed to list memberships with parameters: {"limit" => "1000"}'
                                  )
     end
 

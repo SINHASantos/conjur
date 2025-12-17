@@ -81,7 +81,7 @@ Feature: Obtain the memberships of a role
       [subject@43868 account="cucumber" kind="user" role="cucumber:user:alice"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="list"]
-      cucumber:user:admin successfully listed memberships with parameters: {:account=>"cucumber", :kind=>"user", :role=>"cucumber:user:alice"}
+      cucumber:user:admin successfully listed memberships with parameters: {account: "cucumber", kind: "user", role: "cucumber:user:alice"}
     """
 
 
@@ -106,7 +106,7 @@ Feature: Obtain the memberships of a role
       [subject@43868 account="cucumber" count="true" kind="user" role="cucumber:user:alice"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="list"]
-      cucumber:user:admin successfully listed memberships with parameters: {:account=>"cucumber", :count=>"true", :kind=>"user", :role=>"cucumber:user:alice"}
+      cucumber:user:admin successfully listed memberships with parameters: {account: "cucumber", count: "true", kind: "user", role: "cucumber:user:alice"}
     """
 
   @smoke
@@ -135,7 +135,7 @@ Feature: Obtain the memberships of a role
       [subject@43868 account="cucumber" search="alice" kind="user" role="cucumber:user:bob"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="list"]
-      cucumber:user:admin successfully listed memberships with parameters: {:account=>"cucumber", :search=>"alice", :kind=>"user", :role=>"cucumber:user:bob"}
+      cucumber:user:admin successfully listed memberships with parameters: {account: "cucumber", search: "alice", kind: "user", role: "cucumber:user:bob"}
     """
 
   @smoke
@@ -165,4 +165,3 @@ Feature: Obtain the memberships of a role
       "cucumber:user:charles"
     ]
     """
-

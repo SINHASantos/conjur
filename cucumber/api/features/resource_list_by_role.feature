@@ -32,7 +32,7 @@ Feature: List resources for another role
       [subject@43868 limit="1000" role="cucumber:user:alice"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="list"]
-      cucumber:user:admin successfully listed resources with parameters: {:limit=>"1000", :role=>"cucumber:user:alice"}
+      cucumber:user:admin successfully listed resources with parameters: {limit: "1000", role: "cucumber:user:alice"}
     """
 
   @smoke
@@ -53,6 +53,6 @@ Feature: List resources for another role
       [subject@43868 limit="1000" acting_as="user:alice"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="failure" operation="list"]
-      cucumber:user:admin failed to list resources with parameters: {:limit=>"1000", :acting_as=>"user:alice"}:
+      cucumber:user:admin failed to list resources with parameters: {limit: "1000", acting_as: "user:alice"}:
       The authenticated user lacks the necessary privilege
     """

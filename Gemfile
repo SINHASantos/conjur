@@ -2,7 +2,7 @@
 
 source 'https://rubygems.org'
 
-# ruby=ruby-3.2
+# ruby=ruby-3.4
 # ruby-gemset=conjur
 
 if File.exist?('/base/Gemfile')
@@ -27,6 +27,7 @@ gem 'base32-crockford'
 gem 'bcrypt'
 gem 'listen'
 gem 'slosilo', '~> 3.0'
+gem 'syslog'
 
 gem 'loofah', '>= 2.2.3'
 gem 'conjur-policy-parser', path: 'gems/policy-parser'

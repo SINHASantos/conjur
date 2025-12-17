@@ -269,7 +269,7 @@ describe 'Commands::Policy::Parse' do
         expect(pp.error.message).not_to eq("")
         # Error message is
         # undefined method `referenced_records' for "user Mallory":String
-        expect(pp.error.detail_message).to start_with('undefined method `referenced_records')
+        expect(pp.error.detail_message).to start_with("undefined method 'referenced_records'")
       end
 
       pp = parsed_policy(policy_with_user_defined_twice)

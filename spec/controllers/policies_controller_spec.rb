@@ -10,21 +10,8 @@ DatabaseCleaner.strategy = :truncation
 describe PoliciesController, type: :request do
   context 'when loading policy' do
     before(:all) do
-      # there doesn't seem to be a sane way to get this
-      @original_database_cleaner_strategy =
-        DatabaseCleaner.connections.first.strategy
-          .class.name.downcase[/[^:]+$/].intern
-
-      # we need truncation here because the tests span many transactions
-      DatabaseCleaner.strategy = :truncation
-
       # init Slosilo key
       Slosilo["authn:rspec"] ||= Slosilo::Key.new
-    end
-
-    after(:all) do
-      # DatabaseCleaner.allow_remote_database_url = true
-      DatabaseCleaner.strategy = @original_database_cleaner_strategy
     end
 
     before do

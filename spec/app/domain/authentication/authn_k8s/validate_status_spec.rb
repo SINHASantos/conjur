@@ -286,7 +286,7 @@ describe(Authentication::AuthnK8s::ValidateStatus) do
       'raises an error',
       Errors::Authentication::AuthnK8s::InvalidApiCert,
       "CONJ00154E Invalid Kubernetes API CA certificate: " \
-        "Unable to read certificate: PEM_read_bio_X509: no start line"
+        "Unable to read certificate: PEM_read_bio_X509: no start line (Expecting: CERTIFICATE)"
     )
   end
 
@@ -340,7 +340,7 @@ describe(Authentication::AuthnK8s::ValidateStatus) do
       'raises an error',
       Errors::Authentication::AuthnK8s::InvalidApiCert,
       "CONJ00154E Invalid Kubernetes API CA certificate: " \
-        "Unable to read certificate: PEM_read_bio_X509: no start line"
+        "Unable to read certificate: PEM_read_bio_X509: no start line (Expecting: CERTIFICATE)"
     )
   end
 
@@ -363,7 +363,7 @@ describe(Authentication::AuthnK8s::ValidateStatus) do
       'raises an error',
       Errors::Authentication::AuthnK8s::InvalidSigningCert,
       "CONJ00155E Invalid signing certificate: " \
-        "Unable to read certificate: PEM_read_bio_X509: no start line"
+        "Unable to read certificate: PEM_read_bio_X509: no start line (Expecting: CERTIFICATE)"
     )
   end
 
@@ -374,7 +374,7 @@ describe(Authentication::AuthnK8s::ValidateStatus) do
       'raises an error',
       Errors::Authentication::AuthnK8s::InvalidSigningCert,
       "CONJ00155E Invalid signing certificate: " \
-        "Unable to read certificate: PEM_read_bio_X509: no start line"
+        "Unable to read certificate: PEM_read_bio_X509: no start line (Expecting: CERTIFICATE)"
     )
   end
 

@@ -6,8 +6,8 @@
 
 set -xeu
 
-IMAGE="ruby:3.0"
-BUNDLER_VERSION="2.4.14"
+IMAGE="ruby:3.4"
+BUNDLER_VERSION="2.7.2"
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
 

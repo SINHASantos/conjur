@@ -104,7 +104,7 @@ RSpec.describe(Branches::Branch, type: :model) do
   describe '#to_s' do
     it 'returns proper string representation' do
       branch = Branches::Branch.new(**input)
-      expected_string = "#<Branch name=test-branch branch=data owner=#<Owner kind=user id=alice set=true> annotations={\"key1\"=>\"value1\", \"key2\"=>\"value2\"}>"
+      expected_string = "#<Branch name=test-branch branch=data owner=#<Owner kind=user id=alice set=true> annotations={\"key1\" => \"value1\", \"key2\" => \"value2\"}>"
 
       expect(branch.to_s).to eq(expected_string)
     end

@@ -21,7 +21,7 @@ describe Audit::Event::List do
   context 'when successful' do
     it 'produces the expected message' do
       expect(subject.message).to eq(
-        'rspec:user:my_user successfully listed resources with parameters: {"limit"=>"1000"}'
+        'rspec:user:my_user successfully listed resources with parameters: {"limit" => "1000"}'
       )
     end
 
@@ -31,7 +31,7 @@ describe Audit::Event::List do
 
     it 'renders to string correctly' do
       expect(subject.to_s).to eq(
-        'rspec:user:my_user successfully listed resources with parameters: {"limit"=>"1000"}'
+        'rspec:user:my_user successfully listed resources with parameters: {"limit" => "1000"}'
       )
     end
 
@@ -47,7 +47,7 @@ describe Audit::Event::List do
 
     it 'produces the expected message' do
       expect(subject.message).to eq(
-        'rspec:user:my_user failed to list resources with parameters: {"limit"=>"1000"}'
+        'rspec:user:my_user failed to list resources with parameters: {"limit" => "1000"}'
       )
     end
 
@@ -68,7 +68,7 @@ describe Audit::Event::List do
 
     it 'produces the expected message' do
       expect(subject.message).to eq(
-        'rspec:user:my_user failed to list resources with parameters: {"limit"=>"1000"}: ' \
+        'rspec:user:my_user failed to list resources with parameters: {"limit" => "1000"}: ' \
         'The authenticated user lacks the necessary privilege'
       )
     end

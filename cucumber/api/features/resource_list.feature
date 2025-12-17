@@ -21,7 +21,7 @@ Feature: List resources with various types of filtering
       [subject@43868 account="cucumber" limit="1000"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="list"]
-      cucumber:user:alice successfully listed resources with parameters: {:account=>"cucumber", :limit=>"1000"}
+      cucumber:user:alice successfully listed resources with parameters: {account: "cucumber", limit: "1000"}
     """
 
   @smoke
@@ -37,7 +37,7 @@ Feature: List resources with various types of filtering
       [subject@43868 account="cucumber" kind="variable" limit="1000"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="list"]
-      cucumber:user:alice successfully listed resources with parameters: {:account=>"cucumber", :kind=>"variable", :limit=>"1000"}
+      cucumber:user:alice successfully listed resources with parameters: {account: "cucumber", kind: "variable", limit: "1000"}
     """
 
   @acceptance
@@ -53,7 +53,7 @@ Feature: List resources with various types of filtering
       [subject@43868 account="cucumber" kind="user" limit="1000"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="list"]
-      cucumber:user:alice successfully listed resources with parameters: {:account=>"cucumber", :kind=>"user", :limit=>"1000"}
+      cucumber:user:alice successfully listed resources with parameters: {account: "cucumber", kind: "user", limit: "1000"}
     """
 
   @smoke
@@ -69,7 +69,7 @@ Feature: List resources with various types of filtering
       [subject@43868 account="cucumber" kind="variable" search="target" limit="1000"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="list"]
-      cucumber:user:alice successfully listed resources with parameters: {:account=>"cucumber", :kind=>"variable", :search=>"target", :limit=>"1000"}
+      cucumber:user:alice successfully listed resources with parameters: {account: "cucumber", kind: "variable", search: "target", limit: "1000"}
     """
 
   @smoke
@@ -123,7 +123,7 @@ Feature: List resources with various types of filtering
       [subject@43868 account="cucumber" kind="variable" limit="abc"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="failure" operation="list"]
-      cucumber:user:alice failed to list resources with parameters: {:account=>"cucumber", :kind=>"variable", :limit=>"abc"}:
+      cucumber:user:alice failed to list resources with parameters: {account: "cucumber", kind: "variable", limit: "abc"}:
       'limit' contains an invalid value. 'limit' must be a positive integer
     """
 
@@ -141,7 +141,7 @@ Feature: List resources with various types of filtering
       [subject@43868 account="cucumber" kind="variable" limit="0"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="failure" operation="list"]
-      cucumber:user:alice failed to list resources with parameters: {:account=>"cucumber", :kind=>"variable", :limit=>"0"}:
+      cucumber:user:alice failed to list resources with parameters: {account: "cucumber", kind: "variable", limit: "0"}:
       'limit' contains an invalid value. 'limit' must be a positive integer
     """
 
@@ -171,7 +171,7 @@ Feature: List resources with various types of filtering
       [subject@43868 account="cucumber" kind="variable" offset="abc"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="failure" operation="list"]
-      cucumber:user:alice failed to list resources with parameters: {:account=>"cucumber", :kind=>"variable", :offset=>"abc"}:
+      cucumber:user:alice failed to list resources with parameters: {account: "cucumber", kind: "variable", offset: "abc"}:
       'offset' contains an invalid value. 'offset' must be an integer greater than or equal to 0
     """
 
@@ -194,7 +194,7 @@ Feature: List resources with various types of filtering
       [subject@43868 account="cucumber" kind="variable" limit="1" offset="1"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="list"]
-      cucumber:user:alice successfully listed resources with parameters: {:account=>"cucumber", :kind=>"variable", :limit=>"1", :offset=>"1"}
+      cucumber:user:alice successfully listed resources with parameters: {account: "cucumber", kind: "variable", limit: "1", offset: "1"}
     """
   @negative @acceptance
   Scenario: The resource list cannot be retrieved with non numeric limit delimiter
@@ -222,5 +222,5 @@ Feature: List resources with various types of filtering
       [subject@43868 account="cucumber" kind="variable" count="true"]
       [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
       [action@43868 result="success" operation="list"]
-      cucumber:user:alice successfully listed resources with parameters: {:account=>"cucumber", :kind=>"variable", :count=>"true"}
+      cucumber:user:alice successfully listed resources with parameters: {account: "cucumber", kind: "variable", count: "true"}
     """
