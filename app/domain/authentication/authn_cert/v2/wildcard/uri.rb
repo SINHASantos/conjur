@@ -17,53 +17,71 @@ module Authentication
         #   4. '*' matches exactly one non-empty segment
         #   5. Segment counts must be equal
         #   6. Query and fragment ignored
+        #
+        # This class is used to validate wildcard patterns in certificate
+        # authenticator configuration both:
+        #
+        #   1. At authentication time, to catch misconfiguration created by
+        #      policy and variable value loads, and...
+        #   2. At authenticator creation/update time, performed via the V2
+        #      Authenticators CRUD API.
+        #
+        # These operations have different requirements regarding error visibility.
+        # Authentication obscures detailed error messages from the authenticating
+        # role for security purposes, while the V2 API surfaces more detailed
+        # error responses for a better user experience. The methods that this
+        # class implements will return `Success` and `Failure` response objects
+        # that contain detailed messages - they should be logged, and not returned,
+        # in authentication flows.
         class Uri
-          def self.valid?(pattern)
-            return false if pattern.nil?
+          def initialize(logger: Rails.logger)
+            @logger = logger
+            @messages = LogMessages::Authentication::AuthnCert
+
+            @success = Responses::Success
+            @failure = Responses::Failure
+          end
+
+          def valid?(pattern)
+            return @failure.new(@messages::URIPatternValidationFailed.new(pattern, "pattern may not be empty")) if pattern.nil?
 
             # Reject illegal double-wildcard.
             if pattern.include?('**')
-              Rails.logger.debug(LogMessages::Authentication::AuthnCert::URIPatternValidationDoubleWildcard.new)
-              return false
+              return @failure.new(@messages::URIPatternValidationFailed.new(pattern, "double-wildcard not allowed"))
             end
 
             begin
               uri = Addressable::URI.parse(pattern)
             rescue Addressable::URI::InvalidURIError
-              Rails.logger.error(LogMessages::Authentication::AuthnCert::URIParseError)
-              return false
+              return @failure.new(@messages::URIPatternValidationFailed.new(pattern, "invalid URI format"))
             end
 
             # Must be hierarchical URI and contain scheme and host
             unless required_components_present?(uri)
-              Rails.logger.debug(LogMessages::Authentication::AuthnCert::URIPatternValidationMissingSchemeOrHost.new)
-              return false
+              return @failure.new(@messages::URIPatternValidationFailed.new(pattern, "missing scheme or host"))
             end
 
             # SPIFFE URIs cannot include wildcards
             if uri.scheme.downcase == 'spiffe' && pattern.include?('*')
-              Rails.logger.debug(LogMessages::Authentication::AuthnCert::URIPatternValidationWildcardNotAllowedInSPIFFE.new)
-              return false
+              return @failure.new(@messages::URIPatternValidationFailed.new(pattern, "wildcards not allowed in SPIFFE URIs"))
             end
 
             # Wildcards only allowed in path.
             unless pattern.count('*') == uri.path.count('*')
-              Rails.logger.debug(LogMessages::Authentication::AuthnCert::URIPatternValidationWildcardOnlyInPath.new)
-              return false
+              return @failure.new(@messages::URIPatternValidationFailed.new(pattern, "wildcards only allowed in path"))
             end
 
             # Validate path segments: wildcard only allowed as entire segment.
             segments = uri.path.split('/')
             if segments.any? { |seg| seg.include?('*') && seg != '*' }
-              Rails.logger.debug(LogMessages::Authentication::AuthnCert::URIPatternValidationWildcardEntireSegment.new)
-              return false
+              return @failure.new(@messages::URIPatternValidationFailed.new(pattern, "wildcard must be entire segment"))
             end
 
-            Rails.logger.debug(LogMessages::Authentication::AuthnCert::URIPatternValidationSucceeded.new)
-            true
+            @logger.debug(@messages::URIPatternValidationSucceeded.new)
+            @success.new(true)
           end
 
-          def self.match?(pattern, candidate)
+          def match?(pattern, candidate)
             # Trim trailing slash
             pattern = pattern.delete_suffix('/')
             candidate = candidate.delete_suffix('/')
@@ -75,51 +93,46 @@ module Authentication
               candidate_uri = Addressable::URI.parse(candidate)
               pattern_uri = Addressable::URI.parse(pattern)
             rescue Addressable::URI::InvalidURIError
-              Rails.logger.error(LogMessages::Authentication::AuthnCert::URIParseError)
-              return false
+              return @failure.new(@messages::URIPatternMatchingFailed.new(pattern, candidate, "invalid URI format"))
             end
 
             # Must be hierarchical URI and contain scheme and host
             unless required_components_present?(pattern_uri) && required_components_present?(candidate_uri)
-              Rails.logger.debug(LogMessages::Authentication::AuthnCert::URIPatternMatchingMissingSchemeOrHost.new)
-              return false
+              return @failure.new(@messages::URIPatternMatchingFailed.new(pattern, candidate, "missing scheme or host"))
             end
 
             # Must match scheme - case-insensitive
             unless pattern_uri.scheme.downcase == candidate_uri.scheme.downcase
-              Rails.logger.debug(LogMessages::Authentication::AuthnCert::URIPatternMatchingSchemeMismatch.new)
-              return false
+              return @failure.new(@messages::URIPatternMatchingFailed.new(pattern, candidate, "scheme mismatch"))
             end
 
             # Must match host, userinfo, port - case-sensitive
             unless pattern_uri.host.downcase == candidate_uri.host.downcase
-              Rails.logger.debug(LogMessages::Authentication::AuthnCert::URIPatternMatchingHostMismatch.new)
-              return false
+              return @failure.new(@messages::URIPatternMatchingFailed.new(pattern, candidate, "host mismatch"))
             end
 
             unless pattern_uri.userinfo == candidate_uri.userinfo
-              Rails.logger.debug(LogMessages::Authentication::AuthnCert::URIPatternMatchingUserinfoMismatch.new)
-              return false
+              return @failure.new(@messages::URIPatternMatchingFailed.new(pattern, candidate, "userinfo mismatch"))
             end
 
             unless pattern_uri.port == candidate_uri.port
-              Rails.logger.debug(LogMessages::Authentication::AuthnCert::URIPatternMatchingPortMismatch.new)
-              return false
+              return @failure.new(@messages::URIPatternMatchingFailed.new(pattern, candidate, "port mismatch"))
             end
 
             # Compare path segments
             pattern_segments = pattern_uri.path.split('/')
             candidate_segments = candidate_uri.path.split('/')
             unless path_segment_match?(pattern_segments, candidate_segments)
-              Rails.logger.debug(LogMessages::Authentication::AuthnCert::URIPatternMatchingPathSegmentMismatch.new)
-              return false
+              return @failure.new(@messages::URIPatternMatchingFailed.new(pattern, candidate, "path segment mismatch"))
             end
 
-            Rails.logger.debug(LogMessages::Authentication::AuthnCert::URIPatternMatchingSucceeded.new)
-            true
+            @logger.debug(@messages::URIPatternMatchingSucceeded.new(pattern, candidate))
+            @success.new(true)
           end
 
-          def self.path_segment_match?(pattern_segments, candidate_segments)
+          private
+
+          def path_segment_match?(pattern_segments, candidate_segments)
             # Must have same number of segments
             return false unless pattern_segments.length == candidate_segments.length
 
@@ -132,7 +145,7 @@ module Authentication
             end
           end
 
-          def self.required_components_present?(uri)
+          def required_components_present?(uri)
             return false unless uri.scheme.present?
             return false unless uri.host.present?
 

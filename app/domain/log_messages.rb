@@ -814,169 +814,64 @@ module LogMessages
         code: "CONJ00508I"
       )
 
-      DNSPatternValidationDoubleWildcard = ::Util::TrackableLogMessageClass.new(
-        msg: "DNS pattern validation failed: double-wildcard not allowed",
+      DNSPatternValidationFailed = ::Util::TrackableLogMessageClass.new(
+        msg: "DNS pattern '{0-pattern}' validation failed: {1-reason}",
         code: "CONJ00509D"
       )
 
-      DNSPatternValidationEmptyLabels = ::Util::TrackableLogMessageClass.new(
-        msg: "DNS pattern validation failed: empty labels",
+      DNSPatternValidationSucceeded = ::Util::TrackableLogMessageClass.new(
+        msg: "DNS pattern '{0-pattern}' validation succeeded",
         code: "CONJ00510D"
       )
 
-      DNSPatternValidationWildcardInETLD1 = ::Util::TrackableLogMessageClass.new(
-        msg: "DNS pattern validation failed: wildcard in eTLD+1",
+      DNSPatternMatchingSucceeded = ::Util::TrackableLogMessageClass.new(
+        msg: "DNS pattern '{0-pattern}' matched successfully with '{1-name}'",
         code: "CONJ00511D"
       )
 
-      DNSPatternValidationSucceeded = ::Util::TrackableLogMessageClass.new(
-        msg: "DNS pattern validation succeeded",
+      DNSPatternMatchingFailed = ::Util::TrackableLogMessageClass.new(
+        msg: "DNS pattern '{0-pattern}' failed to match '{1-name}': {2-reason}",
         code: "CONJ00512D"
       )
 
-      DNSPatternValidationInvalidSegment = ::Util::TrackableLogMessageClass.new(
-        msg: "DNS pattern validation failed: invalid segment",
+      URIPatternValidationFailed = ::Util::TrackableLogMessageClass.new(
+        msg: "URI pattern '{0-pattern}' validation failed: {1-reason}",
         code: "CONJ00513D"
       )
 
-      DNSPatternValidationDomainParseError = ::Util::TrackableLogMessageClass.new(
-        msg: "DNS pattern validation failed: domain parse error",
-        code: "CONJ00514E"
+      URIPatternValidationSucceeded = ::Util::TrackableLogMessageClass.new(
+        msg: "URI pattern '{0-pattern}' validation succeeded",
+        code: "CONJ00514D"
       )
 
-      DNSPatternMatchingSucceeded = ::Util::TrackableLogMessageClass.new(
-        msg: "DNS pattern matching succeeded",
+      URIPatternMatchingFailed = ::Util::TrackableLogMessageClass.new(
+        msg: "URI pattern '{0-pattern}' matching failed to match '{1-uri}': {2-reason}",
         code: "CONJ00515D"
       )
 
-      DNSPatternMatchingDirectComparisonFailed = ::Util::TrackableLogMessageClass.new(
-        msg: "DNS pattern matching failed: direct comparison",
+      URIPatternMatchingSucceeded = ::Util::TrackableLogMessageClass.new(
+        msg: "URI pattern '{0-pattern}' matched successfully with '{1-uri}'",
         code: "CONJ00516D"
       )
 
-      DNSPatternMatchingSegmentCountMismatch = ::Util::TrackableLogMessageClass.new(
-        msg: "DNS pattern matching failed: segment count mismatch",
+      IPPatternValidationFailed = ::Util::TrackableLogMessageClass.new(
+        msg: "IP pattern '{0-pattern}' validation failed: {1-reason}",
         code: "CONJ00517D"
       )
 
-      DNSPatternMatchingEmptyLabel = ::Util::TrackableLogMessageClass.new(
-        msg: "DNS pattern matching failed: empty label",
+      IPPatternValidationSucceeded = ::Util::TrackableLogMessageClass.new(
+        msg: "IP pattern '{0-pattern}' validation succeeded",
         code: "CONJ00518D"
       )
 
-      DNSPatternMatchingWildcardMismatch = ::Util::TrackableLogMessageClass.new(
-        msg: "DNS pattern matching failed: wildcard mismatch",
+      IPPatternMatchingSucceeded = ::Util::TrackableLogMessageClass.new(
+        msg: "IP pattern '{0-pattern}' matched successfully with '{1-ip}'",
         code: "CONJ00519D"
       )
 
-      DNSPatternMatchingLabelMismatch = ::Util::TrackableLogMessageClass.new(
-        msg: "DNS pattern matching failed: label mismatch",
-        code: "CONJ00520D"
-      )
-
-      DNSMatchSucceeded = ::Util::TrackableLogMessageClass.new(
-        msg: "DNS pattern matching succeeded",
-        code: "CONJ00521D"
-      )
-
-      URIPatternValidationDoubleWildcard = ::Util::TrackableLogMessageClass.new(
-        msg: "URI pattern validation failed: double-wildcard not allowed",
-        code: "CONJ00522D"
-      )
-
-      URIPatternValidationMissingSchemeOrHost = ::Util::TrackableLogMessageClass.new(
-        msg: "URI pattern validation failed: missing scheme or host",
-        code: "CONJ00523D"
-      )
-
-      URIPatternValidationWildcardNotAllowedInSPIFFE = ::Util::TrackableLogMessageClass.new(
-        msg: "URI pattern validation failed: wildcard not allowed in SPIFFE URI",
-        code: "CONJ00524D"
-      )
-
-      URIPatternValidationWildcardOnlyInPath = ::Util::TrackableLogMessageClass.new(
-        msg: "URI pattern validation failed: wildcard only allowed in path",
-        code: "CONJ00525D"
-      )
-
-      URIPatternValidationWildcardEntireSegment = ::Util::TrackableLogMessageClass.new(
-        msg: "URI pattern validation failed: wildcard must be entire segment",
-        code: "CONJ00526D"
-      )
-
-      URIPatternValidationSucceeded = ::Util::TrackableLogMessageClass.new(
-        msg: "URI pattern validation succeeded",
-        code: "CONJ00527D"
-      )
-
-      URIPatternMatchingMissingSchemeOrHost = ::Util::TrackableLogMessageClass.new(
-        msg: "URI pattern matching failed: missing scheme or host",
-        code: "CONJ00528D"
-      )
-
-      URIPatternMatchingSchemeMismatch = ::Util::TrackableLogMessageClass.new(
-        msg: "URI pattern matching failed: scheme mismatch",
-        code: "CONJ00529D"
-      )
-
-      URIPatternMatchingHostMismatch = ::Util::TrackableLogMessageClass.new(
-        msg: "URI pattern matching failed: host mismatch",
-        code: "CONJ00530D"
-      )
-
-      URIPatternMatchingUserinfoMismatch = ::Util::TrackableLogMessageClass.new(
-        msg: "URI pattern matching failed: userinfo mismatch",
-        code: "CONJ00531D"
-      )
-
-      URIPatternMatchingPortMismatch = ::Util::TrackableLogMessageClass.new(
-        msg: "URI pattern matching failed: port mismatch",
-        code: "CONJ00532D"
-      )
-
-      URIPatternMatchingPathSegmentMismatch = ::Util::TrackableLogMessageClass.new(
-        msg: "URI pattern matching failed: path segment mismatch",
-        code: "CONJ00533D"
-      )
-
-      URIPatternMatchingSucceeded = ::Util::TrackableLogMessageClass.new(
-        msg: "URI pattern matching succeeded",
-        code: "CONJ00534D"
-      )
-
-      URIParseError = ::Util::TrackableLogMessageClass.new(
-        msg: "URI parse error",
-        code: "CONJ00535E"
-      )
-
-      IPPatternValidationWildcardsNotAllowed = ::Util::TrackableLogMessageClass.new(
-        msg: "IP pattern validation failed: wildcards not allowed",
-        code: "CONJ00536D"
-      )
-
-      IPPatternValidationCIDRNotAllowed = ::Util::TrackableLogMessageClass.new(
-        msg: "IP pattern validation failed: IP addresses in CIDR notation not allowed",
-        code: "CONJ00537D"
-      )
-
-      IPPatternValidationSucceeded = ::Util::TrackableLogMessageClass.new(
-        msg: "IP pattern validation succeeded",
-        code: "CONJ00538D"
-      )
-
-      IPPatternValidationInvalidIPError = ::Util::TrackableLogMessageClass.new(
-        msg: "IP pattern validation failed: invalid IP",
-        code: "CONJ00539E"
-      )
-
-      IPPatternMatchingSucceeded = ::Util::TrackableLogMessageClass.new(
-        msg: "IP pattern matching succeeded",
-        code: "CONJ00540D"
-      )
-
       IPPatternMatchingFailed = ::Util::TrackableLogMessageClass.new(
-        msg: "IP pattern matching failed",
-        code: "CONJ00541D"
+        msg: "IP pattern '{0-pattern}' failed to match '{1-ip}'",
+        code: "CONJ00520D"
       )
 
       ConstraintsValidationSucceeded = ::Util::TrackableLogMessageClass.new(

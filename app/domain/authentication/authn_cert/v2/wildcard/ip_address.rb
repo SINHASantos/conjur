@@ -12,43 +12,63 @@ module Authentication
         # We'll use this class to check that the IP Address "patterns" are valid
         # IP addresses, and then perform simple string comparisons against
         # client certificate attributes.
+        #
+        # This class is used to validate wildcard patterns in certificate
+        # authenticator configuration both:
+        #
+        #   1. At authentication time, to catch misconfiguration created by
+        #      policy and variable value loads, and...
+        #   2. At authenticator creation/update time, performed via the V2
+        #      Authenticators CRUD API.
+        #
+        # These operations have different requirements regarding error visibility.
+        # Authentication obscures detailed error messages from the authenticating
+        # role for security purposes, while the V2 API surfaces more detailed
+        # error responses for a better user experience. The methods that this
+        # class implements will return `Success` and `Failure` response objects
+        # that contain detailed messages - they should be logged, and not returned,
+        # in authentication flows.
         class IpAddress
-          def self.valid?(pattern)
-            return false if pattern.empty?
+          def initialize(logger: Rails.logger)
+            @logger = logger
+            @messages = LogMessages::Authentication::AuthnCert
+
+            @success = Responses::Success
+            @failure = Responses::Failure
+          end
+
+          def valid?(pattern)
+            return @failure.new(@messages::IPPatternValidationFailed.new(pattern, "pattern may not be empty")) if pattern.blank?
 
             # Reject wildcards in IP addresses.
             if pattern.include?('*')
-              Rails.logger.debug(LogMessages::Authentication::AuthnCert::IPPatternValidationWildcardsNotAllowed.new)
-              return false
+              return @failure.new(@messages::IPPatternValidationFailed.new(pattern, "wildcards not allowed"))
             end
 
             # Reject IP addresses in CIDR notation, as this would require
             # matching a range of IP addresses to the pattern based on the
             # subnet mask.
             if pattern.include?('/')
-              Rails.logger.debug(LogMessages::Authentication::AuthnCert::IPPatternValidationCIDRNotAllowed.new)
-              return false
+              return @failure.new(@messages::IPPatternValidationFailed.new(pattern, "CIDR notation not allowed"))
             end
 
             # Confirm that the pattern is in fact a valid IP address. Invalid
             # IPs will raise an exception and be caught below.
             IPAddr.new(pattern)
 
-            Rails.logger.debug(LogMessages::Authentication::AuthnCert::IPPatternValidationSucceeded.new)
-            true
+            @logger.debug(@messages::IPPatternValidationSucceeded.new(pattern))
+            @success.new(true)
           rescue
-            Rails.logger.error(LogMessages::Authentication::AuthnCert::IPPatternValidationInvalidIPError.new)
-            false
+            @failure.new(@messages::IPPatternValidationFailed.new(pattern, "invalid IP address"))
           end
 
-          def self.match?(pattern, candidate)
-            result = pattern == candidate
-            if result
-              Rails.logger.debug(LogMessages::Authentication::AuthnCert::IPPatternMatchingSucceeded.new)
-            else
-              Rails.logger.debug(LogMessages::Authentication::AuthnCert::IPPatternMatchingFailed.new)
+          def match?(pattern, candidate)
+            unless pattern == candidate
+              return @failure.new(@messages::IPPatternMatchingFailed.new(pattern, candidate))
             end
-            result
+
+            @logger.debug(@messages::IPPatternMatchingSucceeded.new(pattern, candidate))
+            @success.new(true)
           end
         end
       end

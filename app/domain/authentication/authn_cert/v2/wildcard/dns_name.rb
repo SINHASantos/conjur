@@ -32,20 +32,42 @@ module Authentication
         #   3. Wildcards may not cross label boundaries.
         #   4. Subdomain labels may include only a single wildcard.
         #   5. Wildcards may appear in or replace multiple subdomain labels.
+        #
+        # This class is used to validate wildcard patterns in certificate
+        # authenticator configuration both:
+        #
+        #   1. At authentication time, to catch misconfiguration created by
+        #      policy and variable value loads, and...
+        #   2. At authenticator creation/update time, performed via the V2
+        #      Authenticators CRUD API.
+        #
+        # These operations have different requirements regarding error visibility.
+        # Authentication obscures detailed error messages from the authenticating
+        # role for security purposes, while the V2 API surfaces more detailed
+        # error responses for a better user experience. The methods that this
+        # class implements will return `Success` and `Failure` response objects
+        # that contain detailed messages - they should be logged, and not returned,
+        # in authentication flows.
         class DnsName
-          def self.valid?(pattern)
+          def initialize(logger: Rails.logger)
+            @logger = logger
+            @messages = LogMessages::Authentication::AuthnCert
+
+            @success = Responses::Success
+            @failure = Responses::Failure
+          end
+
+          def valid?(pattern)
             pattern = pattern.downcase
 
             # Reject illegal double-wildcard.
             if pattern.include?('**')
-              Rails.logger.debug(LogMessages::Authentication::AuthnCert::DNSPatternValidationDoubleWildcard.new)
-              return false
+              return @failure.new(@messages::DNSPatternValidationFailed.new(pattern, "double-wildcard not allowed"))
             end
 
             # Reject domain names with empty labels.
             if pattern.include?('..') || pattern.start_with?('.') || pattern.end_with?('.')
-              Rails.logger.debug(LogMessages::Authentication::AuthnCert::DNSPatternValidationEmptyLabels.new)
-              return false
+              return @failure.new(@messages::DNSPatternValidationFailed.new(pattern, "empty labels are not allowed"))
             end
 
             # Parse the pattern into a PublicSuffix::Domain instance.
@@ -57,8 +79,7 @@ module Authentication
 
             # Reject domain names with wildcard in eTLD+1.
             if etld1.include?('*')
-              Rails.logger.debug(LogMessages::Authentication::AuthnCert::DNSPatternValidationWildcardInETLD1.new)
-              return false
+              return @failure.new(@messages::DNSPatternValidationFailed.new(pattern, "wildcard in eTLD+1 not allowed"))
             end
 
             # PublicSuffix::Domain#to_a always returns an array of length 3.
@@ -67,54 +88,43 @@ module Authentication
             #   "google.co.uk"    => [    nil, "google", "co.uk" ]
             #   "mail.google.com" => [ "mail", "google",   "com" ]
             leading_remainder = parsed_pattern.to_a[0]
-            if leading_remainder.nil?
-              Rails.logger.debug(LogMessages::Authentication::AuthnCert::DNSPatternValidationSucceeded.new)
-              return true
-            end
-
-            # Validate DNS name segments outside the eTLD+1.
-            leading_remainder.split('.').each do |segment|
-              if segment.blank? || !valid_segment?(segment)
-                Rails.logger.debug(LogMessages::Authentication::AuthnCert::DNSPatternValidationInvalidSegment.new)
-                return false
+            unless leading_remainder.nil?
+              # Validate DNS name segments outside the eTLD+1.
+              leading_remainder.split('.').each do |segment|
+                if segment.blank? || !valid_segment?(segment)
+                  return @failure.new(@messages::DNSPatternValidationFailed.new(pattern, "invalid segment '#{segment}'"))
+                end
               end
             end
 
-            Rails.logger.debug(LogMessages::Authentication::AuthnCert::DNSPatternValidationSucceeded.new)
-            true
+            @logger.debug(@messages::DNSPatternValidationSucceeded.new(pattern))
+            @success.new(true)
           rescue PublicSuffix::DomainInvalid, PublicSuffix::DomainNotAllowed
-            Rails.logger.error(LogMessages::Authentication::AuthnCert::DNSPatternValidationDomainParseError.new)
-            false
+            @failure.new(@messages::DNSPatternValidationFailed.new(pattern, "invalid DNS name"))
           end
 
-          def self.match?(pattern, dns_name)
+          def match?(pattern, dns_name)
             # Sanitize whitespace from candidate DNS name.
             dns_name = dns_name.strip.downcase
 
             # If the pattern does not contain a wildcard, we can do a direct
             # string comparison.
             unless pattern.include?('*')
-              if dns_name == pattern
-                Rails.logger.debug(LogMessages::Authentication::AuthnCert::DNSPatternMatchingSucceeded.new)
-                return true
-              else
-                Rails.logger.debug(LogMessages::Authentication::AuthnCert::DNSPatternMatchingDirectComparisonFailed.new)
-                return false
-              end
+              return @success.new(true) if dns_name == pattern
+
+              return @failure.new(@messages::DNSPatternMatchingFailed.new(pattern, dns_name, "direct comparison failed"))
             end
 
             pattern_segments = pattern.split('.')
             candidate_segments = dns_name.split('.')
             if candidate_segments.length != pattern_segments.length
-              Rails.logger.debug(LogMessages::Authentication::AuthnCert::DNSPatternMatchingSegmentCountMismatch.new)
-              return false
+              return @failure.new(@messages::DNSPatternMatchingFailed.new(pattern, dns_name, "segment count mismatch"))
             end
 
             pattern_segments.zip(candidate_segments).each do |pattern_label, candidate_label|
               # Empty labels in the candidate DNS name should be rejected.
               if candidate_label.blank?
-                Rails.logger.debug(LogMessages::Authentication::AuthnCert::DNSPatternMatchingEmptyLabel.new)
-                return false
+                return @failure.new(@messages::DNSPatternMatchingFailed.new(pattern, dns_name, "empty label in candidate DNS name"))
               end
 
               # Wildcards that make up an entire label in the pattern DNS name
@@ -125,25 +135,22 @@ module Authentication
               # match the rest of the label content against the candidate label.
               if pattern_label.start_with?('*')
                 suffix = pattern_label[1..-1]
-                if candidate_label.end_with?(suffix)
-                  next
-                else
-                  Rails.logger.debug(LogMessages::Authentication::AuthnCert::DNSPatternMatchingWildcardMismatch.new)
-                end
+                next if candidate_label.end_with?(suffix)
               end
 
               # Compare labels without wildcards directly.
               if pattern_label != candidate_label
-                Rails.logger.debug(LogMessages::Authentication::AuthnCert::DNSPatternMatchingLabelMismatch.new)
-                return false
+                return @failure.new(@messages::DNSPatternMatchingFailed.new(pattern, dns_name, "label mismatch"))
               end
             end
 
-            Rails.logger.debug(LogMessages::Authentication::AuthnCert::DNSMatchSucceeded.new)
-            true
+            @logger.debug(@messages::DNSPatternMatchingSucceeded.new(pattern, dns_name))
+            @success.new(true)
           end
 
-          def self.valid_segment?(segment)
+          private
+
+          def valid_segment?(segment)
             # Allow segments that consist of a single wildcard that represents
             # the entire label.
             return true if segment == '*'
