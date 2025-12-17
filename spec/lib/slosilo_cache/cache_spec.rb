@@ -75,12 +75,14 @@ describe SlosiloCache::Cache do
     end.new
   end
 
-  subject(:cache) { described_class.new(db: db, timer: timer, logger: logger) }
-
-  # Prevent starting any threads in tests by stubbing the listener
-  before do
-    allow(cache).to receive(:start_clear_notification_listener!).and_return(nil)
+  # No-op listener to avoid starting threads in tests
+  let(:noop_listener) do
+    Class.new do
+      def start!; end
+    end.new
   end
+
+  subject(:cache) { described_class.new(db: db, timer: timer, logger: logger, listener: noop_listener) }
 
   describe '#get and #put outside transaction' do
     before { db.in_tx = false }

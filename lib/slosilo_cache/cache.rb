@@ -1,15 +1,20 @@
 # frozen_string_literal: true
 
 require 'concurrent/map'
+require_relative 'clear_cache_listener'
 
 module SlosiloCache
   class Cache
-    def initialize(db:, timer:, logger:)
+    def initialize(db:, timer:, logger:, listener: nil)
       @db = db
       @timer = timer
       @logger = logger
 
-      @listener_thread = nil
+      @listener = listener || SlosiloCache::ClearCacheListener.new(
+        db: @db,
+        logger: @logger,
+        on_clear: method(:clear!)
+      )
 
       @committed = Concurrent::Map.new        # id => key
       @tx_by_thread = Concurrent::Map.new     # thread_id => (id => key)
@@ -66,7 +71,7 @@ module SlosiloCache
     # Put value into cache. If in transaction, store in the per-thread cache and
     # register commit/rollback hooks. Otherwise store in committed cache.
     def put(id, key)
-      start_clear_notification_listener!(@logger)
+      @listener.start!
 
       if in_transaction?
         ensure_hooks_registered!
@@ -151,37 +156,6 @@ module SlosiloCache
         @tx_by_thread.delete(tid)
         @hooks_registered.delete(tid)
       end
-    end
-
-    def start_clear_notification_listener!(logger)
-      return if @listener_thread&.alive?
-
-      unless @db
-        logger.warn('SlosiloCache listener not started: no DB connection')
-        return
-      end
-
-      @listener_thread = Thread.new do
-        Thread.current.name = 'slosilo_cache_clear_listener' if Thread.current.respond_to?(:name=)
-        logger.debug("Thread #{Thread.current.object_id} is dtarting Slosilo cache clear listener on channel: clear_slosilo_cache")
-
-        loop do
-          @db.listen('clear_slosilo_cache') do |channel, payload|
-            logger.debug("Slosilo_cache_clear listener - received NOTIFY on #{channel} with payload: #{payload.inspect}")
-            begin
-              clear!
-              logger.debug("Slosilo cache cleared in response to NOTIFY")
-            rescue => e
-              logger.error("Failed to clear Slosilo cache on NOTIFY: #{e.class}: #{e.message}")
-            end
-          end
-        rescue => e
-          logger.error("Slosilo_cache_clear listener error (will try restart): #{e.class}: #{e.message}")
-          next
-        end
-      end
-
-      @listener_thread.abort_on_exception = true
     end
   end
 end
