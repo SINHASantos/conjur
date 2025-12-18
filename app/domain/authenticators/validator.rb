@@ -486,13 +486,14 @@ module Authenticators
       end
 
       # If `host_mode` is "spiffe", `trust_domain` and `identity_path` must also be provided
-      if data.dig(:identity, :host_mode) == 'spiffe' &&
-          (data.dig(:identity, :trust_domain).nil? || data.dig(:identity, :identity_path).nil?)
-
-        raise(
-          ApplicationController::UnprocessableEntity,
-          "In the identity object, when the 'host_mode' is 'spiffe', both 'trust_domain' and 'identity_path' fields must also be specified."
-        )
+      if data.dig(:identity, :host_mode) == 'spiffe'
+        unless data.dig(:identity, :trust_domain) && data.dig(:identity, :identity_path)
+          raise(
+            ApplicationController::UnprocessableEntity,
+            "In the identity object, when the 'host_mode' is 'spiffe', both 'trust_domain' and 'identity_path' fields must also be specified."
+          )
+        end
+        return
       end
 
       # If `host_mode` is not "spiffe", `trust_domain` and `identity_path` must not be provided
