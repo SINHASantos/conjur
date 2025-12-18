@@ -73,7 +73,13 @@ describe Account, :type => :model do
     describe "when the account exists" do
       it "deletes it" do
         create_account
-        Account.new(account_name).delete 
+        Account.new(account_name).delete
+
+        # If we are using slosilo cache then we need to clear it before
+        # we assert. Normally this cache is cleared when update/delete
+        # is commited but because this test is ran inside transaction then
+        # this will not trigger before asserting.
+        Slosilo.adapter.respond_to?(:clear_cache!) && Slosilo.adapter.clear_cache!
 
         expect(Slosilo["authn:#{account_name}"]).to_not be
         expect(Role["#{account_name}:user:admin"]).to_not be

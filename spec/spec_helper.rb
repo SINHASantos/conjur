@@ -55,6 +55,11 @@ RSpec.configure do |config|
   end
 
   config.around(:each) do |example|
+    # Clear slosilo key cache to prevent passing cache entries between
+    # tests when DatabaseCleaner strategy is different than transaction
+    adapter = Slosilo.adapter
+    adapter.respond_to?(:clear_cache!) && adapter.clear_cache!
+
     DatabaseCleaner.cleaning do
       example.run
     end
