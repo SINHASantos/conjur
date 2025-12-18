@@ -735,7 +735,7 @@ module Authenticators
 
       validate_string(param_name,
                       data[:value],
-                      %r{^/?(?:/[^<>/\n]+)*/?$},
+                      %r{^(?:/?[^<>/\n]+)*/?$},
                       1070,
                       1,
                       "Cannot contain '<' or '>' characters. Empty branches are not allowed.")

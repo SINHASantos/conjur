@@ -521,7 +521,16 @@ describe Authenticators::Validator do
         end
 
         context 'identity-path is not a well-formed policy path' do
-          let(:data) { { ca_cert: sample_cert, identity: { identity_path: "invalid path!" } } }
+          let(:data) do
+            {
+              ca_cert: sample_cert,
+              identity: {
+                host_mode: 'spiffe',
+                identity_path: "some/path/</>//",
+                trust_domain: 'trust.com'
+              }
+            }
+          end
           it "returns an error" do
             expect { subject }
               .to raise_error(
