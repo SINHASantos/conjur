@@ -58,6 +58,29 @@ describe AuthenticatorController, type: :request do
     base_body
   end
 
+  def create_cert_body(id, owner)
+    base_body = {
+      "type": "certificate",
+      "name": id,
+      "enabled": false,
+      "data": {
+        "ca_cert": "-----BEGIN CERTIFICATE-----\nbXktcGVtLWNlcnQ=\n-----END CERTIFICATE-----",
+        "identity": {
+          "san_uri": ["spiffe://example.com/service", "spiffe://example.com/other"],
+          "san_dns": ["foo.example.com", "bar.example.com"],
+          "san_ip": ["1.2.3.4", "5.6.7.8"],
+          "cn": "example.com"
+        }
+      },
+      "annotations": {
+        "test": "123"
+      }
+    }
+
+    base_body["owner"] = owner unless owner.nil?
+    base_body
+  end
+
   def create_request(current_user, owner: nil, id: "test-jwt3")
     post(
       "/authenticators/rspec",
@@ -141,6 +164,9 @@ describe AuthenticatorController, type: :request do
           privilege: [ read, authenticate ]
           resource: !webservice
 
+      - !policy
+        id: conjur/authn-cert
+
       - !user alice
       - !user bob
       - !user grant
@@ -198,6 +224,11 @@ describe AuthenticatorController, type: :request do
         role: !user tester
         privilege: [ create, read, update, delete, authenticate ]
         resource: !policy conjur/authn-oidc/keycloak
+
+      - !permit
+        role: !user tester
+        privilege: [ create, read ]
+        resource: !policy conjur/authn-cert
 
       - !permit
         role: !user grant
@@ -426,6 +457,30 @@ describe AuthenticatorController, type: :request do
           "{\"type\":\"jwt\",\"name\":\"test-jwt3\",\"enabled\":false,\"data\":{\"jwks_uri\":\"http://uri\",\"identity\":" \
           "{\"token_app_property\":\"prop\",\"enforced_claims\":[\"test\",\"123\"],\"claim_aliases\":{\"myclaim\":\"myvalue\",\"second\":\"two\"}}},\"annotations\":{\"test\":\"123\"}}\n"
         )
+      end
+
+      context 'when user creates certificate authenticator' do
+        it "with extra identity san params" do
+          post(
+            "/authenticators/rspec",
+            env: token_auth_header(role: current_user).merge(
+              'RAW_POST_DATA' => create_cert_body("test-cert1", nil).to_json,
+              'ACCEPT' => "application/x.secretsmgr.v2beta+json",
+              'CONTENT_TYPE' => "application/json"
+            )
+          )
+
+          expect(response.code).to eq('201')
+          json = JSON.parse(response.body)
+          expect(json["name"]).to eql("test-cert1")
+          expect(json["type"]).to eql("certificate")
+          expect(json["data"]["ca_cert"]).to match(/-----BEGIN CERTIFICATE-----\s*[A-Za-z0-9+\/=\n]+\s*-----END CERTIFICATE-----/)
+          expect(json["data"]["identity"]["san_uri"]).to eq(["spiffe://example.com/service", "spiffe://example.com/other"])
+          expect(json["data"]["identity"]["san_dns"]).to eq(["foo.example.com", "bar.example.com"])
+          expect(json["data"]["identity"]["san_ip"]).to eq(["1.2.3.4", "5.6.7.8"])
+          expect(json["data"]["identity"]["cn"]).to eq("example.com")
+          expect(json["annotations"]["test"]).to eq("123")
+        end
       end
 
       context 'when the authenticator already exists in the database' do

@@ -693,22 +693,22 @@ module Authenticators
     end
 
     def validate_ca_cert(param_name, data)
-      validate_text_size(data[:value], AuthenticatorsV2::Certificate::MAX_CA_CERT_SIZE, param_name)
-      validate_file_content(data[:value], AuthenticatorsV2::Certificate::CA_CERT_PATTERN, param_name)
+      validate_text_size(data[:value], AuthenticatorsV2::CertAuthenticatorType::MAX_CA_CERT_SIZE, param_name)
+      validate_file_content(data[:value], AuthenticatorsV2::CertAuthenticatorType::CA_CERT_PATTERN, param_name)
     end
 
     def validate_crl(param_name, data)
       return if data[:value].nil?
 
-      validate_text_size(data[:value], AuthenticatorsV2::Certificate::MAX_CRL_SIZE, param_name)
-      validate_file_content(data[:value], AuthenticatorsV2::Certificate::CRL_PATTERN, param_name)
+      validate_text_size(data[:value], AuthenticatorsV2::CertAuthenticatorType::MAX_CRL_SIZE, param_name)
+      validate_file_content(data[:value], AuthenticatorsV2::CertAuthenticatorType::CRL_PATTERN, param_name)
     end
 
     def validate_crl_url(param_name, data)
       return if data[:value].nil?
 
-      validate_string_length(data[:value], AuthenticatorsV2::Certificate::MAX_CRL_URL_LENGTH, param_name)
-      validate_url_format(data[:value], AuthenticatorsV2::Certificate::CRL_URL_PATTERN, param_name)
+      validate_string_length(data[:value], AuthenticatorsV2::CertAuthenticatorType::MAX_CRL_URL_LENGTH, param_name)
+      validate_url_format(data[:value], AuthenticatorsV2::CertAuthenticatorType::CRL_URL_PATTERN, param_name)
     end
 
     def validate_host_mode(param_name, data)
@@ -744,9 +744,9 @@ module Authenticators
       return if data[:value].nil?
 
       uris = data[:value]
-      validate_entry_count(uris, AuthenticatorsV2::Certificate::MAX_SAN_URI_ENTRY_COUNT, param_name)
+      validate_entry_count(uris, AuthenticatorsV2::CertAuthenticatorType::MAX_SAN_URI_ENTRY_COUNT, param_name)
       uris.each do |uri|
-        validate_entry_length(uri, AuthenticatorsV2::Certificate::MAX_SAN_URI_ENTRY_LENGTH, param_name)
+        validate_entry_length(uri, AuthenticatorsV2::CertAuthenticatorType::MAX_SAN_URI_ENTRY_LENGTH, param_name)
         validate_uri_wildcard(uri, param_name)
       end
     end
@@ -755,9 +755,9 @@ module Authenticators
       return if data[:value].nil?
 
       dns_names = data[:value]
-      validate_entry_count(dns_names, AuthenticatorsV2::Certificate::MAX_SAN_DNS_ENTRY_COUNT, param_name)
+      validate_entry_count(dns_names, AuthenticatorsV2::CertAuthenticatorType::MAX_SAN_DNS_ENTRY_COUNT, param_name)
       dns_names.each do |dns|
-        validate_entry_length(dns, AuthenticatorsV2::Certificate::MAX_SAN_DNS_ENTRY_LENGTH, param_name)
+        validate_entry_length(dns, AuthenticatorsV2::CertAuthenticatorType::MAX_SAN_DNS_ENTRY_LENGTH, param_name)
         validate_dns_wildcard(dns, param_name)
       end
     end
@@ -766,7 +766,7 @@ module Authenticators
       return if data[:value].nil?
 
       ip_addresses = data[:value]
-      validate_entry_count(ip_addresses, AuthenticatorsV2::Certificate::MAX_SAN_IP_ENTRY_COUNT, param_name)
+      validate_entry_count(ip_addresses, AuthenticatorsV2::CertAuthenticatorType::MAX_SAN_IP_ENTRY_COUNT, param_name)
       ip_addresses.each do |ip|
         validate_ip_wildcard(ip, param_name)
       end
@@ -776,7 +776,7 @@ module Authenticators
       return if data[:value].nil?
 
       cn = data[:value]
-      validate_string_length(cn, AuthenticatorsV2::Certificate::MAX_CN_LENGTH, param_name)
+      validate_string_length(cn, AuthenticatorsV2::CertAuthenticatorType::MAX_CN_LENGTH, param_name)
       validate_dns_wildcard(cn, param_name)
     end
 
