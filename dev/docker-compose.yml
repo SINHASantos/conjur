@@ -51,7 +51,7 @@ services:
       CONJUR_LOG_LEVEL: debug
       CONJUR_AUTHN_LOGIN: admin
       CONJUR_FEATURE_CERTIFICATE_AUTHENTICATION_ENABLED: true
-      CONJUR_SAAS_AUTHENTICATOR_URL: ${CONJUR_SAAS_AUTHENTICATOR_URL:-host.docker.internal:8080}
+      CONJUR_SAAS_AUTHENTICATOR_URL: ${CONJUR_SAAS_AUTHENTICATOR_URL:-http://host.docker.internal:8080}
 
       AUDIT_DATABASE_URL:
       # TODO: Where should we be running rspec tests from, ideally?
