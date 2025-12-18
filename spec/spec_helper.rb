@@ -183,8 +183,12 @@ def verify_audit_message(audit_message)
   expect(message_found).to eq(true)
 end
 
+def v2_api_header
+  { 'Accept' => "application/x.secretsmgr.v2+json" }
+end
+
 def v2_beta_api_header
-  { 'Accept' => V2RestController::API_V2_HEADER }
+  { 'Accept' => V2RestController::API_V2_BETA_HEADER }
 end
 
 def extract_secret_ids(string)

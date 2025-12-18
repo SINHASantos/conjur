@@ -74,6 +74,7 @@ class BranchesController < V2RestController
 
     url_params = permit_url_params(URL_REQUIRED_PARAMS_IDFR)
     input = permit_body_params([], BRANCH_OPTIONAL_PARAMS)
+    check_not_empty(input)
     log_debug("url_params = #{url_params}, input = #{input}")
 
     authorize_update(path_identifier)
@@ -108,6 +109,12 @@ class BranchesController < V2RestController
   end
 
   private
+
+  def check_not_empty(input)
+    return unless input.empty?
+
+    raise ApplicationController::BadRequestWithBody, 'Empty request body'
+  end
 
   # create
 

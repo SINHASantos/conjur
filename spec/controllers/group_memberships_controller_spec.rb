@@ -164,7 +164,7 @@ describe GroupMembershipsController, type: :request do
         )
         assert_response :bad_request
         parsed_body = JSON.parse(response.body)
-        expect(parsed_body["message"]).to eq("CONJ00194W The api belongs to v2 APIs but it missing the version \"#{V2RestController::API_V2_HEADER}\" in the Accept header")
+        expect(parsed_body["message"]).to eq("CONJ00194W The api belongs to v2 APIs but it missing the version \"#{V2RestController::API_V2_BETA_HEADER}\" in the Accept header")
       end
     end
   end

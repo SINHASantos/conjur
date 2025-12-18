@@ -18,12 +18,16 @@ module Resources
       @logger = logger
     end
 
-    def save_res(policy_id, owner_id, resource_id)
+    def save_res(policy_id, owner_id, resource_id, kind_msg: nil)
       @res_repo.create(
         resource_id: resource_id,
         owner_id: owner_id,
         policy_id: policy_id
       ).save
+    rescue Sequel::UniqueConstraintViolation
+      kind = kind_msg || kind(resource_id)
+      identifier = domain_id(identifier(resource_id))
+      raise Exceptions::RecordExists.new(kind, identifier)
     end
 
     # Fetching a resource by id and checking its visibility to the given role

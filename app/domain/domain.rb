@@ -62,4 +62,12 @@ module Domain
   def user?(kind)
     kind == 'user'
   end
+
+  def can_read?(role, res_id)
+    role.check_allowed_to?(:read, res_id)
+  end
+
+  def can_exec?(role, res_id)
+    role.check_allowed_to?(:execute, res_id)
+  end
 end

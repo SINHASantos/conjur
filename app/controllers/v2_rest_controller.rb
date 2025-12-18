@@ -6,7 +6,7 @@ class V2RestController < RestController
   include LoggingConcern
   include Validation
 
-  API_V2_HEADER = 'application/x.secretsmgr.v2beta+json'
+  API_V2_BETA_HEADER = 'application/x.secretsmgr.v2beta+json'
   URL_REQUIRED_PARAMS = %i[account].freeze
   URL_REQUIRED_PARAMS_IDFR = (URL_REQUIRED_PARAMS + [:identifier]).freeze
   URL_REQUIRED_PARAMS_PATH = (URL_REQUIRED_PARAMS_IDFR + [:kind, :id]).freeze
@@ -32,24 +32,24 @@ class V2RestController < RestController
   end
 
   def update_response_header
-    response.headers['Content-Type'] = request.headers['Accept'] || API_V2_HEADER
+    response.headers['Content-Type'] = request.headers['Accept'] || API_V2_BETA_HEADER
   end
 
-  def permit_url_params(required_params = [], optional_params = [])
+  def permit_url_params(required_params = [], allowed_params = [])
     req_params = request.parameters
     req_params.delete(:controller)
     req_params.delete(controller_name.singularize.to_s)
     @permit_url_params ||= handle_parameters(required_params,
-                                             optional_params,
+                                             allowed_params,
                                              url_params_keys,
                                              req_params)
   end
 
-  def permit_body_params(required_params = [], optional_params = [])
-    raise ApplicationController::BadRequestWithBody, 'Empty request body' if body_payload.empty?
+  def permit_body_params(required_params = [], allowed_params = [])
+    raise ApplicationController::BadRequestWithBody, 'Empty request body' if body_str.empty?
 
     @permit_body_params ||= handle_parameters(required_params,
-                                              optional_params,
+                                              allowed_params,
                                               body_params_keys,
                                               body_payload)
   end
@@ -103,36 +103,13 @@ class V2RestController < RestController
     body_payload.keys.map(&:to_sym)
   end
 
-  def handle_parameters(required_params, optional_params, params_keys, parameters)
+  def handle_parameters(required_params, allowed_params, params_keys, parameters)
     pwr = Wrappers::ParametersWithRise.new(parameters)
-    allowed_params = required_params.union(optional_params)
-    return pwr.permit if allowed_params.empty?
+    all_allowed_params = required_params.union(allowed_params)
+    return pwr.to_hash.deep_symbolize_keys if all_allowed_params.empty?
 
-    pwrp = pwr.permit(*allowed_params)
-
-    required_params.each do |rpk|
-      pwrp.require(rpk)
-    end
-
-    # required_params.each do |rpk|
-    #   pwrp.require(rpk) && next if rpk.is_a?(String) or rpk.is_a?(Symbol)
-    #
-    #   if rpk.is_a?(Hash)
-    #     rpk.each do |k, v|
-    #       if v.is_a?(Array)
-    #         v.each do |vv|
-    #           r = pwr.require(k)
-    #           r.first.require(vv) unless r.empty?
-    #         end
-    #       else
-    #         pwr.require(k)&.require(v)
-    #       end
-    #     end
-    #     next
-    #   end
-    #
-    #   logger.warn("unsupported required param type #{rpk.class} for #{rpk}")
-    # end
+    pwr.require(required_params)
+    pwrp = pwr.permit(*all_allowed_params)
 
     pwrp.to_hash.deep_symbolize_keys
   rescue ActionController::UnpermittedParameters => e

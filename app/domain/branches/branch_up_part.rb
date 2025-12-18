@@ -17,5 +17,9 @@ module Branches
 
       raise DomainValidationError, errors.full_messages.to_sentence if invalid?
     end
+
+    def to_s
+      "#<BranchUpPart owner=#{@owner} annotations=#{@annotations}>"
+    end
   end
 end

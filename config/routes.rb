@@ -131,6 +131,8 @@ Rails.application.routes.draw do
         get     "/secrets/:account/:kind/*identifier" => 'secrets#show', constraints: { kind: /variable/ }
         post    "/secrets/:account/:kind/*identifier" => 'secrets#create', constraints: { kind: /variable|public_key/ }
         get     "/secrets"                            => 'secrets#batch'
+        post    "/secrets/:account/values" => 'secrets_batch#batch_read_values'
+
 
         get     "/policies/:account/:kind/*identifier" => 'policies#get', constraints: { kind: /policy/ }
         put     "/policies/:account/:kind/*identifier" => 'policies#put', constraints: { kind: /policy/ }
