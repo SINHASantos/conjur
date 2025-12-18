@@ -1,4 +1,5 @@
 require 'rack/default_content_type'
+require 'rack/body_normalizer'
 
 # This is where we introduce custom middleware that interacts with Rack
 # and Rails to change how requests are handled.
@@ -27,6 +28,12 @@ Rails.application.configure do
   # attempts are handled correctly. So we add this middleware
   # to the start of the Rack middleware chain.
   config.middleware.insert_before(0, ::Rack::DefaultContentType)
+
+  # After migration from Rack 2 to Rack 3 body can now be nil
+  # To mitigate this problem without tracking each place where 
+  # a method is called on body, we are adding this middleware
+  # which will check for nil and replace it with empty.
+  config.middleware.insert_before(0, ::Rack::BodyNormalizer)
 
   # Deleting the RemoteIp middleware means that `request.remote_ip` will
   # always be the same as `request.ip`. This ensure that the Conjur request log
