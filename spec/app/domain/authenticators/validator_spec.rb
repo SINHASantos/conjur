@@ -263,6 +263,356 @@ describe Authenticators::Validator do
       end
     end
 
+    context 'when it\'s a certificate authenticator' do
+      let(:type) { 'certificate' }
+      let(:name) { 'my-service' }
+      let(:data) { nil }
+      let(:authenticator_hash) do
+        {
+          type: type,
+          name: name,
+          enabled: enabled,
+          owner: owner,
+          data: data,
+          annotations: annotations
+        }
+      end
+
+      let(:sample_cert) do
+        "-----BEGIN CERTIFICATE-----\nMIIDXTCCAkWgAwIBAgIJALa3j7r8H\n-----END CERTIFICATE-----"
+      end
+
+      let(:sample_crl) do
+        "-----BEGIN X509 CRL-----\nMIIBYTCBygIBATANBgkqhkiG9w0BAQsF\n-----END X509 CRL-----"
+      end
+
+      context 'missing required variable' do
+        context 'missing ca-cert' do
+          let(:data) { { crl_url: 'http://mycrl.com' } }
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(Errors::Conjur::ParameterMissing, "CONJ00190W Missing required parameter: ca_cert")
+          end
+        end
+
+        context 'missing identity-path in spiffe host-mode' do
+          let(:data) do
+            {
+              ca_cert: sample_cert,
+              identity: {
+                host_mode: 'spiffe',
+                trust_domain: 'trust.com'
+              }
+            }
+          end
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(ApplicationController::UnprocessableEntity, "In the identity object, when the 'host_mode' is 'spiffe', both 'trust_domain' and 'identity_path' fields must also be specified.")
+          end
+        end
+
+        context 'missing trust-domain in spiffe host-mode' do
+          let(:data) do
+            {
+              ca_cert: sample_cert,
+              identity: {
+                host_mode: 'spiffe',
+                identity_path: '/path/to/identities'
+              }
+            }
+          end
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(ApplicationController::UnprocessableEntity, "In the identity object, when the 'host_mode' is 'spiffe', both 'trust_domain' and 'identity_path' fields must also be specified.")
+          end
+        end
+      end
+
+      context 'variable added out of context' do
+        context 'crl and crl-url provided together' do
+          let(:data) do
+            {
+              ca_cert: sample_cert,
+              crl: sample_crl,
+              crl_url: 'http://mycrl.com'
+            }
+          end
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(ApplicationController::UnprocessableEntity, "In the 'data' object, you cannot specify crl and crl_url fields together.")
+          end
+        end
+
+        context 'identity-path provided in request host-mode' do
+          let(:data) do
+            {
+              ca_cert: sample_cert,
+              identity: {
+                host_mode: 'request',
+                identity_path: '/path/to/identities'
+              }
+            }
+          end
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(
+                ApplicationController::UnprocessableEntity,
+                "In the identity object, when the 'host_mode' is not 'spiffe', neither 'trust_domain' nor 'identity_path' fields can be specified."
+              )
+          end
+        end
+
+        context 'trust-domain provided in request host-mode' do
+          let(:data) do
+            {
+              ca_cert: sample_cert,
+              identity: {
+                host_mode: 'request',
+                trust_domain: 'trust.com'
+              }
+            }
+          end
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(
+                ApplicationController::UnprocessableEntity,
+                "In the identity object, when the 'host_mode' is not 'spiffe', neither 'trust_domain' nor 'identity_path' fields can be specified."
+              )
+          end
+        end
+      end
+
+      context 'invalid variable value type' do
+        context 'ca-cert not a string' do
+          let(:data) { { ca_cert: 123 } }
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(Errors::Conjur::ParameterTypeInvalid, "CONJ00192W The 'ca_cert' parameter must be of 'type=string'")
+          end
+        end
+
+        context 'crl not a string' do
+          let(:data) { { ca_cert: sample_cert, crl: 123 } }
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(Errors::Conjur::ParameterTypeInvalid, "CONJ00192W The 'crl' parameter must be of 'type=string'")
+          end
+        end
+
+        context 'crl-url not a string' do
+          let(:data) { { ca_cert: sample_cert, crl_url: 123 } }
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(Errors::Conjur::ParameterTypeInvalid, "CONJ00192W The 'crl_url' parameter must be of 'type=string'")
+          end
+        end
+
+        context 'host-mode not a string' do
+          let(:data) { { ca_cert: sample_cert, identity: { host_mode: 123 } } }
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(Errors::Conjur::ParameterTypeInvalid, "CONJ00192W The 'host_mode' parameter must be of 'type=string'")
+          end
+        end
+
+        context 'trust-domain not a string' do
+          let(:data) { { ca_cert: sample_cert, identity: { trust_domain: 123 } } }
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(Errors::Conjur::ParameterTypeInvalid, "CONJ00192W The 'trust_domain' parameter must be of 'type=string'")
+          end
+        end
+
+        context 'identity-path not a string' do
+          let(:data) { { ca_cert: sample_cert, identity: { identity_path: 123 } } }
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(Errors::Conjur::ParameterTypeInvalid, "CONJ00192W The 'identity_path' parameter must be of 'type=string'")
+          end
+        end
+
+        context 'san-uri not an array' do
+          let(:data) { { ca_cert: sample_cert, identity: { san_uri: 123 } } }
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(Errors::Conjur::ParameterTypeInvalid, "CONJ00192W The 'san_uri' parameter must be of 'type=array'")
+          end
+        end
+
+        context 'san-dns not an array' do
+          let(:data) { { ca_cert: sample_cert, identity: { san_dns: 123 } } }
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(Errors::Conjur::ParameterTypeInvalid, "CONJ00192W The 'san_dns' parameter must be of 'type=array'")
+          end
+        end
+
+        context 'san-ip not an array' do
+          let(:data) { { ca_cert: sample_cert, identity: { san_ip: 123 } } }
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(Errors::Conjur::ParameterTypeInvalid, "CONJ00192W The 'san_ip' parameter must be of 'type=array'")
+          end
+        end
+
+        context 'cn not a string' do
+          let(:data) { { ca_cert: sample_cert, identity: { cn: 123 } } }
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(Errors::Conjur::ParameterTypeInvalid, "CONJ00192W The 'cn' parameter must be of 'type=string'")
+          end
+        end
+      end
+
+      context 'malformed variable values' do
+        context 'ca-cert not a valid PEM certificate' do
+          let(:data) { { ca_cert: "INVALID_CERT" } }
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(
+                ApplicationController::UnprocessableEntity,
+                "ca_cert content is invalid"
+              )
+          end
+        end
+
+        context 'crl not a valid PEM revocation list' do
+          let(:data) { { ca_cert: sample_cert, crl: "INVALID_CRL" } }
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(
+                ApplicationController::UnprocessableEntity,
+                "crl content is invalid"
+              )
+          end
+        end
+
+        context 'crl-url not a valid URL' do
+          let(:data) { { ca_cert: sample_cert, crl_url: "invalid_url?" } }
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(
+                ApplicationController::UnprocessableEntity,
+                "crl_url must start with http:// or https:// and cannot contain a question mark (?)"
+              )
+          end
+        end
+
+        context 'host-mode not an accepted value' do
+          let(:data) { { ca_cert: sample_cert, identity: { host_mode: "invalid_mode" } } }
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(
+                ApplicationController::UnprocessableEntity,
+                "Variable 'host_mode' only accepts values 'request' and 'spiffe'"
+              )
+          end
+        end
+
+        context 'trust-domain does not match accepted pattern' do
+          let(:data) { { ca_cert: sample_cert, identity: { trust_domain: "invalid domain!" } } }
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(
+                ApplicationController::UnprocessableEntity,
+                "Invalid 'trust_domain' parameter. Must be lowercase. Only letters, numbers, dots, dashes, and underscores allowed. Must not include userinfo, port, or percent-encoded characters."
+              )
+          end
+        end
+
+        context 'identity-path is not a well-formed policy path' do
+          let(:data) { { ca_cert: sample_cert, identity: { identity_path: "invalid path!" } } }
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(
+                ApplicationController::UnprocessableEntity,
+                "Invalid 'identity_path' parameter. Cannot contain '<' or '>' characters. Empty branches are not allowed."
+              )
+          end
+        end
+      end
+
+      context 'value disobeys wildcard rules' do
+        context 'san_uri' do
+          let(:data) do
+            {
+              ca_cert: sample_cert,
+              identity: {
+                san_uri: [
+                  "spiffe://valid.com/valid",
+                  "invalid*uri"
+                ]
+              }
+            }
+          end
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(
+                ApplicationController::UnprocessableEntity,
+                "Invalid value for 'san_uri': CONJ00513D URI pattern 'invalid*uri' validation failed: missing scheme or host"
+              )
+          end
+        end
+
+        context 'san_dns' do
+          let(:data) do
+            {
+              ca_cert: sample_cert,
+              identity: {
+                san_dns: [ "*.com" ]
+              }
+            }
+          end
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(
+                ApplicationController::UnprocessableEntity,
+                "Invalid value for 'san_dns': CONJ00509D DNS pattern '*.com' validation failed: wildcard in eTLD+1 not allowed"
+              )
+          end
+        end
+
+        context 'san_ip' do
+          let(:data) do
+            {
+              ca_cert: sample_cert,
+              identity: {
+                san_ip: [
+                  "127.0.0.1",
+                  "127.0.0.*"
+                ]
+              }
+            }
+          end
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(
+                ApplicationController::UnprocessableEntity,
+                "Invalid value for 'san_ip': CONJ00517D IP pattern '127.0.0.*' validation failed: wildcards not allowed"
+              )
+          end
+        end
+
+        context 'cn' do
+          let(:data) do
+            {
+              ca_cert: sample_cert,
+              identity: {
+                cn: "example.*.com"
+              }
+            }
+          end
+          it "returns an error" do
+            expect { subject }
+              .to raise_error(
+                ApplicationController::UnprocessableEntity,
+                "Invalid value for 'cn': CONJ00509D DNS pattern 'example.*.com' validation failed: wildcard in eTLD+1 not allowed"
+              )
+          end
+        end
+      end
+    end
+
     context "when its a jwt authenticator" do
       let(:type) { "jwt" }
       let(:owner) { { kind: "user", id: "some-user" } }
