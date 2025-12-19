@@ -24,6 +24,8 @@ describe AuthenticateController, type: :request do
   # and that further test steps should be skipped.
   let(:expect_creation_failure) { false }
 
+  let(:saas_authn_url) { Rails.application.config.conjur_config.saas_authenticator_url }
+
   let(:sample_ca_pem) do
     "-----BEGIN CERTIFICATE-----\nbXktcGVtLWNlcnQ=\n-----END CERTIFICATE-----"
   end
@@ -181,7 +183,7 @@ describe AuthenticateController, type: :request do
         let(:variable_data) { { ca_cert: sample_ca_pem } }
 
         before do
-          stub_request(:post, "http://host.docker.internal:8080/authentications/cert").to_return(
+          stub_request(:post, "#{saas_authn_url}/authentications/cert").to_return(
             status: saas_authn_code,
             body: saas_authn_response.to_json
           )
@@ -496,7 +498,7 @@ describe AuthenticateController, type: :request do
               }
             end
             before do
-              stub_request(:post, "http://host.docker.internal:8080/authentications/cert").to_return(
+              stub_request(:post, "#{saas_authn_url}/authentications/cert").to_return(
                 status: saas_authn_code,
                 body: saas_authn_response.to_json
               )
