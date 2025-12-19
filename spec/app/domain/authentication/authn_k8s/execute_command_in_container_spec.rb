@@ -5,8 +5,9 @@ RSpec.describe('Authentication::AuthnK8s::ExecuteCommandInContainer') do
   class WsClientMock
     attr_accessor :received_messages, :connect_args, :ready_listeners_queue
 
-    def initialize(handshake_error: nil)
+    def initialize(handshake_error: nil, handshake_status_code: nil)
       @handshake_error = handshake_error
+      @handshake_status_code = handshake_status_code
 
       # We need to wait until all the listeners (on_xxx methods) are ready before
       # running the UT so that we don't have a race condition.
@@ -21,8 +22,14 @@ RSpec.describe('Authentication::AuthnK8s::ExecuteCommandInContainer') do
 
     def handshake
       err = @handshake_error
+      status = @handshake_status_code
       Object.new.tap do |o|
         o.define_singleton_method(:error) { err }
+        if status
+          o.instance_variable_set(:@data, "HTTP/1.1 #{status} Error\r\n\r\n")
+        else
+          o.instance_variable_set(:@data, nil)
+        end
       end
     end
 
@@ -376,6 +383,39 @@ RSpec.describe('Authentication::AuthnK8s::ExecuteCommandInContainer') do
       it "raises a WebSocketHandshakeError error" do
         expect { subject }.to raise_error(
           Errors::Authentication::AuthnK8s::WebSocketHandshakeError
+        )
+      end
+    end
+
+    context "when the ws_client has a handshake error with HTTP status code" do
+      let(:handshake_error) { :invalid_status_code }
+      let(:ws_client) { WsClientMock.new(handshake_error: handshake_error, handshake_status_code: 403) }
+
+      subject do
+        thread = subject_in_thread(
+          ws_client: ws_client,
+          timeout: 10,
+          body: nil,
+          stdin: false
+        )
+
+        ws_client.trigger_open
+        ws_client.trigger_close
+        thread.join
+        thread[:output]
+      end
+
+      it "raises a WebSocketHandshakeError with HTTP status code" do
+        expect { subject }.to raise_error(
+          Errors::Authentication::AuthnK8s::WebSocketHandshakeError,
+          /HTTP Status: 403/
+        )
+      end
+
+      it "includes the error type in the message" do
+        expect { subject }.to raise_error(
+          Errors::Authentication::AuthnK8s::WebSocketHandshakeError,
+          /:invalid_status_code/
         )
       end
     end

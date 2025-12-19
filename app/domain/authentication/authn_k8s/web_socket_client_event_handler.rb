@@ -30,7 +30,14 @@ module Authentication
       def on_open
         handshake_error = @ws_client.handshake.error
         if handshake_error
-          raise Errors::Authentication::AuthnK8s::WebSocketHandshakeError, handshake_error.inspect
+          error_message = handshake_error.inspect
+
+          handshake_data = @ws_client.handshake.instance_variable_get(:@data)
+          if handshake_data && (match = handshake_data.match(/^HTTP\/[\d.]+ (\d{3})/))
+            error_message += ", HTTP Status: #{match[1]}"
+          end
+
+          raise Errors::Authentication::AuthnK8s::WebSocketHandshakeError, error_message
         end
 
         @logger.debug(
