@@ -102,12 +102,11 @@ RSpec.describe Workloads::WorkloadService do
 
     before do
       allow(res_service).to receive(:get_res).with(account, 'host', identifier).and_return(workload_resource)
-      allow(::Resource).to receive(:[]).with(workload_host_id).and_return(workload_resource)
-      allow(::Role).to receive(:[]).with(workload_host_id).and_return(workload_role)
-      allow(::Resource).to receive(:where).and_return(double(all: []))
+      allow(res_service).to receive(:fetch_by_id).with(workload_host_id).and_return(workload_resource)
+      allow(role_repo).to receive(:[]).with(workload_host_id).and_return(workload_role)
+      allow(res_service).to receive(:find_owned_resources).and_return([])
       allow(workload_resource).to receive(:destroy)
       allow(workload_role).to receive(:destroy)
-      allow(::Resource).to receive(:db).and_return(double(transaction: nil))
     end
 
     context 'when workload exists' do
@@ -116,9 +115,6 @@ RSpec.describe Workloads::WorkloadService do
       end
 
       it 'deletes the workload successfully' do
-        db_double = double('DB')
-        allow(db_double).to receive(:transaction).and_yield
-        allow(::Resource).to receive(:db).and_return(db_double)
 
         expect(res_service).to receive(:get_res).with(account, 'host', identifier)
         expect(workload_resource).to receive(:destroy)
@@ -128,21 +124,13 @@ RSpec.describe Workloads::WorkloadService do
         expect(result).to be_nil
       end
 
-      it 'uses transaction for deletion' do
-        db_double = double('DB')
-        expect(::Resource).to receive(:db).and_return(db_double)
-        expect(db_double).to receive(:transaction).and_yield
-
-        service.delete_workload(role, account, branch_identifier, workload_name)
-      end
     end
 
     context 'when workload does not exist' do
       it 'raises RecordNotFound' do
-        db_double = double('DB')
-        allow(db_double).to receive(:transaction).and_yield
-        allow(::Resource).to receive(:db).and_return(db_double)
-        allow(res_service).to receive(:get_res).and_return(nil)
+
+        # get_res raises RecordNotFound when resource doesn't exist (not returns nil)
+        allow(res_service).to receive(:get_res).and_raise(Exceptions::RecordNotFound, workload_host_id)
 
         expect {
           service.delete_workload(role, account, branch_identifier, workload_name)
@@ -156,11 +144,8 @@ RSpec.describe Workloads::WorkloadService do
       let(:owned_role) { double('OwnedRole', role_id: owned_resource_id) }
 
       before do
-        db_double = double('DB')
-        allow(db_double).to receive(:transaction).and_yield
-        allow(::Resource).to receive(:db).and_return(db_double)
-        allow(::Role).to receive(:[]).with(owned_resource_id).and_return(owned_role)
-        allow(::Resource).to receive(:[]).with(owned_resource_id).and_return(owned_resource)
+        allow(role_repo).to receive(:[]).with(owned_resource_id).and_return(owned_role)
+        allow(res_service).to receive(:fetch_by_id).with(owned_resource_id).and_return(owned_resource)
         allow(owned_resource).to receive(:destroy)
         allow(owned_role).to receive(:destroy)
         allow(role).to receive(:allowed_to?).with(:update, workload_resource).and_return(true)
@@ -169,10 +154,8 @@ RSpec.describe Workloads::WorkloadService do
 
       it 'recursively deletes owned resources' do
         # Mock owned resources query
-        owned_resources_dataset = double('Dataset')
-        allow(::Resource).to receive(:where).with(owner_id: workload_host_id).and_return(owned_resources_dataset)
-        allow(owned_resources_dataset).to receive(:all).and_return([owned_resource])
-        allow(::Resource).to receive(:where).with(owner_id: owned_resource_id).and_return(double(all: []))
+        allow(res_service).to receive(:find_owned_resources).with(workload_host_id).and_return([owned_resource])
+        allow(res_service).to receive(:find_owned_resources).with(owned_resource_id).and_return([])
 
         expect(owned_resource).to receive(:destroy)
         expect(owned_role).to receive(:destroy)
@@ -188,10 +171,7 @@ RSpec.describe Workloads::WorkloadService do
       let(:user_without_permission) { double('UserWithoutPermission', id: 'test-account:user:unauthorized', role_id: 'test-account:user:unauthorized') }
 
       before do
-        db_double = double('DB')
-        allow(db_double).to receive(:transaction).and_yield
-        allow(::Resource).to receive(:db).and_return(db_double)
-        allow(::Resource).to receive(:where).and_return(double(all: []))
+        allow(res_service).to receive(:find_owned_resources).and_return([])
       end
 
       it 'allows deletion when user has update permission' do
@@ -215,15 +195,13 @@ RSpec.describe Workloads::WorkloadService do
         owned_resource = double('OwnedResource', resource_id: owned_resource_id, owner_id: workload_host_id)
         owned_role = double('OwnedRole', role_id: owned_resource_id)
 
-        allow(::Resource).to receive(:[]).with(owned_resource_id).and_return(owned_resource)
-        allow(::Role).to receive(:[]).with(owned_resource_id).and_return(owned_role)
+        allow(res_service).to receive(:fetch_by_id).with(owned_resource_id).and_return(owned_resource)
+        allow(role_repo).to receive(:[]).with(owned_resource_id).and_return(owned_role)
         allow(owned_resource).to receive(:destroy)
         allow(owned_role).to receive(:destroy)
 
-        owned_resources_dataset = double('Dataset')
-        allow(::Resource).to receive(:where).with(owner_id: workload_host_id).and_return(owned_resources_dataset)
-        allow(owned_resources_dataset).to receive(:all).and_return([owned_resource])
-        allow(::Resource).to receive(:where).with(owner_id: owned_resource_id).and_return(double(all: []))
+        allow(res_service).to receive(:find_owned_resources).with(workload_host_id).and_return([owned_resource])
+        allow(res_service).to receive(:find_owned_resources).with(owned_resource_id).and_return([])
 
         allow(user_with_permission).to receive(:allowed_to?).with(:update, workload_resource).and_return(true)
         allow(user_with_permission).to receive(:allowed_to?).with(:update, owned_resource).and_return(false)
@@ -236,10 +214,7 @@ RSpec.describe Workloads::WorkloadService do
 
     context 'error handling' do
       before do
-        db_double = double('DB')
-        allow(db_double).to receive(:transaction).and_yield
-        allow(::Resource).to receive(:db).and_return(db_double)
-        allow(::Resource).to receive(:where).and_return(double(all: []))
+        allow(res_service).to receive(:find_owned_resources).and_return([])
         allow(role).to receive(:allowed_to?).with(:update, workload_resource).and_return(true)
       end
 
@@ -268,9 +243,9 @@ RSpec.describe Workloads::WorkloadService do
     let(:visited) { Set.new }
 
     before do
-      allow(::Resource).to receive(:[]).with(resource_id).and_return(resource_obj)
-      allow(::Role).to receive(:[]).with(resource_id).and_return(role_obj)
-      allow(::Resource).to receive(:where).and_return(double(all: []))
+      allow(res_service).to receive(:fetch_by_id).with(resource_id).and_return(resource_obj)
+      allow(role_repo).to receive(:[]).with(resource_id).and_return(role_obj)
+      allow(res_service).to receive(:find_owned_resources).and_return([])
       allow(resource_obj).to receive(:destroy)
       allow(role_obj).to receive(:destroy)
       allow(role).to receive(:allowed_to?).with(:update, resource_obj).and_return(true)
@@ -316,7 +291,7 @@ RSpec.describe Workloads::WorkloadService do
     end
 
     it 'handles missing resource gracefully' do
-      allow(::Resource).to receive(:[]).with(resource_id).and_return(nil)
+      allow(res_service).to receive(:fetch_by_id).with(resource_id).and_return(nil)
 
       expect {
         service.send(:delete_resource_recursively!, resource_id, role, visited)
@@ -324,7 +299,7 @@ RSpec.describe Workloads::WorkloadService do
     end
 
     it 'handles missing role gracefully' do
-      allow(::Role).to receive(:[]).with(resource_id).and_return(nil)
+      allow(role_repo).to receive(:[]).with(resource_id).and_return(nil)
 
       expect {
         service.send(:delete_resource_recursively!, resource_id, role, visited)
@@ -338,7 +313,7 @@ RSpec.describe Workloads::WorkloadService do
     let(:user_role) { double('UserRole', role_id: 'test-account:user:testuser') }
 
     before do
-      allow(::Resource).to receive(:[]).with(resource_id).and_return(resource_obj)
+      allow(res_service).to receive(:fetch_by_id).with(resource_id).and_return(resource_obj)
     end
 
     it 'does not raise error when user has update permission' do
@@ -358,7 +333,7 @@ RSpec.describe Workloads::WorkloadService do
     end
 
     it 'does not raise error when resource does not exist' do
-      allow(::Resource).to receive(:[]).with(resource_id).and_return(nil)
+      allow(res_service).to receive(:fetch_by_id).with(resource_id).and_return(nil)
 
       expect {
         service.send(:check_update_permission!, resource_id, user_role)

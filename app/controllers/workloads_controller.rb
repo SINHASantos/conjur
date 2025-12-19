@@ -61,10 +61,6 @@ class WorkloadsController < V2RestController
 
     head :no_content
     audit_success('workload', :delete, path_identifier)
-  rescue Exceptions::Forbidden => e
-    # Map admin protection errors to 403 with JSON error message
-    render(json: { error: e.message }, status: :forbidden)
-    audit_failure('workload', :delete, path_identifier, e.message)
   rescue => e
     audit_failure('workload', :delete, path_identifier, e.message)
     handle_exception(e)
@@ -87,8 +83,8 @@ class WorkloadsController < V2RestController
 
     raise ApplicationController::InvalidParameter, "Invalid workload identifier format" if parts.length < 2
 
-    workload_name = parts.last
-    branch_identifier = parts[0...-1].join('/')
+    workload_name = res_name(identifier)
+    branch_identifier = parent_of(identifier)
 
     [branch_identifier, workload_name]
   end

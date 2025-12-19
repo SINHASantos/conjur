@@ -57,6 +57,13 @@ module Resources
       Resource[resource_id]
     end
 
+    # Fetch a resource by its full ID
+    # @param resource_id [String] Full resource ID
+    # @return [Resource, nil] Resource or nil if not found
+    def fetch_by_id(resource_id)
+      @res_repo[resource_id]
+    end
+
     def check_res_not_conflict(account, kind, identifier)
       resource = fetch_res(account, kind, identifier)
 
@@ -81,6 +88,21 @@ module Resources
         )
       )
       raise Exceptions::Forbidden
+    end
+
+
+    # Find all resources owned by a given resource
+    # @param owner_id [String] Full resource ID of the owner
+    # @return [Array<Resource>] Array of owned resources
+    def find_owned_resources(owner_id)
+      @res_repo.where(owner_id: owner_id).all
+    end
+
+    # Delete a resource by its full ID
+    # @param resource_id [String] Full resource ID
+    def delete_resource(resource_id)
+      resource = @res_repo[resource_id]
+      resource&.destroy
     end
   end
 end
