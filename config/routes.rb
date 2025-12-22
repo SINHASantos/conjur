@@ -92,6 +92,7 @@ Rails.application.routes.draw do
 
         # workload
         post "workloads/:account" => "workloads#create"
+        delete "workloads/:account/*identifier" => "workloads#destroy"
 
         constraints kind: /user|host|layer|group|policy|host_factory/ do
           get     "/roles/:account/:kind/*identifier" => "roles#graph", :constraints => QueryParameterActionRecognizer.new("graph")
