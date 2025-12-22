@@ -20,7 +20,14 @@ module Authentication
         class Enforcer
           def self.value_valid?(patterns_s, matcher)
             patterns = patterns_s.split(',').map(&:strip)
-            patterns.all? { |pattern| matcher.valid?(pattern) }
+            patterns.each do |pattern|
+              response = matcher.valid?(pattern)
+
+              next if response.success?
+
+              Rails.logger.debug(response.to_s)
+              return false
+            end
           end
 
           def self.value_matches_credential?(patterns_s, names, matcher)
@@ -31,17 +38,24 @@ module Authentication
           def self.pattern_matches_any_name?(pattern, names, matcher)
             return false if names.nil? || names.empty?
 
-            names.any? { |name| matcher.match?(pattern, name) }
+            names.each do |name|
+              response = matcher.match?(pattern, name)
+              return true if response.success?
+
+              Rails.logger.debug(response.to_s)
+            end
+
+            false
           end
 
           def self.matcher_for(annotation)
             case annotation
             when 'san-dns', 'cn'
-              Authentication::AuthnCert::V2::Wildcard::DnsName
+              Authentication::AuthnCert::V2::Wildcard::DnsName.new
             when 'san-uri'
-              Authentication::AuthnCert::V2::Wildcard::Uri
+              Authentication::AuthnCert::V2::Wildcard::Uri.new
             when 'san-ip'
-              Authentication::AuthnCert::V2::Wildcard::IpAddress
+              Authentication::AuthnCert::V2::Wildcard::IpAddress.new
             else
               # This case should never be reached according to assumptions #1 and 2.
               nil

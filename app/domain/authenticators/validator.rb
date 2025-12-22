@@ -1,5 +1,5 @@
 module Authenticators
-  class Validator 
+  class Validator
     def call(params, account)
       validate_basic_structure(params)
       validate_owner(params)
@@ -128,12 +128,14 @@ module Authenticators
           oidc_data_validators(params[:data])
         when "ldap"
           ldap_data_validators(params[:data])
+        when "certificate"
+          certificate_data_validators(params[:data])
         else
           {}
         end
 
       validate_data_fields(data_fields)
-      validate_identity_data(data)
+      validate_identity_data(params)
       validate_data_rules(params[:type], params[:data])
       validate_no_extra_json_params(data, data_fields)
     end
@@ -273,11 +275,47 @@ module Authenticators
       }
     end
 
+    def certificate_data_validators(data)
+      {
+        ca_cert: {
+          field_info: { type: String, value: data[:ca_cert] },
+          validators: [method(:validate_field_required), method(:validate_field_type), method(:validate_ca_cert)]
+        },
+        crl: {
+          field_info: { type: String, value: data[:crl] },
+          validators: [method(:validate_field_type), method(:validate_crl)]
+        },
+        crl_url: {
+          field_info: { type: String, value: data[:crl_url] },
+          validators: [method(:validate_field_type), method(:validate_crl_url)]
+        },
+        identity: {
+          field_info: { type: Hash, value: data[:identity] },
+          validators: [method(:validate_field_type)] #  validated later
+        }
+      }
+    end
+
     def validate_identity_data(params)
-      identity = params[:identity]
+      identity = params.dig(:data, :identity)
       return if identity.nil?
 
-      identity_data_fields = {
+      data_fields = \
+        case params[:type]
+        when "jwt"
+          jwt_identity_data_validators(identity)
+        when "certificate"
+          certificate_identity_data_validators(identity)
+        else
+          {}
+        end
+
+      validate_data_fields(data_fields)
+      validate_no_extra_json_params(identity, data_fields)
+    end
+
+    def jwt_identity_data_validators(identity)
+      {
         claim_aliases: {
           field_info: { type: Hash, value: identity[:claim_aliases] },
           validators: [method(:validate_field_type), method(:validate_claim_aliases)]
@@ -295,9 +333,39 @@ module Authenticators
           validators: [method(:validate_field_type), ->(_, field_info) { validate_not_allowed_chars_and_length("token_app_property", field_info, 1000) }]
         }
       }
+    end
 
-      validate_data_fields(identity_data_fields)
-      validate_no_extra_json_params(identity, identity_data_fields)
+    def certificate_identity_data_validators(identity)
+      {
+        host_mode: {
+          field_info: { type: String, value: identity[:host_mode] },
+          validators: [method(:validate_field_type), method(:validate_host_mode)]
+        },
+        trust_domain: {
+          field_info: { type: String, value: identity[:trust_domain] },
+          validators: [method(:validate_field_type), method(:validate_trust_domain)]
+        },
+        identity_path: {
+          field_info: { type: String, value: identity[:identity_path] },
+          validators: [method(:validate_field_type), method(:validate_identity_path)]
+        },
+        san_uri: {
+          field_info: { type: Array, value: identity[:san_uri] },
+          validators: [method(:validate_field_type), method(:validate_san_uri)]
+        },
+        san_dns: {
+          field_info: { type: Array, value: identity[:san_dns] },
+          validators: [method(:validate_field_type), method(:validate_san_dns)]
+        },
+        san_ip: {
+          field_info: { type: Array, value: identity[:san_ip] },
+          validators: [method(:validate_field_type), method(:validate_san_ip)]
+        },
+        cn: {
+          field_info: { type: String, value: identity[:cn] },
+          validators: [method(:validate_field_type), method(:validate_common_name)]
+        }
+      }
     end
 
     # Validate rules for the parameters
@@ -309,6 +377,8 @@ module Authenticators
         validate_azure_data_rules(data)
       when "oidc"
         validate_oidc_data_rules(data)
+      when "certificate"
+        validate_certificate_data_rules(data)
       end
     end
 
@@ -385,6 +455,54 @@ module Authenticators
       return unless standard_variables_included && mfa_variables_included
 
       raise ApplicationController::UnprocessableEntity, exclusivity_message
+    end
+
+    def validate_certificate_data_rules(data)
+      # Ensure `ca_cert` is present
+      if data[:ca_cert].empty?
+        raise(
+          ApplicationController::UnprocessableEntity,
+          "In the 'data' object, the 'ca_cert' field must be specified."
+        )
+      end
+
+      # Ensure `crl` and `crl_url` are not present together
+      if data[:crl] && data[:crl_url]
+        raise(
+          ApplicationController::UnprocessableEntity,
+          "In the 'data' object, you cannot specify crl and crl_url fields together."
+        )
+      end
+
+      # If `host_mode` is provided, its value must be either 'request' or 'spiffe'
+      if data.dig(:identity, :host_mode)
+        valid_host_modes = %w[request spiffe]
+        unless valid_host_modes.include?(data.dig(:identity, :host_mode))
+          raise(
+            ApplicationController::UnprocessableEntity,
+            "In the identity object, the 'host_mode' field must be either 'request' or 'spiffe'."
+          )
+        end
+      end
+
+      # If `host_mode` is "spiffe", `trust_domain` and `identity_path` must also be provided
+      if data.dig(:identity, :host_mode) == 'spiffe'
+        unless data.dig(:identity, :trust_domain) && data.dig(:identity, :identity_path)
+          raise(
+            ApplicationController::UnprocessableEntity,
+            "In the identity object, when the 'host_mode' is 'spiffe', both 'trust_domain' and 'identity_path' fields must also be specified."
+          )
+        end
+        return
+      end
+
+      # If `host_mode` is not "spiffe", `trust_domain` and `identity_path` must not be provided
+      return unless data.dig(:identity, :trust_domain) || data.dig(:identity, :identity_path)
+
+      raise(
+        ApplicationController::UnprocessableEntity,
+        "In the identity object, when the 'host_mode' is not 'spiffe', neither 'trust_domain' nor 'identity_path' fields can be specified."
+      )
     end
 
     def validate_field_required(param_name, data)
@@ -573,6 +691,155 @@ module Authenticators
         ApplicationController::UnprocessableEntity,
         "Invalid '#{param_name}' parameter. Must be an array of strings."
       )
+    end
+
+    def validate_ca_cert(param_name, data)
+      validate_text_size(data[:value], AuthenticatorsV2::CertAuthenticatorType::MAX_CA_CERT_SIZE, param_name)
+      validate_file_content(data[:value], AuthenticatorsV2::CertAuthenticatorType::CA_CERT_PATTERN, param_name)
+    end
+
+    def validate_crl(param_name, data)
+      return if data[:value].nil?
+
+      validate_text_size(data[:value], AuthenticatorsV2::CertAuthenticatorType::MAX_CRL_SIZE, param_name)
+      validate_file_content(data[:value], AuthenticatorsV2::CertAuthenticatorType::CRL_PATTERN, param_name)
+    end
+
+    def validate_crl_url(param_name, data)
+      return if data[:value].nil?
+
+      validate_string_length(data[:value], AuthenticatorsV2::CertAuthenticatorType::MAX_CRL_URL_LENGTH, param_name)
+      validate_url_format(data[:value], AuthenticatorsV2::CertAuthenticatorType::CRL_URL_PATTERN, param_name)
+    end
+
+    def validate_host_mode(param_name, data)
+      return if data[:value].nil?
+      return if %w[request spiffe].include?(data[:value])
+
+      raise ApplicationController::UnprocessableEntity, "Variable '#{param_name}' only accepts values 'request' and 'spiffe'"
+    end
+
+    def validate_trust_domain(param_name, data)
+      return if data[:value].nil?
+
+      validate_string(param_name,
+                      data[:value],
+                      /\A[a-z0-9._-]+\z/,
+                      1024,
+                      1,
+                      "Must be lowercase. Only letters, numbers, dots, dashes, and underscores allowed. Must not include userinfo, port, or percent-encoded characters.")
+    end
+
+    def validate_identity_path(param_name, data)
+      return if data[:value].nil?
+
+      validate_string(param_name,
+                      data[:value],
+                      %r{^(?:/?[^<>/\n]+)*/?$},
+                      1070,
+                      1,
+                      "Cannot contain '<' or '>' characters. Empty branches are not allowed.")
+    end
+
+    def validate_san_uri(param_name, data)
+      return if data[:value].nil?
+
+      uris = data[:value]
+      validate_entry_count(uris, AuthenticatorsV2::CertAuthenticatorType::MAX_SAN_URI_ENTRY_COUNT, param_name)
+      uris.each do |uri|
+        validate_entry_length(uri, AuthenticatorsV2::CertAuthenticatorType::MAX_SAN_URI_ENTRY_LENGTH, param_name)
+        validate_uri_wildcard(uri, param_name)
+      end
+    end
+
+    def validate_san_dns(param_name, data)
+      return if data[:value].nil?
+
+      dns_names = data[:value]
+      validate_entry_count(dns_names, AuthenticatorsV2::CertAuthenticatorType::MAX_SAN_DNS_ENTRY_COUNT, param_name)
+      dns_names.each do |dns|
+        validate_entry_length(dns, AuthenticatorsV2::CertAuthenticatorType::MAX_SAN_DNS_ENTRY_LENGTH, param_name)
+        validate_dns_wildcard(dns, param_name)
+      end
+    end
+
+    def validate_san_ip(param_name, data)
+      return if data[:value].nil?
+
+      ip_addresses = data[:value]
+      validate_entry_count(ip_addresses, AuthenticatorsV2::CertAuthenticatorType::MAX_SAN_IP_ENTRY_COUNT, param_name)
+      ip_addresses.each do |ip|
+        validate_ip_wildcard(ip, param_name)
+      end
+    end
+
+    def validate_common_name(param_name, data)
+      return if data[:value].nil?
+
+      cn = data[:value]
+      validate_string_length(cn, AuthenticatorsV2::CertAuthenticatorType::MAX_CN_LENGTH, param_name)
+      validate_dns_wildcard(cn, param_name)
+    end
+
+    def validate_entry_count(data, max_count, param_name)
+      return unless data.size > max_count
+
+      raise ApplicationController::UnprocessableEntity, "'#{param_name}' must not contain more than #{max_count} entries"
+    end
+
+    def validate_string_length(value, max_length, param_name)
+      return unless value.length > max_length
+
+      raise ApplicationController::UnprocessableEntity, "#{param_name} exceeds maximum length of #{max_length} characters"
+    end
+
+    def validate_entry_length(data, max_length, param_name)
+      return unless data.length > max_length
+
+      raise ApplicationController::UnprocessableEntity,
+            "Each entry in '#{param_name}' must not exceed #{max_length} characters"
+    end
+
+    def validate_text_size(file_content, max_size, param_name)
+      return unless file_content.bytesize > max_size
+
+      raise ApplicationController::UnprocessableEntity, "#{param_name} exceeds maximum size of #{max_size} bytes"
+    end
+
+    def validate_file_content(file_content, pattern, param_name)
+      return if file_content.match?(pattern)
+
+      raise ApplicationController::UnprocessableEntity, "#{param_name} content is invalid"
+    end
+
+    def validate_url_format(value, pattern, param_name)
+      return if value.match?(pattern)
+
+      raise ApplicationController::UnprocessableEntity, "#{param_name} must start with http:// or https:// and cannot contain a question mark (?)"
+    end
+
+    def validate_dns_wildcard(value, param_name)
+      response = Authentication::AuthnCert::V2::Wildcard::DnsName.new.valid?(value).bind do
+        return
+      end
+
+      raise ApplicationController::UnprocessableEntity, "Invalid value for '#{param_name}': #{response}"
+    end
+
+    def validate_uri_wildcard(value, param_name)
+      response = Authentication::AuthnCert::V2::Wildcard::Uri.new.valid?(value).bind do
+        return
+      end
+
+      raise ApplicationController::UnprocessableEntity, "Invalid value for '#{param_name}': #{response}"
+    end
+
+    def validate_ip_wildcard(value, param_name)
+      response = Authentication::AuthnCert::V2::Wildcard::IpAddress.new.valid?(value).bind do
+        return
+      end
+
+      raise ApplicationController::UnprocessableEntity, "Invalid value for '#{param_name}': #{response}"
     end
   end
 end

@@ -47,14 +47,17 @@ module Authenticators
       variables
     end
 
-    # When creating authenticator, we need to process certain fields like claim_aliases and enforced_claims
+    # When creating authenticator, we need to process certain fields like claim_aliases and enforced_claims and san attributes
     # The claim_aliases field is received as a hash, and we need to convert it to a string format "key1:value1,key2:value2"
     # The enforced_claims field is received as an array, and we need to convert it to a string format "value1,value2"
+    # The san_uri, san_dns, and san_ip fields are received as arrays, and we need to convert them to a string format "value1,value2"
     def formate_identity_values(key, value)
       case key
       when :claim_aliases
         value.to_h.map { |k, v| "#{k}:#{v}" }.join(",")
       when :enforced_claims
+        value.join(",")
+      when :san_uri, :san_dns, :san_ip
         value.join(",")
       else
         value
@@ -65,6 +68,8 @@ module Authenticators
       return nil unless type
       
       return "authn-iam" if type == "aws"
+
+      return "authn-cert" if type == "certificate"
 
       "authn-#{type}"
     end
