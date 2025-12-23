@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Misconfigured OIDC provider denying access to details for properly configured providers. CNJR-11824
 - Allow meaningful error messages to be logged when OIDC provider is responding with error. CNJR-11863
 - Issuer creation and update now assumes the content type is JSON if not specified. CNJR-940
+- Improve logging around Conjur AuthnK8S Cert Injection errors. CNJR-12032
 
 ### Security
 - Upgrade Rails to 8.1.1 CNJR-11753
