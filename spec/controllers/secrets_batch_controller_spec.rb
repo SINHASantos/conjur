@@ -7,6 +7,7 @@ DatabaseCleaner.allow_remote_database_url = true
 DatabaseCleaner.strategy = :truncation
 
 describe(SecretsBatchController, type: :request) do
+  let(:db) { instance_double(Sequel::Model.db) }
   let(:admin_user) { Role.find_or_create(role_id: 'rspec:user:admin') }
   let(:alice_user_id) { 'rspec:user:alice' }
   let(:alice_user) { Role.find_or_create(role_id: 'rspec:user:alice') }

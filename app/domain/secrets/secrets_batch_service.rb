@@ -9,10 +9,10 @@ module Secrets
     include Logging
 
     def initialize(
-      secret_repo: ::Secret,
+      db: Sequel::Model.db,
       logger: Rails.logger
     )
-      @secret_repo = secret_repo
+      @db = db
       @logger = logger
     end
 
@@ -99,9 +99,7 @@ module Secrets
         ORDER BY i.ord;
       SQL
 
-      db = @secret_repo.db
-      db.extension :pg_array
-      db.fetch(sql, Sequel.pg_array(ids, :text), role_id, role_id).all
+      @db.fetch(sql, Sequel.pg_array(ids, :text), role_id, role_id).all
     end
   end
 end
