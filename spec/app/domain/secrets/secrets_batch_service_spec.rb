@@ -13,15 +13,18 @@ describe Secrets::SecretsBatchService do
   let(:encode_values) { '' }
   let(:ids) { %w[data/var1 data/var2] }
 
-  before do
-    allow(secret_repo).to receive(:db).and_return(db)
-    allow(db).to receive(:extension)
-    allow(Sequel).to receive(:pg_array).and_call_original
-
-    service.instance_variable_set(:@secret_repo, secret_repo)
-    service.instance_variable_set(:@logger, logger)
+  around do |example|
+    # Reset singleton before and after each test
+    described_class.instance_variable_set(:@singleton__instance__, nil)
+    example.run
+    described_class.instance_variable_set(:@singleton__instance__, nil)
   end
 
+  before do
+    # Mock Sequel::Model.db to return our test double
+    allow(Sequel::Model).to receive(:db).and_return(db)
+    allow(Sequel).to receive(:pg_array).and_call_original
+  end
   def enc(val, aad:)
     allow(Slosilo::EncryptedAttributes).to receive(:decrypt).with(val, aad: aad).and_return(val.dup)
     val
