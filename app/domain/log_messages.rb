@@ -809,8 +809,8 @@ module LogMessages
         code: "CONJ00507I"
       )
 
-      AuthenticationSucceeded = ::Util::TrackableLogMessageClass.new(
-        msg: "Authentication succeeded",
+      CredentialValidationSucceeded = ::Util::TrackableLogMessageClass.new(
+        msg: "Credential validation succeeded",
         code: "CONJ00508I"
       )
 

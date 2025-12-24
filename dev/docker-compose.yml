@@ -52,7 +52,7 @@ services:
       CONJUR_AUTHN_LOGIN: admin
       CONJUR_FEATURE_CERTIFICATE_AUTHENTICATION_ENABLED: true
       CONJUR_SAAS_AUTHENTICATOR_URL: ${CONJUR_SAAS_AUTHENTICATOR_URL:-http://host.docker.internal:8080}
-
+      CONJUR_AUTHENTICATORS: ${CONJUR_AUTHENTICATORS:-}
       AUDIT_DATABASE_URL:
       # TODO: Where should we be running rspec tests from, ideally?
       # See https://github.com/DatabaseCleaner/database_cleaner#safeguards

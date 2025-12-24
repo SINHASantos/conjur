@@ -63,7 +63,7 @@ main() {
   init_audit_service
 
   # Install gems, create DB, and create cucumber account.
-  docker compose up -d --no-deps "${services[@]}"
+  CONJUR_AUTHENTICATORS="$enabled_authenticators" docker compose up -d --no-deps "${services[@]}"
   docker compose exec -e OPENSSL_CONF=/usr/lib/ssl/openssl_non_fips.cnf conjur bundle
   docker compose exec conjur conjurctl db migrate
   docker compose exec conjur conjurctl account create cucumber || true
@@ -530,7 +530,7 @@ start_auth_services() {
 
   # Will restart services if configuration has changed.  I think this happens
   # when additional authenticators are enabled.
-  docker compose up -d --no-deps "${services[@]}"
+  CONJUR_AUTHENTICATORS="$enabled_authenticators" docker compose up -d --no-deps "${services[@]}"
 
   # If that happens, we need to restart Conjur server.
   if [[ "$enabled_authenticators" != "$default_authenticators" ]]; then

@@ -24,7 +24,9 @@ RSpec.describe(Authentication::AuthnCert::V2::Validations::AuthenticatorCredenti
         'sans_dns' => [ 'my.example.com', 'conjur.org' ],
         'sans_uri' => [ 'https://example.org/service/foo' ],
         'sans_ip' => [ '255.255.255.255', '127.0.0.1' ],
-        'common_name' => 'onprem.secretsmanager.cyberark.com'
+        'subject_components' => {
+          'common_name' => 'onprem.secretsmanager.cyberark.com'
+        }
       }
     end
     let(:credential_attributes) { default_credential_attributes }
@@ -68,7 +70,7 @@ RSpec.describe(Authentication::AuthnCert::V2::Validations::AuthenticatorCredenti
         end
 
         context 'for Common Name' do
-          let(:credential_attributes) { default_credential_attributes.tap { |h| h['common_name'] = 'onlyone.cyberark.com' } }
+          let(:credential_attributes) { default_credential_attributes.tap { |h| h['subject_components']['common_name'] = 'onlyone.cyberark.com' } }
           it 'fails validation' do
             expect(validation.valid?).to be(false)
           end

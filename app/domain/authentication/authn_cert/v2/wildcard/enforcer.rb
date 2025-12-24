@@ -73,7 +73,8 @@ module Authentication
             when 'san-ip'
               credential_attributes['sans_ip']
             when 'cn'
-              [credential_attributes['common_name']]
+              common_name = credential_attributes.dig('subject_components', 'common_name')
+              common_name ? [common_name] : []
             else
               # This case should never be reached according to assumption #1 and 2.
               []

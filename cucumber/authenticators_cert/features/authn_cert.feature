@@ -20,7 +20,7 @@ Feature: Certificate Authenticator
       - !host
         id: alice
         annotations:
-          authn-cert/my-service/san-uri: spiffe://trust.com/workload-id
+          authn-cert/my-service/san-uri: spiffe://trust.com/cyberark/conjur/vm
 
       - !policy
         id: conjur/authn-cert/spiffe-service
