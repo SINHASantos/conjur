@@ -874,6 +874,26 @@ module LogMessages
         code: "CONJ00520D"
       )
 
+      CommonNamePatternValidationSucceeded = ::Util::TrackableLogMessageClass.new(
+        msg: "Common Name pattern '{0-pattern}' validation succeeded",
+        code: "CONJ00521D"
+      )
+
+      CommonNamePatternValidationFailed = ::Util::TrackableLogMessageClass.new(
+        msg: "Common Name pattern '{0-pattern}' validation failed: {1-reason}",
+        code: "CONJ00522D"
+      )
+
+      CommonNamePatternMatchingSucceeded = ::Util::TrackableLogMessageClass.new(
+        msg: "Common Name pattern '{0-pattern}' matched successfully with '{1-common-name}'",
+        code: "CONJ00523D"
+      )
+
+      CommonNamePatternMatchingFailed = ::Util::TrackableLogMessageClass.new(
+        msg: "Common Name pattern '{0-pattern}' failed to match '{1-common-name}'",
+        code: "CONJ00524D"
+      )
+
       ConstraintsValidationSucceeded = ::Util::TrackableLogMessageClass.new(
         msg: "Constraints validation succeeded for authenticator: '{0}' in {1} host mode",
         code: "CONJ00542I"
