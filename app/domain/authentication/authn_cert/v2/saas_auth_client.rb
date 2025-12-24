@@ -6,10 +6,30 @@ module Authentication
       class SaasAuthClient
         def initialize(
           http_client: Authentication::Util::NetworkTransporter,
-          authenticator_service_url: Rails.application.config.conjur_config.authenticator_service_url
+          authenticator_service_url: Rails.application.config.conjur_config.authenticator_service_url,
+          ca_cert_path: Rails.application.config.conjur_config.authenticator_service_ca_cert,
+          http_allowlist: Rails.application.config.conjur_config.authenticator_service_http_allowlist
         )
+          url = URI.parse(authenticator_service_url)
+          
+          # Validate HTTP connections against allowlist
+          if url.scheme == 'http'
+            # hostname automatically strips brackets from IPv6 addresses
+            unless http_allowlist.include?(url.hostname)
+              raise Errors::Authentication::Security::HttpNotAllowed.new(
+                url.hostname,
+                "Add this hostname to CONJUR_AUTHENTICATOR_SERVICE_HTTP_ALLOWLIST if it's within a trusted network boundary."
+              )
+            end
+            Rails.logger.info("Using HTTP connection to '#{url.hostname}' (on allowlist)")
+          end
+          
+          # For HTTPS, always verify with CA cert (system bundle or custom)
+          ca_certificate = ca_cert_path ? File.read(ca_cert_path) : nil
+          
           @http_client = http_client.new(
-            hostname: authenticator_service_url
+            hostname: authenticator_service_url,
+            ca_certificate: ca_certificate
           )
 
           @success = Responses::Success

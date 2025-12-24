@@ -21,16 +21,138 @@ RSpec.describe(Authentication::AuthnCert::V2::SaasAuthClient) do
     end
   end
   let(:transporter) do
-    instance_double(Authentication::Util::NetworkTransporter).tap do |double|
-      allow(double).to receive(:post).and_return(saas_authn_response)
+    instance_double(Authentication::Util::NetworkTransporter)
+  end
+
+  describe('#initialize') do
+    context 'with HTTP URL on allowlist' do
+      it 'creates client successfully for localhost' do
+        expect {
+          described_class.new(
+            http_client: transporter_class,
+            authenticator_service_url: 'http://localhost:8080',
+            http_allowlist: ['localhost', '127.0.0.1']
+          )
+        }.not_to raise_error
+      end
+
+      it 'creates client successfully for 127.0.0.1' do
+        expect {
+          described_class.new(
+            http_client: transporter_class,
+            authenticator_service_url: 'http://127.0.0.1:8080',
+            http_allowlist: ['localhost', '127.0.0.1']
+          )
+        }.not_to raise_error
+      end
+
+      it 'creates client successfully for custom hostname on allowlist' do
+        expect {
+          described_class.new(
+            http_client: transporter_class,
+            authenticator_service_url: 'http://internal-service:8080',
+            http_allowlist: ['localhost', 'internal-service']
+          )
+        }.not_to raise_error
+      end
+    end
+
+    context 'with HTTP URL not on allowlist' do
+      it 'raises HttpNotAllowed error' do
+        expect {
+          described_class.new(
+            http_client: transporter_class,
+            authenticator_service_url: 'http://untrusted-host:8080',
+            http_allowlist: ['localhost', '127.0.0.1']
+          )
+        }.to raise_error(Errors::Authentication::Security::HttpNotAllowed) do |error|
+          expect(error.message).to include('untrusted-host')
+          expect(error.message).to include('not allowed')
+          expect(error.message).to include('CONJUR_AUTHENTICATOR_SERVICE_HTTP_ALLOWLIST')
+        end
+      end
+
+      it 'raises HttpNotAllowed error for external domain' do
+        expect {
+          described_class.new(
+            http_client: transporter_class,
+            authenticator_service_url: 'http://evil.example.com',
+            http_allowlist: ['localhost']
+          )
+        }.to raise_error(Errors::Authentication::Security::HttpNotAllowed)
+      end
+    end
+
+    context 'with HTTPS URL' do
+      it 'creates client successfully without CA cert (uses system bundle)' do
+        client = described_class.new(
+          http_client: transporter_class,
+          authenticator_service_url: 'https://saas-authn.com',
+          ca_cert_path: nil,
+          http_allowlist: ['localhost']
+        )
+
+        expect(transporter_class).to have_received(:new).with(
+          hostname: 'https://saas-authn.com',
+          ca_certificate: nil
+        )
+      end
+
+      it 'creates client successfully with custom CA cert' do
+        ca_cert_content = "-----BEGIN CERTIFICATE-----\nMOCK_CERT\n-----END CERTIFICATE-----"
+        allow(File).to receive(:read).with('/path/to/ca.pem').and_return(ca_cert_content)
+
+        client = described_class.new(
+          http_client: transporter_class,
+          authenticator_service_url: 'https://saas-authn.com',
+          ca_cert_path: '/path/to/ca.pem',
+          http_allowlist: ['localhost']
+        )
+
+        expect(transporter_class).to have_received(:new).with(
+          hostname: 'https://saas-authn.com',
+          ca_certificate: ca_cert_content
+        )
+      end
+
+      it 'does not check allowlist for HTTPS URLs' do
+        expect {
+          described_class.new(
+            http_client: transporter_class,
+            authenticator_service_url: 'https://external-service.com',
+            http_allowlist: ['localhost']
+          )
+        }.not_to raise_error
+      end
+    end
+
+    context 'with default configuration' do
+      it 'uses default allowlist from Rails config' do
+        allow(Rails.application.config.conjur_config).to receive(:authenticator_service_http_allowlist)
+          .and_return(['localhost', '127.0.0.1', '::1', 'host.docker.internal'])
+
+        expect {
+          described_class.new(
+            http_client: transporter_class,
+            authenticator_service_url: 'http://host.docker.internal:8080'
+          )
+        }.not_to raise_error
+      end
     end
   end
 
   describe('.validate_certificate') do
+    let(:transporter) do
+      instance_double(Authentication::Util::NetworkTransporter).tap do |double|
+        allow(double).to receive(:post).and_return(saas_authn_response)
+      end
+    end
+
     let(:client) do
       described_class.new(
         http_client: transporter_class,
-        authenticator_service_url: 'http://saas-authn.com'
+        authenticator_service_url: 'http://localhost:8080',
+        http_allowlist: ['localhost']
       )
     end
 

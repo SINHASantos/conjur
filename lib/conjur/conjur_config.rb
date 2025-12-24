@@ -51,6 +51,15 @@ module Conjur
       host_factories_enabled: true,
       # URL for external SaaS authenticator service
       authenticator_service_url: 'http://localhost:5618',
+      # Path to CA certificate for verifying HTTPS connections to SaaS Authenticator
+      authenticator_service_ca_cert: nil,
+      # Hostnames allowed for HTTP connections to SaaS Authenticator
+      authenticator_service_http_allowlist: %w[
+        localhost
+        127.0.0.1
+        ::1
+        host.docker.internal
+      ],
       max_restricted_to: 1000
     )
 
@@ -136,6 +145,10 @@ module Conjur
     end
 
     def extensions=(val)
+      super(str_to_list(val)&.uniq)
+    end
+
+    def authenticator_service_http_allowlist=(val)
       super(str_to_list(val)&.uniq)
     end
 
