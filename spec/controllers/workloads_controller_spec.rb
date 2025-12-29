@@ -470,7 +470,7 @@ describe WorkloadsController, :type => :request do
         post(url, params: invalid_params.to_json,
              env: token_auth_header(role: creator_host).merge(v2_beta_api_header))
 
-        assert_response :unprocessable_entity
+        assert_response :unprocessable_content
       end
 
       it 'returns unprocessable entity when workload already exists' do
@@ -497,7 +497,7 @@ describe WorkloadsController, :type => :request do
                          .merge({ 'CONTENT_TYPE' => "application/json",
                                   'RAW_POST_DATA' => params.to_json }))
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        assert_response :unprocessable_content
         expect(JSON.parse(response.body))
           .to eq({ "code" => "422",
                    "message" => "Annotations Foo Invalid 'annotation value'." })
@@ -510,7 +510,7 @@ describe WorkloadsController, :type => :request do
         post(url, params: invalid_authn_params.to_json,
              env: token_auth_header(role: creator_host).merge(v2_beta_api_header))
 
-        assert_response :unprocessable_entity
+        assert_response :unprocessable_content
       end
 
       it 'returns unprocessable entity when restricted to disabled' do
@@ -521,7 +521,7 @@ describe WorkloadsController, :type => :request do
              env: token_auth_header(role: creator_host)
                     .merge(v2_beta_api_header))
 
-        assert_response :unprocessable_entity
+        assert_response :unprocessable_content
       end
     end
 
@@ -1094,7 +1094,7 @@ describe WorkloadsController, :type => :request do
         delete(invalid_url,
                env: token_auth_header(role: creator_host).merge(v2_beta_api_header))
 
-        assert_response :unprocessable_entity
+        assert_response :unprocessable_content
       end
     end
 

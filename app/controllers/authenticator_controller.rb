@@ -173,7 +173,7 @@ class AuthenticatorController < V2RestController
   end
 
   def req 
-    @req ||= request.body.read
+    @req ||= request.body&.read
   end
 
   def failure_audit(operation, resource_type, error, resource_id: '')
