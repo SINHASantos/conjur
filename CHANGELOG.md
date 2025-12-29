@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Slosilo in-memory key cache. CNJR-11407
 - Added DELETE endpoint for workload resources with cleanup of owned resources. CNJR-11368
+- Added endpoint for batch reading of secrets. CNJR-11465
 
 ## [1.24.0] - 2025-11-10
 
