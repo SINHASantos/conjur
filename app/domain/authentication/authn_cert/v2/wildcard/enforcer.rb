@@ -50,8 +50,10 @@ module Authentication
 
           def self.matcher_for(annotation)
             case annotation
-            when 'san-dns', 'cn'
+            when 'san-dns'
               Authentication::AuthnCert::V2::Wildcard::DnsName.new
+            when 'cn'
+              Authentication::AuthnCert::V2::Wildcard::CommonName.new
             when 'san-uri'
               Authentication::AuthnCert::V2::Wildcard::Uri.new
             when 'san-ip'
@@ -71,7 +73,8 @@ module Authentication
             when 'san-ip'
               credential_attributes['sans_ip']
             when 'cn'
-              [credential_attributes['common_name']]
+              common_name = credential_attributes.dig('subject_components', 'common_name')
+              common_name ? [common_name] : []
             else
               # This case should never be reached according to assumption #1 and 2.
               []

@@ -809,8 +809,8 @@ module LogMessages
         code: "CONJ00507I"
       )
 
-      AuthenticationSucceeded = ::Util::TrackableLogMessageClass.new(
-        msg: "Authentication succeeded",
+      CredentialValidationSucceeded = ::Util::TrackableLogMessageClass.new(
+        msg: "Credential validation succeeded",
         code: "CONJ00508I"
       )
 
@@ -872,6 +872,26 @@ module LogMessages
       IPPatternMatchingFailed = ::Util::TrackableLogMessageClass.new(
         msg: "IP pattern '{0-pattern}' failed to match '{1-ip}'",
         code: "CONJ00520D"
+      )
+
+      CommonNamePatternValidationSucceeded = ::Util::TrackableLogMessageClass.new(
+        msg: "Common Name pattern '{0-pattern}' validation succeeded",
+        code: "CONJ00521D"
+      )
+
+      CommonNamePatternValidationFailed = ::Util::TrackableLogMessageClass.new(
+        msg: "Common Name pattern '{0-pattern}' validation failed: {1-reason}",
+        code: "CONJ00522D"
+      )
+
+      CommonNamePatternMatchingSucceeded = ::Util::TrackableLogMessageClass.new(
+        msg: "Common Name pattern '{0-pattern}' matched successfully with '{1-common-name}'",
+        code: "CONJ00523D"
+      )
+
+      CommonNamePatternMatchingFailed = ::Util::TrackableLogMessageClass.new(
+        msg: "Common Name pattern '{0-pattern}' failed to match '{1-common-name}'",
+        code: "CONJ00524D"
       )
 
       ConstraintsValidationSucceeded = ::Util::TrackableLogMessageClass.new(

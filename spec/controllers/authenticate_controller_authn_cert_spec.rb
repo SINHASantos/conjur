@@ -222,13 +222,16 @@ describe AuthenticateController, type: :request do
           let(:saas_authn_response) { { 'attributes' => { 'some-attr' => 'some-value' } } }
 
           context 'when operating in "request" host mapping mode' do
+            let(:common_name) { 'onprem.secretsmanager.cyberark.com' }
             let(:saas_authn_response) do
               {
                 'attributes' => {
                   'sans_uri' => [ 'https://conjur.org/secrets-manager' ],
                   'sans_dns' => [ 'conjur.org' ],
                   'sans_ip' => [ '127.255.255.1' ],
-                  'common_name' => 'onprem.secretsmanager.cyberark.com'
+                  'subject_components' => {
+                    'common_name' => common_name
+                  }
                 }
               }
             end
@@ -313,9 +316,10 @@ describe AuthenticateController, type: :request do
                       "authn-cert/#{service_id}/san-uri" => 'https://conjur.org/secrets-manager',
                       "authn-cert/#{service_id}/san-dns" => 'conjur.org',
                       "authn-cert/#{service_id}/san-ip" => '127.255.255.1',
-                      "authn-cert/#{service_id}/cn" => 'onprem.secretsmanager.cyberark.com'
+                      "authn-cert/#{service_id}/cn" => 'Static Non-DNS'
                     }
                   end
+                  let(:common_name) { 'Static Non-DNS' }
 
                   it 'authenticates successfully' do
                     @info_logs.clear
@@ -511,7 +515,9 @@ describe AuthenticateController, type: :request do
                     'sans_uri' => ['https://conjur.org/secrets-manager'],
                     'sans_dns' => ['conjur.org'],
                     'sans_ip' => ['127.255.255.1'],
-                    'common_name' => 'onprem.secretsmanager.cyberark.com'
+                    'subject_components' => {
+                      'common_name' => 'onprem.secretsmanager.cyberark.com'
+                    }
                   }
                 }
               end
@@ -535,7 +541,9 @@ describe AuthenticateController, type: :request do
                     'sans_uri' => ['https://conjur.org/secrets-manager/foo'],
                     'sans_dns' => ['conjur.org'],
                     'sans_ip' => ['127.255.255.1'],
-                    'common_name' => 'onprem.secretsmanager.cyberark.com'
+                    'subject_components' => {
+                      'common_name' => 'onprem.secretsmanager.cyberark.com'
+                    }
                   }
                 }
               end
