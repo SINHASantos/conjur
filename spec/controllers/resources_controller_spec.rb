@@ -24,11 +24,13 @@ describe ResourcesController, type: :request do
     '/policies/rspec/policy/root'
   end
 
-  def list_resources(limit: nil, offset: nil, count: false)
+  def list_resources(limit: nil, offset: nil, count: false, search: nil, kind: nil)
     params = {}
     params.merge!({ :limit => limit }) if limit
     params.merge!({ :offset => offset }) if offset
     params.merge!({ :count => count }) if count
+    params.merge!({ :search => search }) if search
+    params.merge!({ :kind => kind }) if kind
     get(
       resources_url,
       env: token_auth_header(role: current_user),
@@ -294,6 +296,14 @@ describe ResourcesController, type: :request do
         count_resources(limit: 1)
         expect(response.body).to eq("{\"count\":1}")
       end
+    end
+
+    it "should filter resources by search query and kind" do
+      list_resources(search: 'b', kind: 'variable')
+      expect(response.code).to eq("200")
+      resources = JSON.parse(response.body)
+      expect(resources.size).to eq(1)
+      expect(resources[0]["id"]).to eq("rspec:variable:b")
     end
   end
 
