@@ -24,6 +24,18 @@ module Authentication
         #   eTLD    :                         ma.us
         #   eTLD+1  :                cyberark.ma.us
         #
+        # This relationship between eTLD+1s and organizational ownership does
+        # not hold for private domains, which are domains that issue subdomains
+        # to mutually un-trusting parties. For example, GitHub's web hosting
+        # domain is a private domain, and issues subdomains to its users:
+        #
+        #   Private Domain : *.github.io
+        #   Valid Subdomain: cyberark.github.io
+        #   Valid Subdomain: attacker.github.io
+        #
+        # Because of this, wildcards are not allowed in private domains, as it
+        # would allow matches with DNS names owned by many different entities.
+        #
         # This module verifies the format of DNS Name patterns and applies them
         # in comparison to fully-formed DNS Names according to the following rules:
         #
@@ -32,6 +44,7 @@ module Authentication
         #   3. Wildcards may not cross label boundaries.
         #   4. Subdomain labels may include only a single wildcard.
         #   5. Wildcards may appear in or replace multiple subdomain labels.
+        #   6. Wildcards are not allowed in private domains.
         #
         # This class is used to validate wildcard patterns in certificate
         # authenticator configuration both:
@@ -70,8 +83,16 @@ module Authentication
               return @failure.new(@messages::DNSPatternValidationFailed.new(pattern, "empty labels are not allowed"))
             end
 
+            unless valid_domain?(pattern)
+              return @failure.new(@messages::DNSPatternValidationFailed.new(pattern, "invalid DNS name"))
+            end
+
+            if private_domain?(pattern) && pattern.include?('*')
+              return @failure.new(@messages::DNSPatternValidationFailed.new(pattern, "wildcards not allowed in private non-ICANN domains"))
+            end
+
             # Parse the pattern into a PublicSuffix::Domain instance.
-            parsed_pattern = PublicSuffix.parse(pattern)
+            parsed_pattern = PublicSuffix.parse(pattern, ignore_private: true)
 
             # PublicSuffix::Domain#domain returns the string representation of
             # the eTLD+1.
@@ -99,13 +120,15 @@ module Authentication
 
             @logger.debug(@messages::DNSPatternValidationSucceeded.new(pattern))
             @success.new(true)
-          rescue PublicSuffix::DomainInvalid, PublicSuffix::DomainNotAllowed
-            @failure.new(@messages::DNSPatternValidationFailed.new(pattern, "invalid DNS name"))
           end
 
           def match?(pattern, dns_name)
             # Sanitize whitespace from candidate DNS name.
             dns_name = dns_name.strip.downcase
+
+            unless valid_domain?(dns_name)
+              return @failure.new(@messages::DNSPatternMatchingFailed.new(pattern, dns_name, "invalid candidate DNS name"))
+            end
 
             # If the pattern does not contain a wildcard, we can do a direct
             # string comparison.
@@ -113,6 +136,10 @@ module Authentication
               return @success.new(true) if dns_name == pattern
 
               return @failure.new(@messages::DNSPatternMatchingFailed.new(pattern, dns_name, "direct comparison failed"))
+            end
+
+            if private_domain?(dns_name)
+              return @failure.new(@messages::DNSPatternMatchingFailed.new(pattern, dns_name, "wildcards not allowed in private non-ICANN domains"))
             end
 
             pattern_segments = pattern.split('.')
@@ -165,6 +192,17 @@ module Authentication
             # Reject segments that include a single wildcard anywhere but the
             # very beginning of the string.
             !segment.include?('*')
+          end
+
+          # Returns whether the given domain name is a valid DNS name.
+          def valid_domain?(name)
+            PublicSuffix.valid?(name, ignore_private: true)
+          end
+
+          # Returns whether the given domain name is listed as a private
+          # non-ICANN domain by the Public Suffix List.
+          def private_domain?(name)
+            valid_domain?(name) && !PublicSuffix.valid?(name, ignore_private: false)
           end
         end
       end

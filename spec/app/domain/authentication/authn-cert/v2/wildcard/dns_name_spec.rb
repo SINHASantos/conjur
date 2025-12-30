@@ -15,6 +15,18 @@ RSpec.describe(Authentication::AuthnCert::V2::Wildcard::DnsName) do
     let(:message_class) { LogMessages::Authentication::AuthnCert::DNSPatternValidationFailed }
 
     context 'when pattern does not include a wildcard' do
+      context 'when pattern is a valid DNS name' do
+        let(:pattern) { 'example.co.uk' }
+        it 'returns true' do
+          expect(matcher.valid?(pattern).success?).to be(true)
+        end
+      end
+      context 'when pattern is an invalid DNS name' do
+        let(:pattern) { 'to be, or not to be?' }
+        it 'returns false' do
+          assert_on_failure(matcher.valid?(pattern), "invalid DNS name")
+        end
+      end
       context 'when pattern includes an empty label' do
         context 'as a prefix' do
           let(:pattern) { '.example.com' }
@@ -33,6 +45,12 @@ RSpec.describe(Authentication::AuthnCert::V2::Wildcard::DnsName) do
           it 'returns false' do
             assert_on_failure(matcher.valid?(pattern), "empty labels are not allowed")
           end
+        end
+      end
+      context 'when pattern is a private non-ICANN domain' do
+        let(:pattern) { 'myapp.compute-1.amazonaws.com' }
+        it 'returns true' do
+          expect(matcher.valid?(pattern).success?).to be(true)
         end
       end
     end
@@ -119,6 +137,18 @@ RSpec.describe(Authentication::AuthnCert::V2::Wildcard::DnsName) do
           end
         end
       end
+      context 'when a wildcard is included in a private non-ICANN domain' do
+        let(:pattern) { '*.compute-1.amazonaws.com' }
+        it 'returns false' do
+          assert_on_failure(matcher.valid?(pattern), "wildcards not allowed in private non-ICANN domains")
+        end
+      end
+      context 'when a wildcard is valid but could represent a private non-ICANN domain' do
+        let(:pattern) { '*.*.amazonaws.com' }
+        it 'returns true' do
+          expect(matcher.valid?(pattern).success?).to be(true)
+        end
+      end
     end
   end
 
@@ -145,8 +175,8 @@ RSpec.describe(Authentication::AuthnCert::V2::Wildcard::DnsName) do
         expect(matcher.match?(pattern, 'ab.example.com').success?).to be(true)
         expect(matcher.match?(pattern, 'c.example.com').success?).to be(true)
       end
-      it 'does not match an empty label' do
-        assert_on_failure(matcher.match?(pattern, '.example.com'), "empty label in candidate DNS name")
+      it 'does not match an invalid candidate DNS name' do
+        assert_on_failure(matcher.match?(pattern, '.example.com'), "invalid candidate DNS name")
       end
       context 'when pattern includes regex characters' do
         let(:pattern) { 'abc[0-9].*.example.com' }
@@ -173,6 +203,13 @@ RSpec.describe(Authentication::AuthnCert::V2::Wildcard::DnsName) do
           assert_on_failure(matcher.match?(pattern, 'a.example.com'), "segment count mismatch")
           assert_on_failure(matcher.match?(pattern, 'a.b.c.example.com'), "segment count mismatch")
         end
+      end
+    end
+    context 'when the pattern is valid but the candidate DNS name is in a private non-ICANN domain' do
+      let(:pattern) { '*.*.amazonaws.com' }
+      let(:dns_name) { 'api.compute-1.amazonaws.com' }
+      it 'returns false' do
+        assert_on_failure(matcher.match?(pattern, dns_name), "wildcards not allowed in private non-ICANN domains")
       end
     end
   end
