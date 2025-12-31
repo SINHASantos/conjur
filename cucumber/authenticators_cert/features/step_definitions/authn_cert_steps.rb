@@ -1,7 +1,7 @@
 require 'cucumber/authenticators_cert/features/support/authn_cert_helper'
 
 Given(/^Certificate authentication is enabled$/) do
-  ENV['CONJUR_FEATURE_CERTIFICATE_AUTHENTICATION_ENABLED'] = 'true'
+  ENV['CONJUR_FEATURE_AUTHENTICATOR_SERVICE_ENABLED'] = 'true'
 end
 
 Given(/^I create a CA certificate$/) do

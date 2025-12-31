@@ -287,7 +287,7 @@ class AuthenticateController < ApplicationController
 
   def check_authn_cert_feature_flag
     return unless params[:authenticator]&.start_with?('authn-cert')
-    return if Rails.application.config.feature_flags.enabled?(:certificate_authentication)
+    return if Rails.application.config.feature_flags.enabled?(:authenticator_service)
 
     raise ActionController::RoutingError, "Not Found"
   end
