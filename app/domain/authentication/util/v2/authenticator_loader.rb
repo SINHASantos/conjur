@@ -6,7 +6,7 @@ module Authentication
       class AuthenticatorLoader
         class << self
           def all
-            certificate_authenticator_enabled = Rails.application.config.feature_flags.enabled?(:certificate_authentication)
+            certificate_authenticator_enabled = Rails.application.config.feature_flags.enabled?(:authenticator_service)
 
             {}.tap do |rtn|
               group_authenticators(authenticator_klasses).each do |authn_type, authn_klasses|

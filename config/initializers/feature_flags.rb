@@ -40,9 +40,10 @@ Rails.application.configure do
     # variables.
     dynamic_secrets: false,
 
-    # When enabled, the Certificate Authentication API is available. This
-    # requires an available credential validation service.
-    certificate_authentication: false,
+    # When enabled, installs and makes available those authenticators depend on
+    # the external authenticator service. Currently, this includes only the.
+    # X.509 certificate authenticator.
+    authenticator_service: false,
 
     # When enabled, slosilo encryption key will be cached to prevent requesting
     # it from db for each use.

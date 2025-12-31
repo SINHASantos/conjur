@@ -121,7 +121,7 @@ describe AuthenticateController, :type => :request do
         .and_call_original
       allow_any_instance_of(Conjur::FeatureFlags::Features)
         .to receive(:enabled?)
-        .with(:certificate_authentication)
+        .with(:authenticator_service)
         .and_return(enabled)
     end
 
