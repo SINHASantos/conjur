@@ -30,7 +30,7 @@ RSpec.describe(Authentication::AuthnCert::V2::SaasAuthClient) do
     let(:client) do
       described_class.new(
         http_client: transporter_class,
-        saas_authenticator_url: 'http://saas-authn.com'
+        authenticator_service_url: 'http://saas-authn.com'
       )
     end
 

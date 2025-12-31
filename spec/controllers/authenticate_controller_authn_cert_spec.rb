@@ -24,7 +24,7 @@ describe AuthenticateController, type: :request do
   # and that further test steps should be skipped.
   let(:expect_creation_failure) { false }
 
-  let(:saas_authn_url) { Rails.application.config.conjur_config.saas_authenticator_url }
+  let(:saas_authn_url) { Rails.application.config.conjur_config.authenticator_service_url }
 
   let(:sample_ca_pem) do
     "-----BEGIN CERTIFICATE-----\nbXktcGVtLWNlcnQ=\n-----END CERTIFICATE-----"

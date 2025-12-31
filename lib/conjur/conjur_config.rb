@@ -50,7 +50,7 @@ module Conjur
       # Host factory operation can be disabled entirely
       host_factories_enabled: true,
       # URL for external SaaS authenticator service
-      saas_authenticator_url: 'http://localhost:5618',
+      authenticator_service_url: 'http://localhost:5618',
       max_restricted_to: 1000
     )
 

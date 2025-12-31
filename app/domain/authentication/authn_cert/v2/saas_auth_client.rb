@@ -6,10 +6,10 @@ module Authentication
       class SaasAuthClient
         def initialize(
           http_client: Authentication::Util::NetworkTransporter,
-          saas_authenticator_url: Rails.application.config.conjur_config.saas_authenticator_url
+          authenticator_service_url: Rails.application.config.conjur_config.authenticator_service_url
         )
           @http_client = http_client.new(
-            hostname: saas_authenticator_url
+            hostname: authenticator_service_url
           )
 
           @success = Responses::Success
