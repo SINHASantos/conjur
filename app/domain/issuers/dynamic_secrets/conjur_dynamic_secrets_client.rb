@@ -61,7 +61,7 @@ module Issuers
               response_body['description']
             )
           )
-          raise ApplicationController::UnprocessableEntity,
+          raise ApplicationController::UnprocessableContent,
                 "Failed to create the dynamic secret. Code: " \
                 "#{response_body['code']}, Message: #{response_body['message']}, " \
                 "description: #{response_body['description']}"

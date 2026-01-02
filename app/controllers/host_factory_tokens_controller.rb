@@ -37,7 +37,7 @@ class HostFactoryTokensController < RestController
         tokens << HostFactoryToken.create(options)
       end
     rescue ArgumentError => e
-      raise ApplicationController::UnprocessableEntity, e.message
+      raise ApplicationController::UnprocessableContent, e.message
     end
     render(json: tokens)
   end

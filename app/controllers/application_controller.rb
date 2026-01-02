@@ -42,10 +42,10 @@ class ApplicationController < ActionController::API
   class RecordExists < Exceptions::RecordExists
   end
 
-  class UnprocessableEntity < RuntimeError
+  class UnprocessableContent < RuntimeError
   end
 
-  class InvalidParameter < UnprocessableEntity
+  class InvalidParameter < UnprocessableContent
   end
 
   class Conflict < RuntimeError
@@ -77,7 +77,7 @@ class ApplicationController < ActionController::API
   rescue_from NoMethodError, with: :internal_server_error
   rescue_from ArgumentError, with: :argument_error
   rescue_from ActionController::ParameterMissing, with: :argument_error
-  rescue_from UnprocessableEntity, with: :unprocessable_entity
+  rescue_from UnprocessableContent, with: :unprocessable_entity
   rescue_from Errors::Conjur::BadSecretEncoding, with: :bad_secret_encoding
   rescue_from Errors::Authentication::RoleNotApplicableForKeyRotation, with: :method_not_allowed
   rescue_from Errors::Authorization::AccessToResourceIsForbiddenForRole, with: :forbidden

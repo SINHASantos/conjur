@@ -23,7 +23,7 @@ class ResourcesController < RestController
       unless options[:limit].to_i <= conjur_config.api_resource_list_limit_max || options[:limit].to_i == 10000
         error_message = "'Limit' parameter must not exceed #{conjur_config.api_resource_list_limit_max}"
         audit_list_failure(options, error_message)
-        raise ApplicationController::UnprocessableEntity, error_message
+        raise ApplicationController::UnprocessableContent, error_message
 
       end
     end
@@ -43,7 +43,7 @@ class ResourcesController < RestController
       raise
     rescue ArgumentError => e
       audit_list_failure(options, e.message)
-      raise ApplicationController::UnprocessableEntity, e.message
+      raise ApplicationController::UnprocessableContent, e.message
     end
 
     result =

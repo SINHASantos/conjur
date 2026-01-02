@@ -101,7 +101,7 @@ module Authenticators
       if %w[aws gcp].include?(type)
         if data
           raise(
-            ApplicationController::UnprocessableEntity,
+            ApplicationController::UnprocessableContent,
             "The 'data' object cannot be specified for #{type} authenticators."
           )
         end
@@ -111,7 +111,7 @@ module Authenticators
         return if type == "ldap" # LDAP is allowed to have no data block for certain configs
 
         raise(
-          ApplicationController::UnprocessableEntity,
+          ApplicationController::UnprocessableContent,
           "The 'data' object must be specified for #{type} authenticators and it must be a non-empty JSON object."
         )
       end
@@ -386,7 +386,7 @@ module Authenticators
       # Ensure either `jwks_uri` or `public_keys` is present
       if data[:jwks_uri].nil? && data[:public_keys].nil?
         raise(
-          ApplicationController::UnprocessableEntity,
+          ApplicationController::UnprocessableContent,
           "In the 'data' object, either a 'jwks_uri' or 'public_keys' field must be specified."
         )
       end
@@ -394,7 +394,7 @@ module Authenticators
       # Ensure `jwks_uri` and `public_keys` are not present together
       if data[:jwks_uri] && data[:public_keys]
         raise(
-          ApplicationController::UnprocessableEntity,
+          ApplicationController::UnprocessableContent,
           "In the 'data' object, you cannot specify jwks_uri and public_keys fields."
         )
       end
@@ -402,7 +402,7 @@ module Authenticators
       # If `public_keys` is provided, `issuer` must also be provided
       if data[:public_keys] && data[:issuer].nil?
         raise(
-          ApplicationController::UnprocessableEntity,
+          ApplicationController::UnprocessableContent,
           "In the 'data' object, when the 'public_keys' field is specified, the 'issuer' field must also be specified."
         )
       end
@@ -411,7 +411,7 @@ module Authenticators
       return unless data.dig(:identity, :identity_path) && data.dig(:identity, :token_app_property).nil?
 
       raise(
-        ApplicationController::UnprocessableEntity,
+        ApplicationController::UnprocessableContent,
         "In the identity object, when the 'identity_path' field is specified, the 'token_app_property' field must also be specified."
       )
     end
@@ -421,7 +421,7 @@ module Authenticators
       return unless data[:provider_uri].nil?
 
       raise(
-        ApplicationController::UnprocessableEntity,
+        ApplicationController::UnprocessableContent,
         "In the 'data' object, the 'provider_uri' field must be specified."
       )
     end
@@ -444,24 +444,24 @@ module Authenticators
       mfa_variables_included = !mfa.select{ |v| data.include?(v) }.empty?
 
       if !all_standard_variables_included && !all_mfa_variables_included
-        raise ApplicationController::UnprocessableEntity, exclusivity_message
+        raise ApplicationController::UnprocessableContent, exclusivity_message
       end
 
       if all_standard_variables_included && all_mfa_variables_included
-        raise ApplicationController::UnprocessableEntity, exclusivity_message
+        raise ApplicationController::UnprocessableContent, exclusivity_message
       end
 
       # This is the case where we have a partial config for one/both sets of vars
       return unless standard_variables_included && mfa_variables_included
 
-      raise ApplicationController::UnprocessableEntity, exclusivity_message
+      raise ApplicationController::UnprocessableContent, exclusivity_message
     end
 
     def validate_certificate_data_rules(data)
       # Ensure `ca_cert` is present
       if data[:ca_cert].empty?
         raise(
-          ApplicationController::UnprocessableEntity,
+          ApplicationController::UnprocessableContent,
           "In the 'data' object, the 'ca_cert' field must be specified."
         )
       end
@@ -469,7 +469,7 @@ module Authenticators
       # Ensure `crl` and `crl_url` are not present together
       if data[:crl] && data[:crl_url]
         raise(
-          ApplicationController::UnprocessableEntity,
+          ApplicationController::UnprocessableContent,
           "In the 'data' object, you cannot specify crl and crl_url fields together."
         )
       end
@@ -479,7 +479,7 @@ module Authenticators
         valid_host_modes = %w[request spiffe]
         unless valid_host_modes.include?(data.dig(:identity, :host_mode))
           raise(
-            ApplicationController::UnprocessableEntity,
+            ApplicationController::UnprocessableContent,
             "In the identity object, the 'host_mode' field must be either 'request' or 'spiffe'."
           )
         end
@@ -489,7 +489,7 @@ module Authenticators
       if data.dig(:identity, :host_mode) == 'spiffe'
         unless data.dig(:identity, :trust_domain) && data.dig(:identity, :identity_path)
           raise(
-            ApplicationController::UnprocessableEntity,
+            ApplicationController::UnprocessableContent,
             "In the identity object, when the 'host_mode' is 'spiffe', both 'trust_domain' and 'identity_path' fields must also be specified."
           )
         end
@@ -500,7 +500,7 @@ module Authenticators
       return unless data.dig(:identity, :trust_domain) || data.dig(:identity, :identity_path)
 
       raise(
-        ApplicationController::UnprocessableEntity,
+        ApplicationController::UnprocessableContent,
         "In the identity object, when the 'host_mode' is not 'spiffe', neither 'trust_domain' nor 'identity_path' fields can be specified."
       )
     end
@@ -551,7 +551,7 @@ module Authenticators
       return unless extra_keys.any?
 
       raise(
-        ApplicationController::UnprocessableEntity,
+        ApplicationController::UnprocessableContent,
         "The following parameters were not expected: #{extra_keys.join(', ')}"
       )
     end
@@ -566,7 +566,7 @@ module Authenticators
       return unless json_string.length > max_length
 
       raise(
-        ApplicationController::UnprocessableEntity,
+        ApplicationController::UnprocessableContent,
         "'#{param_name}' parameter length exceeded. Limit the length to #{max_length} characters"
       )
     end
@@ -576,14 +576,14 @@ module Authenticators
 
       if data.length < min_size
         raise(
-          ApplicationController::UnprocessableEntity,
+          ApplicationController::UnprocessableContent,
           "'#{param_name}' parameter length is less than #{min_size} characters"
         )
       end
 
       if data.length > max_size
         raise(
-          ApplicationController::UnprocessableEntity,
+          ApplicationController::UnprocessableContent,
           "'#{param_name}' parameter length exceeded. Limit the length to #{max_size} characters"
         )
       end
@@ -591,7 +591,7 @@ module Authenticators
       return if data.match?(regex_pattern)
 
       raise(
-        ApplicationController::UnprocessableEntity,
+        ApplicationController::UnprocessableContent,
         "Invalid '#{param_name}' parameter. #{error_message}"
       )
     end
@@ -653,7 +653,7 @@ module Authenticators
       
       unless data[:value].is_a?(Hash)
         raise(
-          ApplicationController::UnprocessableEntity,
+          ApplicationController::UnprocessableContent,
           "Invalid '#{param_name}' parameter. Must be a dictionary."
         )
       end
@@ -662,14 +662,14 @@ module Authenticators
         target_alias = target_alias.to_s
         unless target_alias.match?(/\A[A-Za-z0-9_-]+\z/)
           raise(
-            ApplicationController::UnprocessableEntity,
+            ApplicationController::UnprocessableContent,
             "Invalid target alias '#{target_alias}' in '#{param_name}'. Must be an alphanumeric string with underscores or dashes."
           )
         end
 
         if reserved_claims.include?(target_alias)
           raise(
-            ApplicationController::UnprocessableEntity,
+            ApplicationController::UnprocessableContent,
             "Invalid target alias '#{target_alias}' in '#{param_name}'. Cannot use reserved claims: #{reserved_claims.join(', ')}."
           )
         end
@@ -677,7 +677,7 @@ module Authenticators
         next if source_claim.is_a?(String) && source_claim.match?(%r{\A[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*\z})
 
         raise(
-          ApplicationController::UnprocessableEntity,
+          ApplicationController::UnprocessableContent,
           "Invalid source claim '#{source_claim}' in '#{param_name}'. Must be a valid claim name or a nested path."
         )
       end
@@ -688,7 +688,7 @@ module Authenticators
       return if data[:value].is_a?(Array) && data[:value].all? { |claim| claim.is_a?(String) }
 
       raise(
-        ApplicationController::UnprocessableEntity,
+        ApplicationController::UnprocessableContent,
         "Invalid '#{param_name}' parameter. Must be an array of strings."
       )
     end
@@ -716,7 +716,7 @@ module Authenticators
       return if data[:value].nil?
       return if %w[request spiffe].include?(data[:value])
 
-      raise ApplicationController::UnprocessableEntity, "Variable '#{param_name}' only accepts values 'request' and 'spiffe'"
+      raise ApplicationController::UnprocessableContent, "Variable '#{param_name}' only accepts values 'request' and 'spiffe'"
     end
 
     def validate_trust_domain(param_name, data)
@@ -784,38 +784,38 @@ module Authenticators
     def validate_entry_count(data, max_count, param_name)
       return unless data.size > max_count
 
-      raise ApplicationController::UnprocessableEntity, "'#{param_name}' must not contain more than #{max_count} entries"
+      raise ApplicationController::UnprocessableContent, "'#{param_name}' must not contain more than #{max_count} entries"
     end
 
     def validate_string_length(value, max_length, param_name)
       return unless value.length > max_length
 
-      raise ApplicationController::UnprocessableEntity, "#{param_name} exceeds maximum length of #{max_length} characters"
+      raise ApplicationController::UnprocessableContent, "#{param_name} exceeds maximum length of #{max_length} characters"
     end
 
     def validate_entry_length(data, max_length, param_name)
       return unless data.length > max_length
 
-      raise ApplicationController::UnprocessableEntity,
+      raise ApplicationController::UnprocessableContent,
             "Each entry in '#{param_name}' must not exceed #{max_length} characters"
     end
 
     def validate_text_size(file_content, max_size, param_name)
       return unless file_content.bytesize > max_size
 
-      raise ApplicationController::UnprocessableEntity, "#{param_name} exceeds maximum size of #{max_size} bytes"
+      raise ApplicationController::UnprocessableContent, "#{param_name} exceeds maximum size of #{max_size} bytes"
     end
 
     def validate_file_content(file_content, pattern, param_name)
       return if file_content.match?(pattern)
 
-      raise ApplicationController::UnprocessableEntity, "#{param_name} content is invalid"
+      raise ApplicationController::UnprocessableContent, "#{param_name} content is invalid"
     end
 
     def validate_url_format(value, pattern, param_name)
       return if value.match?(pattern)
 
-      raise ApplicationController::UnprocessableEntity, "#{param_name} must start with http:// or https:// and cannot contain a question mark (?)"
+      raise ApplicationController::UnprocessableContent, "#{param_name} must start with http:// or https:// and cannot contain a question mark (?)"
     end
 
     def validate_dns_wildcard(value, param_name)
@@ -823,7 +823,7 @@ module Authenticators
         return
       end
 
-      raise ApplicationController::UnprocessableEntity, "Invalid value for '#{param_name}': #{response}"
+      raise ApplicationController::UnprocessableContent, "Invalid value for '#{param_name}': #{response}"
     end
 
     def validate_uri_wildcard(value, param_name)
@@ -831,7 +831,7 @@ module Authenticators
         return
       end
 
-      raise ApplicationController::UnprocessableEntity, "Invalid value for '#{param_name}': #{response}"
+      raise ApplicationController::UnprocessableContent, "Invalid value for '#{param_name}': #{response}"
     end
 
     def validate_ip_wildcard(value, param_name)
@@ -839,7 +839,7 @@ module Authenticators
         return
       end
 
-      raise ApplicationController::UnprocessableEntity, "Invalid value for '#{param_name}': #{response}"
+      raise ApplicationController::UnprocessableContent, "Invalid value for '#{param_name}': #{response}"
     end
   end
 end

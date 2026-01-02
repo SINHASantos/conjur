@@ -28,7 +28,7 @@ module BodyParser
         begin
           @body_payload = JSON.parse(body)
         rescue JSON::JSONError
-          raise ApplicationController::UnprocessableEntity, "Unable to parse request json body: #{body.inspect}"
+          raise ApplicationController::UnprocessableContent, "Unable to parse request json body: #{body.inspect}"
         end
       else
         {}

@@ -70,7 +70,7 @@ module Secrets
     def check_id_is_not_dynamic(identifier)
       return true unless identifier.start_with?(Issuer::DYNAMIC_VARIABLE_PREFIX)
 
-      raise ApplicationController::UnprocessableEntity,
+      raise ApplicationController::UnprocessableContent,
             "The request cannot contain dynamic secrets"
     end
   end

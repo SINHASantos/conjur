@@ -132,7 +132,7 @@ class SecretsController < RestController
     max_dynamic_secrets = conjur_config.dynamic_secrets_per_request_max
     return unless num_dynamic_secrets > max_dynamic_secrets
 
-    raise ApplicationController::UnprocessableEntity,
+    raise ApplicationController::UnprocessableContent,
           "Number of dynamic secrets requested exceeds the maximum " \
           "allowed in a single request (#{max_dynamic_secrets})"
   end
@@ -236,7 +236,7 @@ class SecretsController < RestController
     # There shouldn't be a state where a variable belongs to an issuer that
     # doesn't exit, but we check it to be safe.
     unless issuer
-      raise ApplicationController::UnprocessableEntity,
+      raise ApplicationController::UnprocessableContent,
             "Issuer assigned to " \
             "#{resource.id} was not found"
     end
@@ -277,7 +277,7 @@ class SecretsController < RestController
     )
 
     if service_address.nil? || service_port.nil?
-      raise ApplicationController::UnprocessableEntity,
+      raise ApplicationController::UnprocessableContent,
             "No dynamic secrets service configured for Conjur"
     end
 

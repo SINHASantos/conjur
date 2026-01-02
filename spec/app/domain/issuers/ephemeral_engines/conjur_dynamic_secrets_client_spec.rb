@@ -102,7 +102,7 @@ describe Issuers::DynamicSecrets::ConjurDynamicSecretsClient do
       it "then the appropriate exception is raised" do
         expect do
           dynamic_secret
-        end.to raise_error(ApplicationController::UnprocessableEntity) do |error|
+        end.to raise_error(ApplicationController::UnprocessableContent) do |error|
           expect(error.message)
             .to eq(
               "Failed to create the dynamic secret. Code: Error code, Message: " \
