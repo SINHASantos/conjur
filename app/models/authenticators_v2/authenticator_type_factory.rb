@@ -55,7 +55,7 @@ module AuthenticatorsV2
       if type.nil?
         return @failure.new(
           "Authenticator type is required",
-          status: :unprocessable_entity,
+          status: :unprocessable_content,
           exception: ApplicationController::UnprocessableContent
         )
       end
@@ -65,7 +65,7 @@ module AuthenticatorsV2
        
       @failure.new(
         "'#{type}' authenticators are not supported.",
-        status: :unprocessable_entity,
+        status: :unprocessable_content,
         exception: ApplicationController::UnprocessableContent
       )
     end

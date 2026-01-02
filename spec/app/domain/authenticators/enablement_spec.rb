@@ -76,19 +76,19 @@ describe Authenticators::Enablement do
         case: 'when enablement isnt a bool',
         body: { enabled: "test" },
         expected_response: "The enabled parameter must be of type=boolean",
-        expected_code: :unprocessable_entity
+        expected_code: :unprocessable_content
       },
       {
         case: 'when enablement isnt a in the body',
         body: { config: true },
         expected_response: "Missing required parameter: enabled",
-        expected_code: :unprocessable_entity
+        expected_code: :unprocessable_content
       },
       {
         case: 'when request body has extra keys',
         body: { config: "test",  enabled: true, name: "test_name" },
         expected_response: "The following parameters were not expected: 'config, name'",
-        expected_code: :unprocessable_entity
+        expected_code: :unprocessable_content
       }
     ].each do |test_case|
       context test_case[:case].to_s do

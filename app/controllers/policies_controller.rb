@@ -243,7 +243,7 @@ class PoliciesController < RestController
     error_json = policy_mode.report(policy_result)
     render(
       json: error_json,
-      status: :unprocessable_entity
+      status: :unprocessable_content
     )
   end
 

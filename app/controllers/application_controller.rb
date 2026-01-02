@@ -201,7 +201,7 @@ class ApplicationController < ActionController::API
         message: message,
         details: details
       }
-    }, status: :unprocessable_entity)
+    }, status: :unprocessable_content)
   end
 
   def policy_invalid e
@@ -219,7 +219,7 @@ class ApplicationController < ActionController::API
       }
     end
 
-    render(json: { error: error }, status: :unprocessable_entity)
+    render(json: { error: error }, status: :unprocessable_content)
   end
 
   def enhanced_policy_error e
@@ -232,7 +232,7 @@ class ApplicationController < ActionController::API
         code: code,
         message: e.message
       }
-    }, status: :unprocessable_entity)
+    }, status: :unprocessable_content)
   end
 
   def log_backtrace(err)
@@ -254,7 +254,7 @@ class ApplicationController < ActionController::API
         code: error_code_of_exception_class(e.class),
         message: e.message
       }
-    }, status: :unprocessable_entity)
+    }, status: :unprocessable_content)
   end
 
   def record_exists e
@@ -309,7 +309,7 @@ class ApplicationController < ActionController::API
   def bad_request e
     logger.debug("#{e}\n#{e.backtrace.join("\n")}")
 
-    return render_v2_error(:unprocessable_entity, e.message) if v2_header?
+    return render_v2_error(:unprocessable_content, e.message) if v2_header?
 
     head(:bad_request)
   end
@@ -330,14 +330,14 @@ class ApplicationController < ActionController::API
   def unprocessable_entity e
     logger.debug("#{e}\n#{e.backtrace.join("\n")}")
 
-    return render_v2_error(:unprocessable_entity, e.message) if v2_header?
+    return render_v2_error(:unprocessable_content, e.message) if v2_header?
 
     render(json: {
       error: {
         code: :unprocessable_entity,
         message: e.message
       }
-    }, status: :unprocessable_entity)
+    }, status: :unprocessable_content)
   end
 
   def bad_secret_encoding e
@@ -452,11 +452,11 @@ class ApplicationController < ActionController::API
 
   def data_key_invalid e
     logger.debug("#{e}\n#{e.backtrace.join("\n")}")
-    render json: {
+    render(json: {
       error: {
         code: "data_key_invalid",
         message: "Conjur data key is invalid or does not match encrypted data. Please check your CONJUR_DATA_KEY."
       }
-    }, status: :unprocessable_entity
+    }, status: :unprocessable_content)
   end
 end
