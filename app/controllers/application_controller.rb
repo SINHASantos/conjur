@@ -77,7 +77,7 @@ class ApplicationController < ActionController::API
   rescue_from NoMethodError, with: :internal_server_error
   rescue_from ArgumentError, with: :argument_error
   rescue_from ActionController::ParameterMissing, with: :argument_error
-  rescue_from UnprocessableContent, with: :unprocessable_entity
+  rescue_from UnprocessableContent, with: :unprocessable_content
   rescue_from Errors::Conjur::BadSecretEncoding, with: :bad_secret_encoding
   rescue_from Errors::Authentication::RoleNotApplicableForKeyRotation, with: :method_not_allowed
   rescue_from Errors::Authorization::AccessToResourceIsForbiddenForRole, with: :forbidden
@@ -86,9 +86,9 @@ class ApplicationController < ActionController::API
   rescue_from Errors::Authentication::Security::RoleNotAuthorizedOnResource, with: :forbidden
   rescue_from Errors::Group::DuplicateMember, with: :conflict
   rescue_from Errors::Conjur::APIHeaderMissing, with: :render_bad_request_with_message
-  rescue_from Errors::Conjur::ParameterMissing, with: :unprocessable_entity
-  rescue_from Errors::Conjur::ParameterValueInvalid, with: :unprocessable_entity
-  rescue_from Errors::Conjur::ParameterTypeInvalid, with: :unprocessable_entity
+  rescue_from Errors::Conjur::ParameterMissing, with: :unprocessable_content
+  rescue_from Errors::Conjur::ParameterValueInvalid, with: :unprocessable_content
+  rescue_from Errors::Conjur::ParameterTypeInvalid, with: :unprocessable_content
   rescue_from OpenSSL::Cipher::CipherError, with: :data_key_invalid
 
   around_action :run_with_transaction
@@ -327,7 +327,7 @@ class ApplicationController < ActionController::API
     }, status: :bad_request)
   end
 
-  def unprocessable_entity e
+  def unprocessable_content e
     logger.debug("#{e}\n#{e.backtrace.join("\n")}")
 
     return render_v2_error(:unprocessable_content, e.message) if v2_header?
