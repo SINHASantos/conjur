@@ -156,7 +156,7 @@ describe IssuersController, type: :request do
                   'CONTENT_TYPE' => "application/json"
                 ))
 
-          assert_response :unprocessable_entity
+          assert_response :unprocessable_content
           get("/issuers/rspec/aws-issuer-1",
               env: token_auth_header(role: admin_user))
           assert_response :success
@@ -350,7 +350,7 @@ describe IssuersController, type: :request do
                   'CONTENT_TYPE' => "application/json"
                 ))
 
-          assert_response :unprocessable_entity
+          assert_response :unprocessable_content
           expect(response.body).to eq("{\"error\":{\"code\":\"unprocessable_entity\",\"message\":\"secret_access_key is a required parameter and must be specified\"}}")
         end
       end
@@ -788,7 +788,7 @@ describe IssuersController, type: :request do
                'RAW_POST_DATA' => payload_create_issuers_symbols_input,
                'CONTENT_TYPE' => "application/json"
              ))
-        assert_response :unprocessable_entity
+        assert_response :unprocessable_content
         expect(response.body).to eq("{\"error\":{\"code\":\"unprocessable_entity\",\"message\":\"invalid parameter received in data. Only access_key_id and secret_access_key are allowed\"}}")
       end
     end
@@ -842,7 +842,7 @@ describe IssuersController, type: :request do
                  'RAW_POST_DATA' => '',
                  'CONTENT_TYPE' => "application/json"
                ))
-          assert_response :unprocessable_entity
+          assert_response :unprocessable_content
           expect(response.body).to eq("{\"error\":{\"code\":\"unprocessable_entity\",\"message\":\"Unable to parse request json body: \\\"\\\"\"}}")
         end
       end
@@ -854,7 +854,7 @@ describe IssuersController, type: :request do
                  'RAW_POST_DATA' => 'not json',
                  'CONTENT_TYPE' => "application/json"
                ))
-          assert_response :unprocessable_entity
+          assert_response :unprocessable_content
           expect(response.body).to eq("{\"error\":{\"code\":\"unprocessable_entity\",\"message\":\"Unable to parse request json body: \\\"not json\\\"\"}}")
         end
       end
@@ -1209,7 +1209,7 @@ describe IssuersController, type: :request do
             'RAW_POST_DATA' => payload_create_non_dynamic_variable
           )
         )
-        assert_response :unprocessable_entity
+        assert_response :unprocessable_content
         expect(Resource.find(resource_id: "rspec:variable:data/non-dynamic-variable")).to eq(nil)
       end
 
@@ -1348,13 +1348,13 @@ describe IssuersController, type: :request do
         it 'wrong value for projection returns error' do
           get("/issuers/rspec/issuer-1?projection=not_supported",
               env: token_auth_header(role: admin_user))
-          assert_response :unprocessable_entity
+          assert_response :unprocessable_content
         end
 
         it 'no value for projection returns error' do
           get("/issuers/rspec/issuer-1?projection",
               env: token_auth_header(role: admin_user))
-          assert_response :unprocessable_entity
+          assert_response :unprocessable_content
         end
 
         it 'the minimum issuer is returned' do
