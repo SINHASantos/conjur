@@ -165,7 +165,7 @@ module Workloads
       begin
         Conjur::CIDR.new(addr_str).to_s
       rescue IPAddr::Error
-        raise ApplicationController::UnprocessableEntity,
+        raise ApplicationController::UnprocessableContent,
               "Invalid IP address or CIDR range '#{addr}'"
       end
     end
@@ -173,7 +173,7 @@ module Workloads
     def check_restricted_to_size(cidr_arr)
       max_restricted_to = @config.max_restricted_to
       if cidr_arr.length > max_restricted_to
-        raise ApplicationController::UnprocessableEntity,
+        raise ApplicationController::UnprocessableContent,
               "Too many CIDR entries. Maximum allowed is #{max_restricted_to}"
       end
     end

@@ -88,7 +88,7 @@ RSpec.describe Workloads::WorkloadService do
       arr = Array.new(6, '1.2.3.4/32')
       expect {
         service.send(:save_restricted_to, host_role, arr)
-      }.to raise_error(ApplicationController::UnprocessableEntity)
+      }.to raise_error(ApplicationController::UnprocessableContent)
     end
   end
 

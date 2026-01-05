@@ -73,7 +73,7 @@ describe Issuers::IssuerTypes::AwsIssuerType do
         }
       end
       include_examples 'fails input validation',
-                       ApplicationController::UnprocessableEntity
+                       ApplicationController::UnprocessableContent
     end
 
     context "when secret access key is not given in the data field" do
@@ -83,7 +83,7 @@ describe Issuers::IssuerTypes::AwsIssuerType do
         }
       end
       include_examples 'fails input validation',
-                       ApplicationController::UnprocessableEntity
+                       ApplicationController::UnprocessableContent
     end
 
     context "when secret access key is nil" do
@@ -93,31 +93,31 @@ describe Issuers::IssuerTypes::AwsIssuerType do
         }
       end
       include_examples 'fails input validation',
-                       ApplicationController::UnprocessableEntity
+                       ApplicationController::UnprocessableContent
     end
 
     context "when key id is not a string" do
       let(:access_key_id) { 1 }
       include_examples 'fails input validation',
-                       ApplicationController::UnprocessableEntity
+                       ApplicationController::UnprocessableContent
     end
 
     context "when key id is an empty string" do
       let(:access_key_id) { "" }
       include_examples 'fails input validation',
-                       ApplicationController::UnprocessableEntity
+                       ApplicationController::UnprocessableContent
     end
 
     context "when secret access key is not a string" do
       let(:secret_access_key) { 1 }
       include_examples 'fails input validation',
-                       ApplicationController::UnprocessableEntity
+                       ApplicationController::UnprocessableContent
     end
 
     context "when secret access key is an empty string" do
       let(:secret_access_key) { "" }
       include_examples 'fails input validation',
-                       ApplicationController::UnprocessableEntity
+                       ApplicationController::UnprocessableContent
     end
 
     context "when invalid parameter is added to the data" do
@@ -129,19 +129,19 @@ describe Issuers::IssuerTypes::AwsIssuerType do
         }
       end
       include_examples 'fails input validation',
-                       ApplicationController::UnprocessableEntity
+                       ApplicationController::UnprocessableContent
     end
 
     context "when access key id is not in the correct format" do
       let(:access_key_id) { "a" }
       include_examples 'fails input validation',
-                       ApplicationController::UnprocessableEntity
+                       ApplicationController::UnprocessableContent
     end
 
     context "when secret access key is not in the correct format" do
       let(:secret_access_key) { "a" }
       include_examples 'fails input validation',
-                       ApplicationController::UnprocessableEntity
+                       ApplicationController::UnprocessableContent
     end
   end
 

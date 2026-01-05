@@ -141,27 +141,27 @@ module Issuers
 
         data_fields.each do |field_symbol, field_string|
           unless data.key?(field_symbol)
-            raise ApplicationController::UnprocessableEntity,
+            raise ApplicationController::UnprocessableContent,
                   format(IssuerBaseType::REQUIRED_PARAM_MISSING, field_string)
           end
           if data[field_symbol].nil?
-            raise ApplicationController::UnprocessableEntity,
+            raise ApplicationController::UnprocessableContent,
                   format(IssuerBaseType::REQUIRED_PARAM_MISSING, field_string)
           end
 
           unless data[field_symbol].is_a?(String)
-            raise ApplicationController::UnprocessableEntity,
+            raise ApplicationController::UnprocessableContent,
                   format(IssuerBaseType::WRONG_PARAM_TYPE, field_string, "string")
           end
 
           if data[field_symbol].empty?
-            raise ApplicationController::UnprocessableEntity,
+            raise ApplicationController::UnprocessableContent,
                   format(IssuerBaseType::REQUIRED_PARAM_MISSING, field_string)
           end
         end
 
         if data.keys.count > AwsIssuerType::NUM_OF_EXPECTED_DATA_PARAMS
-          raise ApplicationController::UnprocessableEntity,
+          raise ApplicationController::UnprocessableContent,
                 AwsIssuerType::INVALID_INPUT_PARAM
         end
 
@@ -174,7 +174,7 @@ module Issuers
           AwsIssuerType::ACCESS_KEY_ID_FIELD_VALID_FORMAT
         )
 
-        raise ApplicationController::UnprocessableEntity,
+        raise ApplicationController::UnprocessableContent,
               AwsIssuerType::INVALID_ACCESS_KEY_ID_FORMAT
       end
 
@@ -183,7 +183,7 @@ module Issuers
           AwsIssuerType::SECRET_ACCESS_KEY_FIELD_VALID_FORMAT
         )
 
-        raise ApplicationController::UnprocessableEntity,
+        raise ApplicationController::UnprocessableContent,
               AwsIssuerType::INVALID_SECRET_ACCESS_KEY_FORMAT
       end
     end

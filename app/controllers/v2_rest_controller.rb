@@ -143,7 +143,7 @@ class V2RestController < RestController
 
     case exc
     when DomainValidationError
-      raise ApplicationController::UnprocessableEntity, exc.message
+      raise ApplicationController::UnprocessableContent, exc.message
     else
       raise exc
     end

@@ -42,7 +42,7 @@ module AuthenticatorsV2
     # @return [AzureAuthenticatorType] if type is "authn-azure"
     # @return [GcpAuthenticatorType] if type is "authn-gcp"
     # @return [CertAuthenticatorType] if type is "authn-cert"
-    # @raise  [ApplicationController::UnprocessableEntity] if type is nil or unsupported
+    # @raise  [ApplicationController::UnprocessableContent] if type is nil or unsupported
     def call(auth_dict)
       select_auth_klass(auth_dict[:type]).bind do |klass|
         @success.new(klass.new(auth_dict))
@@ -55,8 +55,8 @@ module AuthenticatorsV2
       if type.nil?
         return @failure.new(
           "Authenticator type is required",
-          status: :unprocessable_entity,
-          exception: ApplicationController::UnprocessableEntity
+          status: :unprocessable_content,
+          exception: ApplicationController::UnprocessableContent
         )
       end
       klass = AUTHENTICATOR_CLASSES[type]
@@ -65,8 +65,8 @@ module AuthenticatorsV2
        
       @failure.new(
         "'#{type}' authenticators are not supported.",
-        status: :unprocessable_entity,
-        exception: ApplicationController::UnprocessableEntity
+        status: :unprocessable_content,
+        exception: ApplicationController::UnprocessableContent
       )
     end
   end

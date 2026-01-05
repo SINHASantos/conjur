@@ -241,40 +241,40 @@ describe(SecretsBatchController, type: :request) do
     it 'returns error when request body is empty - handled by body parser' do
       post_payload(nil)
 
-      assert_response :unprocessable_entity
+      assert_response :unprocessable_content
     end
 
     it 'returns error when request body is empty and application/json header is missing' do
       post(batch_url, env: token_auth_header(role: alice_user)
                              .merge(v2_beta_api_header)
                              .merge('RAW_POST_DATA' => ''))
-      assert_response :unprocessable_entity
+      assert_response :unprocessable_content
     end
 
     it 'returns error when request body is missing and application/json header is missing' do
       post_payload(nil, batch_url, env: token_auth_header(role: alice_user)
                                           .merge(v2_beta_api_header))
-      assert_response :unprocessable_entity
+      assert_response :unprocessable_content
     end
 
     it 'returns error when dynamic secret is included in ids' do
       post_payload('{"ids":["data/var1","data/var2","data/dynamic/var1"]}')
 
-      assert_response :unprocessable_entity
+      assert_response :unprocessable_content
       response_data = JSON.parse(response.body)
       expect(response_data['message']).to eq("The request cannot contain dynamic secrets")
     end
 
     it 'returns error when ids parameter is missing' do
       post_payload('{"foo":"bar"}')
-      assert_response :unprocessable_entity
+      assert_response :unprocessable_content
       response_data = JSON.parse(response.body)
       expect(response_data['message']).to eq("CONJ00190W Missing required parameter: ids")
     end
 
     it 'returns error when id has double leading slashes' do
       post_payload('{"ids":["//data/var1"]}')
-      assert_response :unprocessable_entity
+      assert_response :unprocessable_content
       response_data = JSON.parse(response.body)
       expect(response_data['message']).to eq("Ids The id '//data/var1' is invalid")
     end

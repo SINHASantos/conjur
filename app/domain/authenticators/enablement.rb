@@ -87,7 +87,7 @@ module Authenticators
       def missing_param(param)
         Responses::Failure.new(
           "Missing required parameter: #{param}",
-          status: :unprocessable_entity
+          status: :unprocessable_content
         )
       end
 
@@ -96,14 +96,14 @@ module Authenticators
         
         Responses::Failure.new(
           "The following parameters were not expected: '#{extra_keys}'",
-          status: :unprocessable_entity
+          status: :unprocessable_content
         )
       end
 
       def mismatch_type(param, type)
         Responses::Failure.new(
           "The #{param} parameter must be of type=#{type}",
-          status: :unprocessable_entity
+          status: :unprocessable_content
         )
       end
     end

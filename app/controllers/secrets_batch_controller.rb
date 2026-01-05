@@ -34,7 +34,7 @@ class SecretsBatchController < V2RestController
   rescue => e
     audit_failure('fetch-secrets', :fetch, path_identifier, e.message, audit_payload)
     if empty_req_string_exc?(e)
-      raise ApplicationController::UnprocessableEntity.new, e.message
+      raise ApplicationController::UnprocessableContent.new, e.message
     end
     handle_exception(e)
   end

@@ -78,25 +78,25 @@ describe(BranchesController, type: :request) do
 
     it "fails to create a branch with no name" do
       post_payload({ branch: 'invalid-branch' }.to_json)
-      assert_response :unprocessable_entity
+      assert_response :unprocessable_content
       expect(JSON.parse(response.body)).to eq("code" => "422", "message" => "CONJ00190W Missing required parameter: name")
     end
 
     it "fails to create a branch with empty name" do
       post_payload({ name: '', branch: 'invalid-branch' }.to_json)
-      assert_response :unprocessable_entity
+      assert_response :unprocessable_content
       expect(JSON.parse(response.body)).to eq("code" => "422", "message" => "CONJ00190W Missing required parameter: ")
     end
 
     it "fails to create a branch with invalid owner" do
       post_payload({ name: 'invalid<branch', branch: 'root', owner: { kind: 'invalid', id: 'alice' } }.to_json)
-      assert_response :unprocessable_entity
+      assert_response :unprocessable_content
       expect(JSON.parse(response.body)).to eq("code"=>"422", "message"=>"Kind 'invalid' is not a valid owner kind")
     end
 
     it "fails to create a branch with invalid annotation" do
       post_payload({ name: 'invalid-branch', branch: 'root', owner: { kind: 'user', id: 'alice' }, annotations: { '<>': 'value' } }.to_json)
-      assert_response :unprocessable_entity
+      assert_response :unprocessable_content
       expect(JSON.parse(response.body)).to eq("code" => "422", "message" =>"Invalid 'annotation name' parameter.")
     end
   end
@@ -134,7 +134,7 @@ describe(BranchesController, type: :request) do
 
     it "fails to read branches with invalid account" do
       get("#{branches_url}?limit=-3", env: headers_with_auth)
-      assert_response :unprocessable_entity
+      assert_response :unprocessable_content
       expect(JSON.parse(response.body)).to eq("code" => "422", "message" => "Limit must be greater than or equal to 0")
     end
   end
@@ -149,7 +149,7 @@ describe(BranchesController, type: :request) do
     it "fails to update a branch with invalid owner" do
       post_payload(branch_params.to_json)
       patch_payload({ owner: { kind: 'invalid', id: 'alice' } }.to_json)
-      assert_response :unprocessable_entity
+      assert_response :unprocessable_content
       expect(JSON.parse(response.body)).to eq("code" => "422", "message" => "Kind 'invalid' is not a valid owner kind")
     end
   end

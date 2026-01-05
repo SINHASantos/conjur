@@ -126,7 +126,7 @@ class IssuersController < RestController
     logger.warn(LogMessages::Issuers::IssuerEndpointForbidden.new("create"))
     issuer_audit_failure(params[:account], params[:id], "add", e.message)
     raise Exceptions::Forbidden, "issuers"
-  rescue ApplicationController::BadRequestWithBody, ApplicationController::UnprocessableEntity => e
+  rescue ApplicationController::BadRequestWithBody, ApplicationController::UnprocessableContent => e
     logger.warn(
       "Input validation error for issuer [#{params[:id]}]: #{e.message}"
     )
@@ -333,7 +333,7 @@ class IssuersController < RestController
     # If there is use permissions I can see the minimum info
     return true if params[:projection] == "minimal"
 
-    raise ApplicationController::UnprocessableEntity,
+    raise ApplicationController::UnprocessableContent,
           "Value provided for projection query param is invalid"
   end
 end

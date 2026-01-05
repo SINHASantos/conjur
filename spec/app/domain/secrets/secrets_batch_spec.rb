@@ -135,13 +135,13 @@ describe Secrets::SecretsBatch do
       it 'raises error for dynamic secret ids' do
         dynamic_id = "#{Issuer::DYNAMIC_VARIABLE_PREFIX}var1"
         expect { described_class.new(ids: [dynamic_id]) }
-          .to raise_error(ApplicationController::UnprocessableEntity, /dynamic secrets/)
+          .to raise_error(ApplicationController::UnprocessableContent, /dynamic secrets/)
       end
 
       it 'raises error when dynamic secret is among valid ids' do
         dynamic_id = "#{Issuer::DYNAMIC_VARIABLE_PREFIX}var1"
         expect { described_class.new(ids: ['data/var1', dynamic_id]) }
-          .to raise_error(ApplicationController::UnprocessableEntity, /dynamic secrets/)
+          .to raise_error(ApplicationController::UnprocessableContent, /dynamic secrets/)
       end
 
       it 'accepts non-dynamic ids that start with similar prefix' do

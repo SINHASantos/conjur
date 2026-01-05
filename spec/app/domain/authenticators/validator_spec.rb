@@ -70,7 +70,7 @@ describe Authenticators::Validator do
 
           it "returns an error" do
             expect{subject}.to raise_error(
-              ApplicationController::UnprocessableEntity,
+              ApplicationController::UnprocessableContent,
               "Invalid 'name' parameter. Valid characters: letters, numbers, and these special characters are allowed: . _ : -. Other characters are not allowed."
             )
           end
@@ -141,7 +141,7 @@ describe Authenticators::Validator do
 
           it "returns an error" do
             expect{subject}.to raise_error(
-              ApplicationController::UnprocessableEntity,
+              ApplicationController::UnprocessableContent,
               "Invalid 'id' parameter. Valid characters: letters, numbers, and these special characters are allowed: @ . _ / -. Other characters are not allowed."
             )
           end
@@ -163,7 +163,7 @@ describe Authenticators::Validator do
 
           it "returns an error" do
             expect{subject}.to raise_error(
-              ApplicationController::UnprocessableEntity,
+              ApplicationController::UnprocessableContent,
               "The following parameters were not expected: extra"
             )
           end
@@ -184,7 +184,7 @@ describe Authenticators::Validator do
 
           it "returns an error" do
             expect{subject}.to raise_error(
-              ApplicationController::UnprocessableEntity,
+              ApplicationController::UnprocessableContent,
               "Invalid 'annotation name' parameter. Valid characters: letters, numbers, and these special characters are allowed: _ / -. Other characters are not allowed."
             )
           end
@@ -195,7 +195,7 @@ describe Authenticators::Validator do
 
           it "returns an error" do
             expect{subject}.to raise_error(
-              ApplicationController::UnprocessableEntity,
+              ApplicationController::UnprocessableContent,
               "Invalid 'annotation value' parameter. All characters except less than (<), greater than (>), and single quote (') are allowed."
             )
           end
@@ -256,7 +256,7 @@ describe Authenticators::Validator do
 
         it "returns an error" do
           expect{subject}.to raise_error(
-            ApplicationController::UnprocessableEntity,
+            ApplicationController::UnprocessableContent,
             "The 'data' object cannot be specified for gcp authenticators."
           )
         end
@@ -307,7 +307,7 @@ describe Authenticators::Validator do
           end
           it "returns an error" do
             expect { subject }
-              .to raise_error(ApplicationController::UnprocessableEntity, "In the identity object, when the 'host_mode' is 'spiffe', both 'trust_domain' and 'identity_path' fields must also be specified.")
+              .to raise_error(ApplicationController::UnprocessableContent, "In the identity object, when the 'host_mode' is 'spiffe', both 'trust_domain' and 'identity_path' fields must also be specified.")
           end
         end
 
@@ -323,7 +323,7 @@ describe Authenticators::Validator do
           end
           it "returns an error" do
             expect { subject }
-              .to raise_error(ApplicationController::UnprocessableEntity, "In the identity object, when the 'host_mode' is 'spiffe', both 'trust_domain' and 'identity_path' fields must also be specified.")
+              .to raise_error(ApplicationController::UnprocessableContent, "In the identity object, when the 'host_mode' is 'spiffe', both 'trust_domain' and 'identity_path' fields must also be specified.")
           end
         end
       end
@@ -339,7 +339,7 @@ describe Authenticators::Validator do
           end
           it "returns an error" do
             expect { subject }
-              .to raise_error(ApplicationController::UnprocessableEntity, "In the 'data' object, you cannot specify crl and crl_url fields together.")
+              .to raise_error(ApplicationController::UnprocessableContent, "In the 'data' object, you cannot specify crl and crl_url fields together.")
           end
         end
 
@@ -356,7 +356,7 @@ describe Authenticators::Validator do
           it "returns an error" do
             expect { subject }
               .to raise_error(
-                ApplicationController::UnprocessableEntity,
+                ApplicationController::UnprocessableContent,
                 "In the identity object, when the 'host_mode' is not 'spiffe', neither 'trust_domain' nor 'identity_path' fields can be specified."
               )
           end
@@ -375,7 +375,7 @@ describe Authenticators::Validator do
           it "returns an error" do
             expect { subject }
               .to raise_error(
-                ApplicationController::UnprocessableEntity,
+                ApplicationController::UnprocessableContent,
                 "In the identity object, when the 'host_mode' is not 'spiffe', neither 'trust_domain' nor 'identity_path' fields can be specified."
               )
           end
@@ -470,7 +470,7 @@ describe Authenticators::Validator do
           it "returns an error" do
             expect { subject }
               .to raise_error(
-                ApplicationController::UnprocessableEntity,
+                ApplicationController::UnprocessableContent,
                 "ca_cert content is invalid"
               )
           end
@@ -481,7 +481,7 @@ describe Authenticators::Validator do
           it "returns an error" do
             expect { subject }
               .to raise_error(
-                ApplicationController::UnprocessableEntity,
+                ApplicationController::UnprocessableContent,
                 "crl content is invalid"
               )
           end
@@ -492,7 +492,7 @@ describe Authenticators::Validator do
           it "returns an error" do
             expect { subject }
               .to raise_error(
-                ApplicationController::UnprocessableEntity,
+                ApplicationController::UnprocessableContent,
                 "crl_url must start with http:// or https:// and cannot contain a question mark (?)"
               )
           end
@@ -503,7 +503,7 @@ describe Authenticators::Validator do
           it "returns an error" do
             expect { subject }
               .to raise_error(
-                ApplicationController::UnprocessableEntity,
+                ApplicationController::UnprocessableContent,
                 "Variable 'host_mode' only accepts values 'request' and 'spiffe'"
               )
           end
@@ -514,7 +514,7 @@ describe Authenticators::Validator do
           it "returns an error" do
             expect { subject }
               .to raise_error(
-                ApplicationController::UnprocessableEntity,
+                ApplicationController::UnprocessableContent,
                 "Invalid 'trust_domain' parameter. Must be lowercase. Only letters, numbers, dots, dashes, and underscores allowed. Must not include userinfo, port, or percent-encoded characters."
               )
           end
@@ -534,7 +534,7 @@ describe Authenticators::Validator do
           it "returns an error" do
             expect { subject }
               .to raise_error(
-                ApplicationController::UnprocessableEntity,
+                ApplicationController::UnprocessableContent,
                 "Invalid 'identity_path' parameter. Cannot contain '<' or '>' characters. Empty branches are not allowed."
               )
           end
@@ -557,7 +557,7 @@ describe Authenticators::Validator do
           it "returns an error" do
             expect { subject }
               .to raise_error(
-                ApplicationController::UnprocessableEntity,
+                ApplicationController::UnprocessableContent,
                 "Invalid value for 'san_uri': CONJ00513D URI pattern 'invalid*uri' validation failed: missing scheme or host"
               )
           end
@@ -575,7 +575,7 @@ describe Authenticators::Validator do
           it "returns an error" do
             expect { subject }
               .to raise_error(
-                ApplicationController::UnprocessableEntity,
+                ApplicationController::UnprocessableContent,
                 "Invalid value for 'san_dns': CONJ00509D DNS pattern '*.com' validation failed: wildcard in eTLD+1 not allowed"
               )
           end
@@ -596,7 +596,7 @@ describe Authenticators::Validator do
           it "returns an error" do
             expect { subject }
               .to raise_error(
-                ApplicationController::UnprocessableEntity,
+                ApplicationController::UnprocessableContent,
                 "Invalid value for 'san_ip': CONJ00517D IP pattern '127.0.0.*' validation failed: wildcards not allowed"
               )
           end
@@ -614,7 +614,7 @@ describe Authenticators::Validator do
           it "returns an error" do
             expect { subject }
               .to raise_error(
-                ApplicationController::UnprocessableEntity,
+                ApplicationController::UnprocessableContent,
                 "Invalid value for 'cn': CONJ00509D DNS pattern 'example.*.com' validation failed: wildcard in eTLD+1 not allowed"
               )
           end
@@ -677,14 +677,14 @@ describe Authenticators::Validator do
           end
           it "returns an error" do
             puts authenticator_hash
-            expect{subject}.to raise_error(ApplicationController::UnprocessableEntity, "The 'data' object must be specified for jwt authenticators and it must be a non-empty JSON object.")
+            expect{subject}.to raise_error(ApplicationController::UnprocessableContent, "The 'data' object must be specified for jwt authenticators and it must be a non-empty JSON object.")
           end
         end
 
         context "empty data" do
           let(:data) { {} }
           it "returns an error" do
-            expect{subject}.to raise_error(ApplicationController::UnprocessableEntity, "The 'data' object must be specified for jwt authenticators and it must be a non-empty JSON object.")
+            expect{subject}.to raise_error(ApplicationController::UnprocessableContent, "The 'data' object must be specified for jwt authenticators and it must be a non-empty JSON object.")
           end
         end
 
@@ -693,7 +693,7 @@ describe Authenticators::Validator do
 
           it "returns an error" do
             expect{subject}.to raise_error(
-              ApplicationController::UnprocessableEntity,
+              ApplicationController::UnprocessableContent,
               "The following parameters were not expected: extra"
             )
           end
@@ -706,7 +706,7 @@ describe Authenticators::Validator do
 
           it "returns an error" do
             expect{subject}.to raise_error(
-              ApplicationController::UnprocessableEntity,
+              ApplicationController::UnprocessableContent,
               "In the 'data' object, either a 'jwks_uri' or 'public_keys' field must be specified."
             )
           end
@@ -717,7 +717,7 @@ describe Authenticators::Validator do
 
           it "returns an error" do
             expect{subject}.to raise_error(
-              ApplicationController::UnprocessableEntity,
+              ApplicationController::UnprocessableContent,
               "In the 'data' object, you cannot specify jwks_uri and public_keys fields."
             )
           end
@@ -728,7 +728,7 @@ describe Authenticators::Validator do
 
           it "returns an error" do
             expect{subject}.to raise_error(
-              ApplicationController::UnprocessableEntity,
+              ApplicationController::UnprocessableContent,
               "In the 'data' object, when the 'public_keys' field is specified, the 'issuer' field must also be specified."
             )
           end
@@ -759,7 +759,7 @@ describe Authenticators::Validator do
 
           it "returns an error" do
             expect{subject}.to raise_error(
-              ApplicationController::UnprocessableEntity,
+              ApplicationController::UnprocessableContent,
               "In the identity object, when the 'identity_path' field is specified, the 'token_app_property' field must also be specified."
             )
           end
@@ -779,7 +779,7 @@ describe Authenticators::Validator do
 
             it "returns an error" do
               expect{subject}.to raise_error(
-                ApplicationController::UnprocessableEntity,
+                ApplicationController::UnprocessableContent,
                 "Invalid target alias 'iss' in 'claim_aliases'. Cannot use reserved claims: iss, exp, nbf, iat, aud, jti."
               )
             end
@@ -790,7 +790,7 @@ describe Authenticators::Validator do
 
             it "returns an error" do
               expect{subject}.to raise_error(
-                ApplicationController::UnprocessableEntity,
+                ApplicationController::UnprocessableContent,
                 "Invalid target alias 'exp' in 'claim_aliases'. Cannot use reserved claims: iss, exp, nbf, iat, aud, jti."
               )
             end
@@ -801,7 +801,7 @@ describe Authenticators::Validator do
 
             it "returns an error" do
               expect{subject}.to raise_error(
-                ApplicationController::UnprocessableEntity,
+                ApplicationController::UnprocessableContent,
                 "Invalid target alias 'nbf' in 'claim_aliases'. Cannot use reserved claims: iss, exp, nbf, iat, aud, jti."
               )
             end
@@ -812,7 +812,7 @@ describe Authenticators::Validator do
 
             it "returns an error" do
               expect{subject}.to raise_error(
-                ApplicationController::UnprocessableEntity,
+                ApplicationController::UnprocessableContent,
                 "Invalid target alias 'iat' in 'claim_aliases'. Cannot use reserved claims: iss, exp, nbf, iat, aud, jti."
               )
             end
@@ -823,7 +823,7 @@ describe Authenticators::Validator do
 
             it "returns an error" do
               expect{subject}.to raise_error(
-                ApplicationController::UnprocessableEntity,
+                ApplicationController::UnprocessableContent,
                 "Invalid target alias 'aud' in 'claim_aliases'. Cannot use reserved claims: iss, exp, nbf, iat, aud, jti."
               )
             end
@@ -834,7 +834,7 @@ describe Authenticators::Validator do
 
             it "returns an error" do
               expect{subject}.to raise_error(
-                ApplicationController::UnprocessableEntity,
+                ApplicationController::UnprocessableContent,
                 "Invalid target alias 'jti' in 'claim_aliases'. Cannot use reserved claims: iss, exp, nbf, iat, aud, jti."
               )
             end
@@ -846,7 +846,7 @@ describe Authenticators::Validator do
 
           it "returns an error" do
             expect{subject}.to raise_error(
-              ApplicationController::UnprocessableEntity,
+              ApplicationController::UnprocessableContent,
               "Invalid target alias 'test!' in 'claim_aliases'. Must be an alphanumeric string with underscores or dashes."
             )
           end
@@ -857,7 +857,7 @@ describe Authenticators::Validator do
 
           it "returns an error" do
             expect{subject}.to raise_error(
-              ApplicationController::UnprocessableEntity,
+              ApplicationController::UnprocessableContent,
               "Invalid source claim 'test\\ing' in 'claim_aliases'. Must be a valid claim name or a nested path."
             )
           end
@@ -875,7 +875,7 @@ describe Authenticators::Validator do
           let(:identity) { { enforced_claims: [ 123 ] } }
 
           it "returns an error" do
-            expect{subject}.to raise_error(ApplicationController::UnprocessableEntity, "Invalid 'enforced_claims' parameter. Must be an array of strings.")
+            expect{subject}.to raise_error(ApplicationController::UnprocessableContent, "Invalid 'enforced_claims' parameter. Must be an array of strings.")
           end
         end
 
@@ -932,7 +932,7 @@ describe Authenticators::Validator do
 
           it "returns an error" do
             expect{subject}.to raise_error(
-              ApplicationController::UnprocessableEntity,
+              ApplicationController::UnprocessableContent,
               "The following parameters were not expected: some"
             )
           end
@@ -969,7 +969,7 @@ describe Authenticators::Validator do
 
         it "returns an error" do
           expect{subject}.to raise_error(
-            ApplicationController::UnprocessableEntity,
+            ApplicationController::UnprocessableContent,
             "The 'data' object cannot be specified for aws authenticators."
           )
         end
@@ -1202,7 +1202,7 @@ describe Authenticators::Validator do
 
           it "returns an error" do
             expect{subject}.to raise_error(
-              ApplicationController::UnprocessableEntity,
+              ApplicationController::UnprocessableContent,
               "The data object must contain either [\"id_token_user_property\"] or [\"client_id\", \"client_secret\", \"redirect_uri\", \"claim_mapping\"] keys."
             )
           end
@@ -1222,7 +1222,7 @@ describe Authenticators::Validator do
 
           it "returns an error" do
             expect{subject}.to raise_error(
-              ApplicationController::UnprocessableEntity,
+              ApplicationController::UnprocessableContent,
               "The data object must contain either [\"id_token_user_property\"] or [\"client_id\", \"client_secret\", \"redirect_uri\", \"claim_mapping\"] keys."
             )
           end

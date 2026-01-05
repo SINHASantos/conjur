@@ -52,7 +52,7 @@ class PoliciesController < RestController
     raise ApplicationController::BadRequest, e.message
   rescue Errors::EffectivePolicy::PolicySizeExceeded => e
     audit_failure(e, action)
-    raise ApplicationController::UnprocessableEntity, e.message
+    raise ApplicationController::UnprocessableContent, e.message
   rescue => e
     audit_failure(e, action)
     raise e
@@ -243,7 +243,7 @@ class PoliciesController < RestController
     error_json = policy_mode.report(policy_result)
     render(
       json: error_json,
-      status: :unprocessable_entity
+      status: :unprocessable_content
     )
   end
 
