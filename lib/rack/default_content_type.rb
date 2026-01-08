@@ -66,7 +66,8 @@ module Rack
 
       # Content type is missing if the header is absent or is empty
       content_type_present = content_type && !content_type.empty?
-      default_content_type = Rack::DefaultContentType.content_type_by_path[env['PATH_INFO']]
+      default_content_type =
+        Rack::DefaultContentType.content_type_by_path[env['PATH_INFO']] || 'application/x-www-form-urlencoded'
 
       # If a content type is already present on the request, we
       # don't need to do anything
