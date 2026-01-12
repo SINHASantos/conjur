@@ -1192,6 +1192,12 @@ pipeline {
               INFRAPOOL_EXECUTORV2ARM_AGENT_0.agentSh './publish-images.sh --release --arch=arm64'
               INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './publish-manifest.sh'
             }
+
+            // Download and prepare SaaS Authenticator binaries
+            downloadAndPrepareSaasAuthenticator()
+
+            // Transfer the extracted binary files to the InfraPool agent
+            INFRAPOOL_EXECUTORV2_AGENT_0.agentPut(from: 'authenticator/authenticator_linux_*', to: assetDirectory)
           }
         }
       }
@@ -1480,6 +1486,37 @@ def downloadAndPrepareSaasAuthenticatorService(targetDir = 'ci/saas-auth') {
 
   // Remove bundle directory
   sh "rm -rf bundle"
+
+  return saasVersion
+}
+
+def downloadAndPrepareSaasAuthenticator() {
+  conjEntArtifactory.jfCliLogin()
+
+  def props = ['saas-authenticator-component': 'bundle']
+  if (params.SAAS_AUTHENTICATOR_VERSION?.trim()) {
+    props['build.number'] = params.SAAS_AUTHENTICATOR_VERSION
+  }
+
+  def meta = conjEntArtifactory.downloadLatest(
+    source: "saas-authenticator-artifactbundler-dist-latest-local",
+    props: props,
+    target: './'
+  )
+
+  def filename = meta.path.substring(meta.path.lastIndexOf('/') + 1)
+  sh "tar xjf ${filename} -v"
+
+  def saasVersion = meta.props['build.number'][0]
+
+  // Ensure directory exists
+  sh "mkdir -p authenticator"
+
+  // Rename binaries with version
+  sh """
+    cp bundle/core/authenticator_linux_amd64 authenticator/authenticator_linux_${saasVersion}_amd64
+    cp bundle/core/authenticator_linux_arm64 authenticator/authenticator_linux_${saasVersion}_arm64
+  """
 
   return saasVersion
 }
