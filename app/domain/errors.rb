@@ -817,6 +817,13 @@ module Errors
       )
     end
 
+    module Security
+      HttpNotAllowed = ::Util::TrackableErrorClass.new(
+        msg: "HTTP connection to '{0-hostname}' is not allowed. {1-reason}",
+        code: "CONJ00192E"
+      )
+    end
+
     module Certificate
       InvalidConfig = ::Util::TrackableErrorClass.new(
         msg: "Failed to parse certificate authenticator configuration: {0-message}",
