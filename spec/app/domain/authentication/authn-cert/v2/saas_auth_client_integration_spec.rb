@@ -6,16 +6,17 @@ require 'webrick/https'
 require 'openssl'
 require 'webmock/rspec'
 require 'tempfile'
+require 'net/http'
 
-RSpec.describe Authentication::AuthnCert::V2::SaasAuthClient, type: :integration do
-  SERVER_PORT = 4567
-  HTTP_URL = "http://localhost:#{SERVER_PORT}"
-  HTTPS_PORT = 4568
-  HTTPS_URL = "https://localhost:#{HTTPS_PORT}"
-  AUTH_PATH = '/authentications/cert'
-  RESPONSE_BODY = { attributes: { attr: 'value' } }.to_json
-  HTTP_UNREACHABLE_URL = 'http://unreachable-host:2222'
+SERVER_PORT = 4567
+HTTP_URL = "http://localhost:#{SERVER_PORT}"
+HTTPS_PORT = 4568
+HTTPS_URL = "https://localhost:#{HTTPS_PORT}"
+AUTH_PATH = '/authentications/cert'
+RESPONSE_BODY = { attributes: { attr: 'value' } }.to_json
+HTTP_UNREACHABLE_URL = 'http://unreachable-host:2222'
 
+RSpec.describe(Authentication::AuthnCert::V2::SaasAuthClient, type: :integration) do
   let(:authenticator) do
     AuthenticatorsV2::CertAuthenticatorType.new(
       account: 'rspec',
@@ -30,10 +31,10 @@ RSpec.describe Authentication::AuthnCert::V2::SaasAuthClient, type: :integration
       Logger: WEBrick::Log.new('/dev/null'),
       AccessLog: []
     )
-    server.mount_proc AUTH_PATH do |req, res|
+    server.mount_proc(AUTH_PATH) do |_, res|
       res.status = 200
       res['Content-Type'] = 'application/json'
-      res.body = { attributes: { attr: 'value' } }.to_json
+      res.body = RESPONSE_BODY
     end
     thread = Thread.new { server.start }
     [server, thread]
@@ -48,10 +49,10 @@ RSpec.describe Authentication::AuthnCert::V2::SaasAuthClient, type: :integration
       Logger: WEBrick::Log.new('/dev/null'),
       AccessLog: []
     )
-    server.mount_proc AUTH_PATH do |req, res|
+    server.mount_proc(AUTH_PATH) do |_, res|
       res.status = 200
       res['Content-Type'] = 'application/json'
-      res.body = { attributes: { attr: 'value' } }.to_json
+      res.body = RESPONSE_BODY
     end
     thread = Thread.new { server.start }
     [server, thread]
@@ -74,15 +75,43 @@ RSpec.describe Authentication::AuthnCert::V2::SaasAuthClient, type: :integration
     [cert, key, ca_cert_file]
   end
 
+  def wait_for_server(url, timeout: 5, interval: 0.05, ca_cert_path: nil)
+    uri = URI(url)
+    Timeout.timeout(timeout) do
+      loop do
+        begin
+          Net::HTTP.start(
+            uri.host,
+            uri.port,
+            use_ssl: uri.scheme == "https",
+            open_timeout: 1,
+            read_timeout: 1
+          ) do |http|
+            if uri.scheme == "https" && ca_cert_path
+              http.ca_file = ca_cert_path
+              http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+            end
+            http.get(uri.path)
+          end
+          break
+        rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Net::OpenTimeout, Net::ReadTimeout, OpenSSL::SSL::SSLError
+          sleep(interval)
+        end
+      end
+    end
+  end
+
   before(:all) do
-    WebMock.disable_net_connect!(allow: [HTTP_URL, HTTPS_URL, HTTP_UNREACHABLE_URL])
+    VCR.turned_off do
+      WebMock.disable_net_connect!(allow: [HTTP_URL, HTTPS_URL, HTTP_UNREACHABLE_URL])
 
-    @server, @server_thread = start_http_server(SERVER_PORT)
-    cert, key, @ca_cert_file = generate_cert
-    @https_server, @https_thread = start_https_server(port: HTTPS_PORT, cert: cert, key: key)
+      @server, @server_thread = start_http_server(SERVER_PORT)
+      cert, key, @ca_cert_file = generate_cert
+      @https_server, @https_thread = start_https_server(port: HTTPS_PORT, cert: cert, key: key)
 
-    # Give servers time to start
-    sleep 1
+      wait_for_server("#{HTTP_URL}#{AUTH_PATH}")
+      wait_for_server("#{HTTPS_URL}#{AUTH_PATH}", ca_cert_path: @ca_cert_file.path)
+    end
   end
 
   after(:all) do
@@ -92,7 +121,7 @@ RSpec.describe Authentication::AuthnCert::V2::SaasAuthClient, type: :integration
     @https_thread.kill
     WebMock.disable_net_connect!
 
-    @ca_cert_file.unlink if @ca_cert_file
+    @ca_cert_file&.unlink
   end
 
   let(:transporter_class) { Authentication::Util::NetworkTransporter }
