@@ -8,15 +8,13 @@ require 'webmock/rspec'
 require 'tempfile'
 require 'net/http'
 
-SERVER_PORT = 4567
-HTTP_URL = "http://localhost:#{SERVER_PORT}"
-HTTPS_PORT = 4568
-HTTPS_URL = "https://localhost:#{HTTPS_PORT}"
+HTTP_URL = "http://localhost"
+HTTPS_URL = "https://localhost"
 AUTH_PATH = '/authentications/cert'
 RESPONSE_BODY = { attributes: { attr: 'value' } }.to_json
 HTTP_UNREACHABLE_URL = 'http://unreachable-host:2222'
 
-RSpec.describe(Authentication::AuthnCert::V2::SaasAuthClient, type: :integration) do
+RSpec.describe(Authentication::AuthnCert::V2::SaasAuthClient) do
   let(:authenticator) do
     AuthenticatorsV2::CertAuthenticatorType.new(
       account: 'rspec',
@@ -25,9 +23,10 @@ RSpec.describe(Authentication::AuthnCert::V2::SaasAuthClient, type: :integration
     )
   end
 
-  def start_http_server(port)
+  # Create an http server on a random port that responds with a fixed response
+  def start_http_server()
     server = WEBrick::HTTPServer.new(
-      Port: port,
+      Port: 0,
       Logger: WEBrick::Log.new('/dev/null'),
       AccessLog: []
     )
@@ -40,9 +39,10 @@ RSpec.describe(Authentication::AuthnCert::V2::SaasAuthClient, type: :integration
     [server, thread]
   end
 
-  def start_https_server(port:, cert:, key:)
+  # Create an https server on a random port that responds with a fixed response
+  def start_https_server(cert:, key:)
     server = WEBrick::HTTPServer.new(
-      Port: port,
+      Port: 0,
       SSLEnable: true,
       SSLCertificate: cert,
       SSLPrivateKey: key,
@@ -58,10 +58,10 @@ RSpec.describe(Authentication::AuthnCert::V2::SaasAuthClient, type: :integration
     [server, thread]
   end
 
-  def generate_cert
+  def generate_cert(subject: 'CN=Test CA', filename: 'ca_cert')
     key = OpenSSL::PKey::RSA.new(2048)
     cert = Util::OpenSsl::X509::Certificate.from_subject(
-      subject: 'CN=Test CA',
+      subject: subject,
       key: key,
       extensions: [
         ['basicConstraints', 'CA:TRUE', true],
@@ -69,7 +69,7 @@ RSpec.describe(Authentication::AuthnCert::V2::SaasAuthClient, type: :integration
         ['subjectAltName', 'DNS:localhost', false]
       ]
     )
-    ca_cert_file = Tempfile.new('ca_cert')
+    ca_cert_file = Tempfile.new(filename)
     ca_cert_file.write(cert.to_pem)
     ca_cert_file.close
     [cert, key, ca_cert_file]
@@ -103,25 +103,33 @@ RSpec.describe(Authentication::AuthnCert::V2::SaasAuthClient, type: :integration
 
   before(:all) do
     VCR.turned_off do
-      WebMock.disable_net_connect!(allow: [HTTP_URL, HTTPS_URL, HTTP_UNREACHABLE_URL])
+      @http_server, @http_thread = start_http_server
+      http_port = @http_server.config[:Port]
+      @http_url = "#{HTTP_URL}:#{http_port}"
 
-      @server, @server_thread = start_http_server(SERVER_PORT)
       cert, key, @ca_cert_file = generate_cert
-      @https_server, @https_thread = start_https_server(port: HTTPS_PORT, cert: cert, key: key)
+      @https_server, @https_thread = start_https_server(cert: cert, key: key)
+      https_port = @https_server.config[:Port]
+      @https_url = "#{HTTPS_URL}:#{https_port}"
 
-      wait_for_server("#{HTTP_URL}#{AUTH_PATH}")
-      wait_for_server("#{HTTPS_URL}#{AUTH_PATH}", ca_cert_path: @ca_cert_file.path)
+      _, _, @incorrect_ca_cert_file = generate_cert(subject:"CN=Incorrect CA", filename: 'incorrect_ca_cert')
+
+      WebMock.disable_net_connect!(allow: [@http_url, @https_url, HTTP_UNREACHABLE_URL])
+
+      wait_for_server("#{@http_url}#{AUTH_PATH}")
+      wait_for_server("#{@https_url}#{AUTH_PATH}", ca_cert_path: @ca_cert_file.path)
     end
   end
 
   after(:all) do
-    @server.shutdown
-    @server_thread.kill
+    @http_server.shutdown
+    @http_thread.kill
     @https_server.shutdown
     @https_thread.kill
     WebMock.disable_net_connect!
 
     @ca_cert_file&.unlink
+    @incorrect_ca_cert_file&.unlink
   end
 
   let(:transporter_class) { Authentication::Util::NetworkTransporter }
@@ -132,7 +140,7 @@ RSpec.describe(Authentication::AuthnCert::V2::SaasAuthClient, type: :integration
         it 'connects successfully' do
           client = described_class.new(
             http_client: transporter_class,
-            authenticator_service_url: HTTP_URL,
+            authenticator_service_url: @http_url,
             ca_cert_path: nil,
             http_allowlist: ['localhost']
           )
@@ -147,7 +155,7 @@ RSpec.describe(Authentication::AuthnCert::V2::SaasAuthClient, type: :integration
           expect {
             described_class.new(
               http_client: transporter_class,
-              authenticator_service_url: HTTP_URL,
+              authenticator_service_url: @http_url,
               ca_cert_path: nil,
               http_allowlist: ['127.0.0.1']
             )
@@ -170,17 +178,27 @@ RSpec.describe(Authentication::AuthnCert::V2::SaasAuthClient, type: :integration
     end
 
     context 'when using HTTPS' do
-      let(:ca_cert_file) { @ca_cert_file }
       it 'connects successfully with allowed host and custom ca_cert_path' do
         client = described_class.new(
           http_client: transporter_class,
-          authenticator_service_url: HTTPS_URL,
-          ca_cert_path: ca_cert_file.path,
+          authenticator_service_url: @https_url,
+          ca_cert_path: @ca_cert_file.path,
           http_allowlist: ['localhost']
         )
         response = client.validate_certificate(certificate: 'dummy', authenticator: authenticator)
         expect(response.success?).to be(true)
         expect(response.result['attributes']['attr']).to eq('value')
+      end
+
+      it 'fails to connect with allowed host and custom ca_cert_path with an incorrect certificate' do
+        client = described_class.new(
+          http_client: transporter_class,
+          authenticator_service_url: @https_url,
+          ca_cert_path: @incorrect_ca_cert_file.path,
+          http_allowlist: ['localhost']
+        )
+        response = client.validate_certificate(certificate: 'dummy', authenticator: authenticator)
+        expect(response.success?).to be(false)
       end
     end
   end
