@@ -35,6 +35,7 @@ These are defined in runConjurTests, and also include the one-offs
     authenticators_ldap
     authenticators_oidc
     authenticators_jwt
+    authenticators_cert
     policy
     proxy
     api
@@ -202,6 +203,12 @@ pipeline {
       choices: ['docker.io', 'registry.tld'],
       description: 'Registry to pull base images from'
     )
+    string(
+      name: 'SAAS_AUTHENTICATOR_VERSION',
+      description: 'Specific SaaS Authenticator version to download (leave empty for latest)',
+      defaultValue: '',
+      trim: true
+    )
   }
 
   environment {
@@ -219,6 +226,20 @@ pipeline {
       steps {
         script {
           detectInternalUrls()
+        }
+      }
+    }
+
+    stage('Download SaaS Authenticator binary') {
+      when {
+        expression {
+          testShouldRun(params.RUN_ONLY, "cert_authenticator")
+        }
+      }
+
+      steps {
+        script {
+          downloadAndPrepareSaasAuthenticatorService()
         }
       }
     }
@@ -667,7 +688,8 @@ pipeline {
                   authenticators_ldap/cucumber_results.html,
                   authenticators_oidc/cucumber_results.html,
                   authenticators_jwt/cucumber_results.html,
-                  authenticators_status/cucumber_results.html
+                  authenticators_cert/cucumber_results.html,
+                  authenticators_status/cucumber_results.html,
                   policy/cucumber_results.html,
                   rotators/cucumber_results.html
                 ''',
@@ -811,6 +833,20 @@ pipeline {
                       '''
                     )
                   }
+                }
+              }
+            }
+
+            stage('Cert Authenticator') {
+              when {
+                expression {
+                  testShouldRun(params.RUN_ONLY, "cert_authenticator")
+                }
+              }
+
+              steps {
+                script {
+                  INFRAPOOL_EXECUTORV2_AGENT_0.agentSh 'ci/test authenticators_cert'
                 }
               }
             }
@@ -1071,6 +1107,7 @@ pipeline {
                 authenticators_status/cucumber_results.html,
                 authenticators_k8s/cucumber_results.html,
                 authenticators_iam/cucumber_results.html,
+                authenticators_cert/cucumber_results.html,
                 policy/cucumber_results.html,
                 rotators/cucumber_results.html
               ''',
@@ -1405,4 +1442,41 @@ def defaultCucumberFilterTags(env) {
   // Temporarily run all tests on all branches. The above line should be
   // uncommented when 13.1 is released.
   return ''
+}
+
+// Downloads the Saas Authenticator Bundle and copies the binaries and
+// Dockerfile to the specified target directory.
+// Returns the Saas Authenticator version that was downloaded.
+def downloadAndPrepareSaasAuthenticatorService(targetDir = 'ci/saas-auth') {
+  echo "Downloading Saas Authenticator Bundle to ${targetDir}"
+  conjEntArtifactory.jfCliLogin()
+
+  def props = ['saas-authenticator-component': 'bundle']
+  if (params.SAAS_AUTHENTICATOR_VERSION?.trim()) {
+    props['build.number'] = params.SAAS_AUTHENTICATOR_VERSION
+  }
+
+  def meta = conjEntArtifactory.downloadLatest(
+    source: "saas-authenticator-artifactbundler-dist-latest-local",
+    props: props,
+    target: './'
+  )
+
+  def filename = meta.path.substring(meta.path.lastIndexOf('/') + 1)
+  sh "tar xjf ${filename} -v"
+
+  def saasVersion = meta.props['build.number'][0]
+  echo "Downloaded Saas Authenticator version: ${saasVersion}"
+
+  // Ensure target directory exists
+  sh "mkdir -p ${targetDir}"
+
+  // Copy and rename binaries to target directory
+  sh """
+    cp bundle/core/authenticator_linux_amd64 ${targetDir}/authenticator_linux_amd64
+    cp bundle/core/authenticator_linux_arm64 ${targetDir}/authenticator_linux_arm64
+    cp bundle/core/Dockerfile ${targetDir}/Dockerfile
+  """
+
+  return saasVersion
 }

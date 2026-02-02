@@ -2,4 +2,9 @@
 set -e
 
 source "./shared.sh"
-_run_cucumber_tests authenticators_cert
+
+start_auth_service
+
+
+additional_services='saas-auth'
+_run_cucumber_tests authenticators_cert "$additional_services"
