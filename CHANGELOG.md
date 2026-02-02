@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Audit events to role members and graph endpoints. CONJSE-834
 - Audit events to show a role endpoint. CONJSE-833
 - Add group membership depth validation to create group membership endpoint. CNJR-13067
+- Audit events when failing to update a secrets value. CONJSE-831
 
 ### Changed
 - Previously, environment variables took precedence over policy values for

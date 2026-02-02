@@ -37,27 +37,57 @@ Feature: Adding and fetching secrets
   @negative @acceptance
   Scenario: Fetching a resource with no secret values return a 404 error.
 
+    Given I save my place in the audit log file for remote
     When I GET "/secrets/cucumber/variable/probe"
     Then the HTTP response status code is 404
     And there is an error
     And the error message is "CONJ00076E Variable cucumber:variable:probe is empty or not found."
+    And there is an audit record matching:
+    """
+      <84>1 * * conjur * fetch
+      [auth@43868 user="cucumber:user:eve"]
+      [subject@43868 resource="cucumber:variable:probe"]
+      [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
+      [action@43868 result="failure" operation="fetch"]
+      cucumber:user:eve tried to fetch cucumber:variable:probe: CONJ00076E Variable cucumber:variable:probe is empty or not found.
+    """
 
   @negative @acceptance
   Scenario: Fetching a secret for a nonexistent resource
 
-    When I GET "/secrets/cucumber/variable/non-existent"
+    When I save my place in the audit log file for remote
+    And I GET "/secrets/cucumber/variable/non-existent"
     Then the HTTP response status code is 404
     And there is an error
     And the error message is "CONJ00076E Variable cucumber:variable:non-existent is empty or not found."
+    And there is an audit record matching:
+    """
+      <84>1 * * conjur * fetch
+      [auth@43868 user="cucumber:user:eve"]
+      [subject@43868 resource="cucumber:variable:non-existent"]
+      [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
+      [action@43868 result="failure" operation="fetch"]
+      cucumber:user:eve tried to fetch cucumber:variable:non-existent: CONJ00076E Variable cucumber:variable:non-existent is empty or not found.
+    """
 
   @negative @acceptance
   Scenario: Update a secret of a nonexistent resource
 
-    When I POST "/secrets/cucumber/variable/non-existent" with body:
+    When I save my place in the audit log file for remote
+    And I POST "/secrets/cucumber/variable/non-existent" with body:
     """
     v-1
     """
     Then the HTTP response status code is 404
+    And there is an audit record matching:
+    """
+      <84>1 * * conjur * update
+      [auth@43868 user="cucumber:user:eve"]
+      [subject@43868 resource="cucumber:variable:non-existent"]
+      [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
+      [action@43868 result="failure" operation="update"]
+      cucumber:user:eve tried to update cucumber:variable:non-existent: Variable 'non-existent' not found in account 'cucumber'
+    """
 
   @negative @acceptance
   Scenario: Fetching a secret for a resource with no permissions
@@ -162,14 +192,24 @@ Feature: Adding and fetching secrets
     """
 
   @negative @acceptance
-  Scenario: Fetching with a non-existant secret version returns a 404 error.
+  Scenario: Fetching with a non-existent secret version returns a 404 error.
 
     Given I successfully POST "/secrets/cucumber/variable/probe" with body:
     """
     v-1
     """
+    And I save my place in the audit log file for remote
     When I GET "/secrets/cucumber/variable/probe?version=2"
     Then the HTTP response status code is 404
+    And there is an audit record matching:
+    """
+      <84>1 * * conjur * fetch
+      [auth@43868 user="cucumber:user:eve"]
+      [subject@43868 resource="cucumber:variable:probe" version="2"]
+      [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
+      [action@43868 result="failure" operation="fetch"]
+      cucumber:user:eve tried to fetch version 2 of cucumber:variable:probe: CONJ00076E Variable cucumber:variable:probe is empty or not found.
+    """
 
   @negative @acceptance
   Scenario: When creating a secret, the value parameter is required.
@@ -196,9 +236,18 @@ Feature: Adding and fetching secrets
     """
     v-21
     """
+    And I save my place in the audit log file for remote
     When I GET "/secrets/cucumber/variable/probe?version=1"
     Then the HTTP response status code is 404
-
+    And there is an audit record matching:
+    """
+      <84>1 * * conjur * fetch
+      [auth@43868 user="cucumber:user:eve"]
+      [subject@43868 resource="cucumber:variable:probe" version="1"]
+      [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
+      [action@43868 result="failure" operation="fetch"]
+      cucumber:user:eve tried to fetch version 1 of cucumber:variable:probe: CONJ00076E Variable cucumber:variable:probe is empty or not found.
+    """
   @negative @acceptance
   Scenario: Creating a secret value with kind group is not allowed.
     Given I save my place in the audit log file for remote

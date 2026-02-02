@@ -18,7 +18,7 @@ describe Audit::Event::Update do
   subject do
     Audit::Event::Update.new(
       user: user,
-      resource: resource,
+      resource_id: resource.id,
       client_ip: client_ip,
       success: success,
       operation: operation,

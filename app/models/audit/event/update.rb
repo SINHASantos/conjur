@@ -7,14 +7,14 @@ module Audit
       def initialize(
         user:,
         client_ip:,
-        resource:,
+        resource_id:,
         success:,
         operation:,
         error_message: nil
       )
         @user = user
         @client_ip = client_ip
-        @resource = resource
+        @resource_id = resource_id
         @success = success
         @operation = operation
         @error_message = error_message
@@ -46,7 +46,7 @@ module Audit
 
       def message
         user_id = @user.id
-        resource_id = @resource.id
+        resource_id = @resource_id
         attempted_action.message(
           success_msg: "#{user_id} updated #{resource_id}",
           failure_msg: "#{user_id} tried to update #{resource_id}",
@@ -61,7 +61,7 @@ module Audit
       def structured_data
         {
           SDID::AUTH => { user: @user.id },
-          SDID::SUBJECT => Subject::Resource.new(@resource.pk_hash).to_h,
+          SDID::SUBJECT => { resource: @resource_id },
           SDID::CLIENT => { ip: @client_ip }
         }.merge(
           attempted_action.action_sd
