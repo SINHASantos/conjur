@@ -33,7 +33,12 @@ class RolesController < RestController
   end
 
   def show
-    render(json: role.as_json.merge(members: role.memberships))
+    role_json = role.as_json.merge(members: role.memberships)
+    audit_show_success
+    render(json: role_json)
+  rescue => e
+    audit_show_failure(e.message)
+    raise e
   end
 
   # Find all role memberships, expanded recursively. If no parameters
