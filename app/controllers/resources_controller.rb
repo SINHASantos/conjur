@@ -74,7 +74,12 @@ class ResourcesController < RestController
     privilege = params[:privilege] || params[:permission]
     raise ArgumentError, "privilege" unless privilege
 
-    render(json: Role.that_can(privilege, resource).map(&:id))
+    roles_json = Role.that_can(privilege, resource).map(&:id)
+    audit_permitted_roles_success(privilege)
+    render(json: roles_json)
+  rescue => e
+    audit_permitted_roles_failure(privilege, e.message)
+    raise e
   end
 
   # Implements the use case "check permission on some resource",
@@ -180,6 +185,33 @@ class ResourcesController < RestController
         client_ip: request.ip,
         subject: subject,
         message_id: "resource",
+        success: false,
+        error_message: error_message
+      )
+    )
+  end
+
+  def audit_permitted_roles_success(privilege)
+    subject = { resource: resource_id, privilege: privilege }
+    Audit.logger.log(
+      Audit::Event::PermittedRoles.new(
+        user_id: current_user.role_id,
+        client_ip: request.ip,
+        subject: subject,
+        message_id: resource_id,
+        success: true
+      )
+    )
+  end
+
+  def audit_permitted_roles_failure(privilege, error_message)
+    subject = { resource: resource_id, privilege: privilege }
+    Audit.logger.log(
+      Audit::Event::PermittedRoles.new(
+        user_id: current_user.role_id,
+        client_ip: request.ip,
+        subject: subject,
+        message_id: resource_id,
         success: false,
         error_message: error_message
       )
