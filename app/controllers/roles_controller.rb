@@ -47,7 +47,12 @@ class RolesController < RestController
   #
   def all_memberships
     memberships = filtered_roles(role.all_roles, membership_filter)
-    render_dataset(memberships) { |dataset| dataset.map(&:role_id) }
+    render_result = render_dataset(memberships) { |dataset| dataset.map(&:role_id) }
+    audit_memberships_success(membership_filter)
+    render_result
+  rescue => e
+    audit_memberships_failure(membership_filter, e)
+    raise e
   end
 
   # Find all direct memberships, i.e don't recursively expand member
@@ -90,7 +95,12 @@ class RolesController < RestController
 
   # Returns a graph of the roles anchored on the current Role
   def graph
-    render(json: role.graph(current_user.role_id))
+    graph_json = role.graph(current_user.role_id)
+    audit_graph_success
+    render(json: graph_json)
+  rescue => e
+    audit_graph_failure(e.message)
+    raise e
   end
 
   # update_member will add or modify an existing role membership
@@ -283,6 +293,60 @@ class RolesController < RestController
         subject: options,
         success: false,
         error_message: err.message
+      )
+    )
+  end
+
+  def audit_show_success
+    subject = { role: role_id }
+    Audit.logger.log(
+      Audit::Event::Show.new(
+        user_id: current_user.role_id,
+        client_ip: request.ip,
+        subject: subject,
+        message_id: "role",
+        success: true
+      )
+    )
+  end
+
+  def audit_show_failure(error_message)
+    subject = { role: role_id }
+    Audit.logger.log(
+      Audit::Event::Show.new(
+        user_id: current_user.role_id,
+        client_ip: request.ip,
+        subject: subject,
+        message_id: "role",
+        success: false,
+        error_message: error_message
+      )
+    )
+  end
+
+  def audit_graph_success
+    subject = { role: role_id }
+    Audit.logger.log(
+      Audit::Event::Graph.new(
+        user_id: current_user.role_id,
+        client_ip: request.ip,
+        subject: subject,
+        message_id: "role",
+        success: true
+      )
+    )
+  end
+
+  def audit_graph_failure(error_message)
+    subject = { role: role_id }
+    Audit.logger.log(
+      Audit::Event::Graph.new(
+        user_id: current_user.role_id,
+        client_ip: request.ip,
+        subject: subject,
+        message_id: "role",
+        success: false,
+        error_message: error_message
       )
     )
   end

@@ -22,12 +22,37 @@ Feature: Obtain the memberships of a role
 
   @smoke
   Scenario: The initial memberships of a role is just the role itself.
+    Given I save my place in the audit log file for remote
     When I successfully GET "/roles/cucumber/user/alice?all"
     Then the JSON should be:
     """
     [
       "cucumber:user:alice"
     ]
+    """
+    And there is an audit record matching:
+    """
+      <86>1 * * conjur * membership
+      [auth@43868 user="cucumber:user:admin"]
+      [subject@43868 account="cucumber" kind="user" role="cucumber:user:alice"]
+      [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
+      [action@43868 result="success" operation="list"]
+      cucumber:user:admin successfully listed memberships with parameters: {account: "cucumber", kind: "user", role: "cucumber:user:alice"}
+    """
+
+  @smoke @negative
+  Scenario: Listing memberships of non-existent role returns an error
+    Given I save my place in the audit log file for remote
+    When I GET "/roles/cucumber/user/non-existent?all"
+    Then the HTTP response status code is 404
+    And there is an audit record matching:
+    """
+      <84>1 * * conjur * membership
+      [auth@43868 user="cucumber:user:admin"]
+      [subject@43868 account="cucumber" kind="user" role="cucumber:user:non-existent"]
+      [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
+      [action@43868 result="failure" operation="list"]
+      cucumber:user:admin failed to list memberships with parameters: {account: "cucumber", kind: "user", role: "cucumber:user:non-existent"}: User 'non-existent' not found in account 'cucumber'
     """
 
   @smoke
