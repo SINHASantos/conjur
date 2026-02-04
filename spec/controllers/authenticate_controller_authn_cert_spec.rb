@@ -256,6 +256,24 @@ describe AuthenticateController, type: :request do
               end
             end
 
+            context 'when client certificate is missing' do
+              it 'fails to authenticate' do
+                @info_logs.clear
+                authenticate(
+                  account: account,
+                  service_id: service_id,
+                  host_id: "#{host_policy_branch}/#{host_id}",
+                  client_certificate: nil
+                )
+                expect(response).to have_http_status(:unauthorized)
+                expect(@info_logs).to satisfy do |logs|
+                  logs.any? do |log|
+                    log.to_s.include?('CONJ00193E Certificate authentication request malformed: request header X-SSL-Client-Certificate missing or empty')
+                  end
+                end
+              end
+            end
+
             context 'when authenticating role includes at least one relevant annotation' do
               context 'when certificate attributes do not match annotation restrictions' do
                 context 'statically' do
@@ -649,7 +667,7 @@ def grant_policy(service_id:, host_id:)
 end
 
 def authenticate(account:, service_id:, client_certificate:, host_id: nil)
-  payload = { 'HTTP_X_SSL_CLIENT_CERTIFICATE' => CGI.escape(client_certificate) }
+  payload = client_certificate.nil? ? {} : { 'HTTP_X_SSL_CLIENT_CERTIFICATE' => CGI.escape(client_certificate) }
   if host_id.nil?
     post("/authn-cert/#{service_id}/#{account}/authenticate", env: payload)
   else

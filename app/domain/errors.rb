@@ -825,6 +825,11 @@ module Errors
     end
 
     module Certificate
+      InvalidRequest = ::Util::TrackableErrorClass.new(
+        msg: "Certificate authentication request malformed: {0-message}",
+        code: "CONJ00193E"
+      )
+
       InvalidConfig = ::Util::TrackableErrorClass.new(
         msg: "Failed to parse certificate authenticator configuration: {0-message}",
         code: "CONJ00172E"
