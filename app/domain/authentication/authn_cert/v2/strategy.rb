@@ -51,10 +51,22 @@ module Authentication
         private
 
         def get_certificate_from_headers(headers:)
-          return @failure.new("request requires headers") if headers.nil?
+          if headers.nil?
+            return @failure.new(
+              "request missing headers",
+              exception: Errors::Authentication::Certificate::InvalidRequest.new("request missing headers"),
+              status: :unauthorized
+            )
+          end
 
           certificate = headers[CERTIFICATE_HEADER]
-          return @failure.new("request header #{CERTIFICATE_HEADER} missing or empty") unless certificate.present?
+          unless certificate.present?
+            return @failure.new(
+              "request header #{CERTIFICATE_HEADER} missing or empty",
+              exception: Errors::Authentication::Certificate::InvalidRequest.new("request header #{CERTIFICATE_HEADER} missing or empty"),
+              status: :unauthorized
+            )
+          end
 
           # As a Rails app, Conjur relies on a proxy to terminate TLS and stash
           # the client certificate in a request header. When stored as a header,

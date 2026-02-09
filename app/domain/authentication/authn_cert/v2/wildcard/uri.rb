@@ -77,7 +77,7 @@ module Authentication
               return @failure.new(@messages::URIPatternValidationFailed.new(pattern, "wildcard must be entire segment"))
             end
 
-            @logger.debug(@messages::URIPatternValidationSucceeded.new)
+            @logger.debug(@messages::URIPatternValidationSucceeded.new(pattern))
             @success.new(true)
           end
 

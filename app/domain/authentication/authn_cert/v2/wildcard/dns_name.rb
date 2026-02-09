@@ -133,7 +133,10 @@ module Authentication
             # If the pattern does not contain a wildcard, we can do a direct
             # string comparison.
             unless pattern.include?('*')
-              return @success.new(true) if dns_name == pattern
+              if dns_name == pattern
+                @logger.debug(@messages::DNSPatternMatchingSucceeded.new(pattern, dns_name))
+                return @success.new(true)
+              end
 
               return @failure.new(@messages::DNSPatternMatchingFailed.new(pattern, dns_name, "direct comparison failed"))
             end
