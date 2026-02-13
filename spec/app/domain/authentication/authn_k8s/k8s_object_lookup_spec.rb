@@ -4,7 +4,7 @@ require 'openssl'
 require 'spec_helper'
 
 RSpec.describe(Authentication::AuthnK8s::K8sObjectLookup) do
-  let(:webservice) do 
+  let(:webservice) do
     Authentication::Webservice.new(
       account: 'MockAccount',
       authenticator_name: 'authn-k8s',
@@ -15,7 +15,7 @@ RSpec.describe(Authentication::AuthnK8s::K8sObjectLookup) do
   let(:proxy_uri) { URI.parse("http://uri") }
 
   let(:cert_raw) do
-    """-----BEGIN CERTIFICATE-----
+    "-----BEGIN CERTIFICATE-----
 MIIDhzCCAm+gAwIBAgIJAJnsrJ1+j9MhMA0GCSqGSIb3DQEBCwUAMD0xETAPBgNV
 BAoTCGN1Y3VtYmVyMRIwEAYDVQQLEwlDb25qdXIgQ0ExFDASBgNVBAMTC2N1a2Ut
 bWFzdGVyMB4XDTE1MTAwNzE2MzAwM1oXDTI1MTAwNDE2MzAwM1owPTERMA8GA1UE
@@ -56,11 +56,11 @@ RnRH59ZB1mZMsIv9Ii790nnioYFR54JmQu1JsIib77ZdSXIJmxAtraJSTLcZbU1E
 +SM3XCE423Xols7onyluMYDy3MCUTFwoVMRBcRWCAk5gcv6XvZDfLi6Zwdne6x3Y
 bGenr4vsPuSFsycM03/EcQDT
 -----END CERTIFICATE-----\n\n
-"""
+"
   end
 
   let(:cert_raw_stripped) do
-    """-----BEGIN CERTIFICATE-----
+    "-----BEGIN CERTIFICATE-----
 MIIDhzCCAm+gAwIBAgIJAJnsrJ1+j9MhMA0GCSqGSIb3DQEBCwUAMD0xETAPBgNV
 BAoTCGN1Y3VtYmVyMRIwEAYDVQQLEwlDb25qdXIgQ0ExFDASBgNVBAMTC2N1a2Ut
 bWFzdGVyMB4XDTE1MTAwNzE2MzAwM1oXDTI1MTAwNDE2MzAwM1owPTERMA8GA1UE
@@ -100,7 +100,7 @@ dhXqPY5ZIZhvdHlLStjsXX7laaclEtMeWfSzxe4AmP/Sm/er4ks0gvLQU6/XJNIu
 RnRH59ZB1mZMsIv9Ii790nnioYFR54JmQu1JsIib77ZdSXIJmxAtraJSTLcZbU1E
 +SM3XCE423Xols7onyluMYDy3MCUTFwoVMRBcRWCAk5gcv6XvZDfLi6Zwdne6x3Y
 bGenr4vsPuSFsycM03/EcQDT
------END CERTIFICATE-----"""
+-----END CERTIFICATE-----"
   end
 
   context "inside of kubernetes" do
@@ -169,8 +169,8 @@ bGenr4vsPuSFsycM03/EcQDT
       it "returns the ca_cert value without whitespace" do
         allow(Authentication::AuthnK8s::K8sContextValue).to receive(:get)
           .with(webservice,
-            Authentication::AuthnK8s::SERVICEACCOUNT_CA_PATH,
-            Authentication::AuthnK8s::VARIABLE_CA_CERT)
+                Authentication::AuthnK8s::SERVICEACCOUNT_CA_PATH,
+                Authentication::AuthnK8s::VARIABLE_CA_CERT)
           .and_return(cert_raw)
 
         expect(subject.ca_cert).to eq(cert_raw_stripped)
@@ -179,11 +179,314 @@ bGenr4vsPuSFsycM03/EcQDT
       it "returns the bearer_token value without whitespace" do
         allow(Authentication::AuthnK8s::K8sContextValue).to receive(:get)
           .with(webservice,
-            Authentication::AuthnK8s::SERVICEACCOUNT_TOKEN_PATH,
-            Authentication::AuthnK8s::VARIABLE_BEARER_TOKEN)
+                Authentication::AuthnK8s::SERVICEACCOUNT_TOKEN_PATH,
+                Authentication::AuthnK8s::VARIABLE_BEARER_TOKEN)
           .and_return("MockToken\n")
 
         expect(subject.bearer_token).to eq("MockToken")
+      end
+    end
+
+    context "Logging Behavior" do
+      let(:subject) { Authentication::AuthnK8s::K8sObjectLookup.new(webservice) }
+
+      it "logs API calls" do
+        allow(Rails.logger).to receive(:debug)
+        mock_pod = double(status: double(podIP: '192.168.1.1'))
+        mock_client = double
+        allow(mock_client).to receive(:get_pods).and_return([mock_pod])
+        allow(Authentication::AuthnK8s::KubeClientFactory).to receive(:client).and_return(mock_client)
+
+        expect(Rails.logger).to receive(:debug).at_least(:once)
+        subject.pod_by_ip('192.168.1.1', 'default')
+      end
+    end
+
+    context "Public API Methods" do
+      let(:subject) { Authentication::AuthnK8s::K8sObjectLookup.new(webservice) }
+
+      describe "#pod_by_ip" do
+        it "returns pod when found" do
+          mock_pod = double(status: double(podIP: '192.168.1.1'))
+          mock_client = double
+          allow(mock_client).to receive(:get_pods).and_return([mock_pod])
+          allow(Authentication::AuthnK8s::KubeClientFactory).to receive(:client).and_return(mock_client)
+          allow(Rails.logger).to receive(:debug)
+
+          result = subject.pod_by_ip('192.168.1.1', 'default')
+
+          expect(result).to eq(mock_pod)
+        end
+
+        it "returns nil when pod not found" do
+          mock_client = double
+          allow(mock_client).to receive(:get_pods).and_return([])
+          allow(Authentication::AuthnK8s::KubeClientFactory).to receive(:client).and_return(mock_client)
+          allow(Rails.logger).to receive(:debug)
+
+          result = subject.pod_by_ip('192.168.1.99', 'default')
+
+          expect(result).to be_nil
+        end
+
+        it "filters pods by IP address correctly" do
+          pod1 = double(status: double(podIP: '192.168.1.1'))
+          pod2 = double(status: double(podIP: '192.168.1.2'))
+          mock_client = double
+          allow(mock_client).to receive(:get_pods).and_return([pod1, pod2])
+          allow(Authentication::AuthnK8s::KubeClientFactory).to receive(:client).and_return(mock_client)
+          allow(Rails.logger).to receive(:debug)
+
+          result = subject.pod_by_ip('192.168.1.2', 'default')
+
+          expect(result).to eq(pod2)
+        end
+      end
+
+      describe "#pod_by_name" do
+        it "returns pod when found" do
+          mock_pod = double
+          mock_client = double
+          allow(mock_client).to receive(:get_pod).with('my-pod', 'default').and_return(mock_pod)
+          allow(Authentication::AuthnK8s::KubeClientFactory).to receive(:client).and_return(mock_client)
+          allow(Rails.logger).to receive(:debug)
+
+          result = subject.pod_by_name('my-pod', 'default')
+
+          expect(result).to eq(mock_pod)
+        end
+
+        it "raises KubeException when pod not found" do
+          mock_client = double
+          allow(mock_client).to receive(:get_pod).and_raise(KubeException.new(404, 'not found', nil))
+          allow(Authentication::AuthnK8s::KubeClientFactory).to receive(:client).and_return(mock_client)
+          allow(Rails.logger).to receive(:debug)
+
+          expect do
+            subject.pod_by_name('nonexistent', 'default')
+          end.to raise_error(KubeException)
+        end
+      end
+
+      describe "#namespace_labels_hash" do
+        it "returns labels hash when namespace found" do
+          mock_labels = { 'env' => 'prod', 'team' => 'platform' }
+          mock_namespace = double(metadata: double(labels: mock_labels))
+          mock_client = double
+          allow(mock_client).to receive(:get_namespace).and_return(mock_namespace)
+          allow(Authentication::AuthnK8s::KubeClientFactory).to receive(:client).and_return(mock_client)
+          allow(Rails.logger).to receive(:debug)
+
+          result = subject.namespace_labels_hash('default')
+
+          expect(result).to eq(mock_labels)
+        end
+
+        it "returns nil when namespace not found" do
+          mock_client = double
+          allow(mock_client).to receive(:get_namespace).and_return(nil)
+          allow(Authentication::AuthnK8s::KubeClientFactory).to receive(:client).and_return(mock_client)
+          allow(Rails.logger).to receive(:debug)
+
+          result = subject.namespace_labels_hash('nonexistent')
+
+          expect(result).to be_nil
+        end
+
+        it "handles namespace with nil labels" do
+          mock_namespace = double(metadata: double(labels: nil))
+          mock_client = double
+          allow(mock_client).to receive(:get_namespace).and_return(mock_namespace)
+          allow(Authentication::AuthnK8s::KubeClientFactory).to receive(:client).and_return(mock_client)
+          allow(Rails.logger).to receive(:debug)
+
+          result = subject.namespace_labels_hash('default')
+
+          expect(result).to eq({})
+        end
+      end
+
+      describe "#pods_by_label" do
+        it "returns pods matching label selector" do
+          mock_pod1 = double
+          mock_pod2 = double
+          mock_client = double
+          allow(mock_client).to receive(:get_pods)
+            .with(label_selector: 'app=web', namespace: 'default')
+            .and_return([mock_pod1, mock_pod2])
+          allow(Authentication::AuthnK8s::KubeClientFactory).to receive(:client).and_return(mock_client)
+          allow(Rails.logger).to receive(:debug)
+
+          result = subject.pods_by_label('app=web', 'default')
+
+          expect(result).to eq([mock_pod1, mock_pod2])
+        end
+
+        it "returns empty array when no pods match" do
+          mock_client = double
+          allow(mock_client).to receive(:get_pods).and_return([])
+          allow(Authentication::AuthnK8s::KubeClientFactory).to receive(:client).and_return(mock_client)
+          allow(Rails.logger).to receive(:debug)
+
+          result = subject.pods_by_label('app=nonexistent', 'default')
+
+          expect(result).to eq([])
+        end
+      end
+
+      describe "#find_object_by_name" do
+        it "delegates to invoke_k8s_method" do
+          # This test just verifies the method exists and can be called
+          # Further testing happens through find_object_by_name behavior tests
+          allow(subject).to receive(:invoke_k8s_method).and_raise(KubeException.new(404, 'not found', nil))
+          allow(Rails.logger).to receive(:debug)
+
+          result = subject.find_object_by_name('job', 'missing-job', 'default')
+
+          expect(result).to be_nil
+        end
+      end
+    end
+
+    context "Error Handling" do
+      let(:subject) { Authentication::AuthnK8s::K8sObjectLookup.new(webservice) }
+
+      it "returns nil for 404 errors (not found)" do
+        allow(subject).to receive(:invoke_k8s_method).and_raise(KubeException.new(404, 'not found', nil))
+        allow(Rails.logger).to receive(:debug)
+
+        result = subject.find_object_by_name('job', 'missing', 'default')
+
+        expect(result).to be_nil
+      end
+
+      it "raises K8sForbiddenError for 403 errors" do
+        allow(subject).to receive(:invoke_k8s_method).and_raise(KubeException.new(403, 'forbidden', nil))
+        allow(Rails.logger).to receive(:debug)
+
+        expect do
+          subject.find_object_by_name('statefulset', 'sts', 'default')
+        end.to raise_error(Authentication::AuthnK8s::K8sObjectLookup::K8sForbiddenError)
+      end
+
+      it "re-raises other KubeExceptions" do
+        allow(subject).to receive(:invoke_k8s_method).and_raise(KubeException.new(500, 'error', nil))
+        allow(Rails.logger).to receive(:debug)
+
+        expect do
+          subject.find_object_by_name('pod', 'pod', 'default')
+        end.to raise_error(KubeException)
+      end
+    end
+
+    context "k8s_client_for_method branch coverage" do
+      let(:subject) { Authentication::AuthnK8s::K8sObjectLookup.new(webservice) }
+
+      it "finds client with matching method on first attempt" do
+        matching_client = double
+        allow(matching_client).to receive(:respond_to?).with('get_pods').and_return(true)
+        allow(matching_client).to receive(:get_pods).and_return([])
+        allow(Authentication::AuthnK8s::KubeClientFactory).to receive(:client).and_return(matching_client)
+        allow(Rails.logger).to receive(:debug)
+
+        result = subject.pod_by_ip('192.168.1.1', 'default')
+
+        expect(result).to be_nil
+      end
+
+      it "skips clients without the method and continues searching" do
+        non_matching_client = double
+        matching_client = double
+        expected_result = double
+        allow(non_matching_client).to receive(:respond_to?).with('get_stateful_set').and_return(false)
+        allow(matching_client).to receive(:respond_to?).with('get_stateful_set').and_return(true)
+        allow(matching_client).to receive(:get_stateful_set).and_return(expected_result)
+
+        allow(Authentication::AuthnK8s::KubeClientFactory).to receive(:client)
+          .and_return(non_matching_client, matching_client)
+        allow(Rails.logger).to receive(:debug)
+
+        result = subject.find_object_by_name('stateful_set', 'statefulset', 'default')
+
+        expect(result).to eq(expected_result)
+      end
+
+      it "continues searching on 404 KubeException from respond_to?" do
+        client_with_404 = double
+        matching_client = double
+        expected_result = double
+        allow(client_with_404).to receive(:respond_to?).and_raise(KubeException.new(404, 'not found', nil))
+        allow(matching_client).to receive(:respond_to?).with('get_deployment').and_return(true)
+        allow(matching_client).to receive(:get_deployment).and_return(expected_result)
+
+        allow(Authentication::AuthnK8s::KubeClientFactory).to receive(:client)
+          .and_return(client_with_404, matching_client)
+        allow(Rails.logger).to receive(:debug)
+
+        result = subject.find_object_by_name('deployment', 'deployment', 'default')
+
+        expect(result).to eq(expected_result)
+      end
+
+      it "re-raises non-404 KubeException from respond_to?" do
+        client_with_error = double
+        allow(client_with_error).to receive(:respond_to?).and_raise(KubeException.new(403, 'forbidden', nil))
+        allow(Authentication::AuthnK8s::KubeClientFactory).to receive(:client).and_return(client_with_error)
+        allow(Rails.logger).to receive(:debug)
+
+        expect do
+          subject.pod_by_name('pod', 'default')
+        end.to raise_error(KubeException) { |e| expect(e.error_code).to eq(403) }
+      end
+
+      it "continues searching on non-KubeException from respond_to?" do
+        client_with_runtime_error = double
+        matching_client = double
+        expected_result = double
+        allow(client_with_runtime_error).to receive(:respond_to?).and_raise(StandardError, 'unexpected error')
+        allow(matching_client).to receive(:respond_to?).with('get_job').and_return(true)
+        allow(matching_client).to receive(:get_job).and_return(expected_result)
+
+        allow(Authentication::AuthnK8s::KubeClientFactory).to receive(:client)
+          .and_return(client_with_runtime_error, matching_client)
+        allow(Rails.logger).to receive(:debug)
+
+        result = subject.find_object_by_name('job', 'job', 'default')
+
+        expect(result).to eq(expected_result)
+      end
+
+      it "raises NoMatchingClient when no clients have the method" do
+        client1 = double
+        client2 = double
+        allow(client1).to receive(:respond_to?).and_return(false)
+        allow(client2).to receive(:respond_to?).and_return(false)
+
+        allow(Authentication::AuthnK8s::KubeClientFactory).to receive(:client)
+          .and_return(client1, client2)
+        allow(Rails.logger).to receive(:debug)
+
+        expect do
+          subject.find_object_by_name('nonexistent_method', 'missing', 'default')
+        end.to raise_error(Errors::Authentication::AuthnK8s::NoMatchingClient)
+      end
+    end
+
+    context "Client Configuration" do
+      let(:subject) { Authentication::AuthnK8s::K8sObjectLookup.new(webservice) }
+
+      it "caches options after first call" do
+        first_call = subject.options
+        second_call = subject.options
+
+        expect(first_call).to equal(second_call)
+      end
+
+      it "caches bearer token after first call" do
+        first_token = subject.bearer_token
+        second_token = subject.bearer_token
+
+        expect(first_token).to eq(second_token)
       end
     end
   end

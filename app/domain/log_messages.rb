@@ -299,6 +299,31 @@ module LogMessages
         msg: "Validated K8s resource using label selector. Type:'{0}', Name:'{1}', Label:'{2}'",
         code: "CONJ00146D"
       )
+
+      K8sApiCallStarting = ::Util::TrackableLogMessageClass.new(
+        msg: "K8s API call starting: {0-method-name}, namespace: {1-namespace}, resource: {2-resource-name}",
+        code: "CONJ00167D"
+      )
+
+      K8sApiCallComplete = ::Util::TrackableLogMessageClass.new(
+        msg: "K8s API call complete: {0-method-name}",
+        code: "CONJ00168D"
+      )
+
+      K8sClientVersionSearchStarting = ::Util::TrackableLogMessageClass.new(
+        msg: "Searching for K8s client supporting method '{0-method-name}', attempting API version: {1-api-version}",
+        code: "CONJ00169D"
+      )
+
+      K8sClientVersionSearchComplete = ::Util::TrackableLogMessageClass.new(
+        msg: "K8s client version search complete for method '{0-method-name}', successful API version: {1-api-version}",
+        code: "CONJ00170D"
+      )
+
+      K8sClientVersionAttemptFailed = ::Util::TrackableLogMessageClass.new(
+        msg: "K8s client version attempt failed for method '{0-method-name}', API version: {1-api-version}",
+        code: "CONJ00171D"
+      )
     end
 
     module AuthnIam
