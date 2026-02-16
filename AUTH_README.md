@@ -119,3 +119,11 @@ services:
       # No ports exposed - only accessible via Docker network
       
 ```
+
+### Compatibility Matrix
+
+The following table shows the compatibility between Conjur OSS and the SaaS Authenticator Service:
+
+| SaaS Authenticator / Conjur OSS | 1.25.0+ |
+|---------------------------------|---------|
+| 1.395.0+                        | ✓       |
