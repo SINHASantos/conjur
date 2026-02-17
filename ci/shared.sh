@@ -290,3 +290,8 @@ start_ldap_server() {
 
   echo "Done."
 }
+
+start_auth_service() {
+  # Start authentication service
+  $COMPOSE up --no-deps --detach saas-auth
+}

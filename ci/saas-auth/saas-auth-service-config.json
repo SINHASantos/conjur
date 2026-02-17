@@ -1,0 +1,10 @@
+{
+  "debug": true,
+  "port": "8080",
+  "http_timeout": "10m",
+  "enable_profiler": false,
+  "enable_tracer": false,
+  "environment": "test",
+  "version": "2.0.0",
+  "allow_missing_jwt_claims": true
+}
