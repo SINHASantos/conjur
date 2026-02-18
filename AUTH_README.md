@@ -1,23 +1,34 @@
-# Deploying the SaaS Authenticator Service Alongside Conjur
+# 1. Deploying the SaaS Authenticator Service Alongside Conjur
 
-This section describes how to obtain, deploy and configure the **SaaS Authenticator Service** so it can be used by Conjur
+This document describes how to obtain, deploy and configure the **SaaS Authenticator Service** so it can be used by Conjur
+
+## Table of Contents
+1. [Overview](#1-overview)
+2. [Getting the Authenticator Service Binary](#2-getting-the-authenticator-service-binary)
+3. [Security Best Practices](#3-security-best-practices)
+4. [Conjur Configuration Parameters](#4-conjur-configuration-parameters)
+5. [Deployment](#5-deployment)
+6. [Authenticator Service configuration](#6-authenticator-service-configuration)
+7. [Docker Compose Example](#7-docker-compose-example)
+8. [Compatibility Matrix](#8-compatibility-matrix)
+9. [Certificate Authenticator Configuration Guide](#9-certificate-authenticator-configuration-guide)
 
 ---
 
-## Overview
+## 1 Overview
 
 The **SaaS Authenticator Service** is a stateless HTTP service that Conjur uses to validate credentials (e.g., for certificate authentication).  
 Users are responsible for deploying and managing the service in their own environment. 
 
 ---
 
-## Getting the Authenticator Service Binary
+## 2. Getting the Authenticator Service Binary
 
 The authenticator binary will be included with Conjur releases and made available through GitHub releases.
 
 ---
 
-## Security Best Practices
+## 3. Security Best Practices
 
 ### Network Isolation: The SaaS Authenticator should only be accessible to Conjur
 - Use localhost for same-host deployments (on default HTTP allowlist)
@@ -34,11 +45,10 @@ Do not expose SaaS Authenticator ports publicly. Unnecessary exposure opens the 
 
 ---
 
-## Conjur Configuration Parameters
+## 4. Conjur Configuration Parameters
 
 In order to enable and configure Conjur to use the Authenticator Service, a set of environment variables must be set.
 
-### Required
 | Parameter                                      | Purpose                                                                                                                         | Example                  |
 |------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|--------------------------|
 | `CONJUR_FEATURE_AUTHENTICATOR_SERVICE_ENABLED` | Feature flag that enables the Authenticator Service                                                                             | true                     |
@@ -48,7 +58,7 @@ In order to enable and configure Conjur to use the Authenticator Service, a set 
 
 ---
 
-## Deployment
+## 5 Deployment
 
 Common deployment approaches include:
 
@@ -57,7 +67,7 @@ Common deployment approaches include:
 - As a sidecar container (Kubernetes)
 ---
 
-### Authenticator Service configuration
+## 6. Authenticator Service configuration
 
 The Authenticator Service binary has to be run with a configuration file provided as a command-line argument. The absolute minimum configuration has to include the `port` and `http_timeout` parameters.
 
@@ -98,7 +108,7 @@ Assuming your config file is named `authenticator-config.json`, you can run the 
 $ ./authenticator-service-binary -c /path/to/authenticator-config.json
 ```
 
-###  Docker Compose Example
+## 7. Docker Compose Example
 
 Assuming you have created a Dockerfile for the Authenticator Service, you can add it as a service in your `docker-compose.yml` and configure Conjur to communicate with it over HTTP within the Docker network:
 
@@ -120,10 +130,14 @@ services:
       
 ```
 
-### Compatibility Matrix
+## 8. Compatibility Matrix
 
 The following table shows the compatibility between Conjur OSS and the SaaS Authenticator Service:
 
 | SaaS Authenticator / Conjur OSS | 1.25.0+ |
 |---------------------------------|---------|
 | 1.395.0+                        | ✓       |
+
+## 9. Certificate Authenticator Configuration Guide
+
+For detailed instructions on configuration, setup, and usage of the Certificate Authenticator, see the [Certificate Authenticator Configuration Guide](AUTH_CONFIG_README.md).
