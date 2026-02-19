@@ -57,7 +57,7 @@ spec:
         app: postgres
     spec:
       containers:
-      - image: postgres:15
+      - image: postgres:18
         imagePullPolicy: Always
         name: postgres
         securityContext:
