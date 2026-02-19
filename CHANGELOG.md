@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   (and update the corresponding date), or add a new version.
 
 ## [1.25.0] - 2026-01-14
+### Security
+- Upgrade rack to 3.2.5 to resolve CVE-2026-22860. CONJSE-2081
 
 ## [1.24.1] - 2025-11-20
 
