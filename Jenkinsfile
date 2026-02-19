@@ -1478,5 +1478,8 @@ def downloadAndPrepareSaasAuthenticatorService(targetDir = 'ci/saas-auth') {
     cp bundle/core/Dockerfile ${targetDir}/Dockerfile
   """
 
+  // Remove bundle directory
+  sh "rm -rf bundle"
+
   return saasVersion
 }
