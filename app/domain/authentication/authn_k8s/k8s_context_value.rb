@@ -15,10 +15,30 @@ module Authentication
     # be the desired behavior.
     class K8sContextValue
       def self.get webservice, file_name, variable_id
-        return File.read(file_name) if File.exist?(file_name)
+        # Policy/variable configuration takes precedence over mounted files
+        if webservice.present?
+          begin
+            variable_value = webservice.variable(variable_id).secret.value
+            unless variable_value.blank?
+              Rails.logger.debug("Loading #{variable_id} from policy configuration")
+              return variable_value
+            end
+          rescue
+            # If policy config is not available, fall through to file
+            Rails.logger.debug("Policy configuration for #{variable_id} not available")
+          end
+        end
 
-        webservice.variable(variable_id).secret.value if webservice.present?
+        # Fall back to mounted file if policy config is not present (nil)
+        if File.exist?(file_name)
+          Rails.logger.debug("Loading #{variable_id} from mounted file at #{file_name}")
+          return File.read(file_name)
+        end
+
+        Rails.logger.debug("Neither policy configuration nor mounted file available for #{variable_id}")
+        nil
       rescue
+        Rails.logger.debug("Error retrieving #{variable_id}, returning nil")
         nil
       end
     end
