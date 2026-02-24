@@ -1,6 +1,6 @@
-# 1. Deploying the SaaS Authenticator Service Alongside Conjur
+# Deploying the Authenticator Service Alongside Conjur
 
-This document describes how to obtain, deploy and configure the **SaaS Authenticator Service** so it can be used by Conjur
+This document describes how to obtain, deploy and configure the **Authenticator Service** so it can be used by Conjur
 
 ## Table of Contents
 1. [Overview](#1-overview)
@@ -15,16 +15,18 @@ This document describes how to obtain, deploy and configure the **SaaS Authentic
 
 ---
 
-## 1 Overview
+## 1. Overview
 
-The **SaaS Authenticator Service** is a stateless HTTP service that Conjur uses to validate credentials (e.g., for certificate authentication).  
+The **Authenticator Service** is a stateless HTTP service that Conjur uses to validate credentials (e.g., for certificate authentication).  
 Users are responsible for deploying and managing the service in their own environment. 
 
 ---
 
 ## 2. Getting the Authenticator Service Binary
 
-The authenticator binary will be included with Conjur releases and made available through GitHub releases.
+The authenticator binary will be included with Conjur releases and made available through GitHub releases. 
+For guaranteed compatibility, always use the version of the Authenticator Service that is published in the same release
+as your specific Conjur version.
 
 ---
 
@@ -32,7 +34,7 @@ The authenticator binary will be included with Conjur releases and made availabl
 
 ### Network Isolation: The SaaS Authenticator should only be accessible to Conjur
 - Use localhost for same-host deployments (on default HTTP allowlist)
-- Use pod-local networking in Kubernetes (add service name to HTTP allowlist)
+- Use pod-local networking in Kubernetes (processes running in different containers in the same pod can communicate with each other over localhost)
 - Use Docker internal networks in Docker Compose (add service name to HTTP allowlist)
 
 ### Connection Security Model:
@@ -49,12 +51,13 @@ Do not expose SaaS Authenticator ports publicly. Unnecessary exposure opens the 
 
 In order to enable and configure Conjur to use the Authenticator Service, a set of environment variables must be set.
 
-| Parameter                                      | Purpose                                                                                                                         | Example                  |
-|------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|--------------------------|
-| `CONJUR_FEATURE_AUTHENTICATOR_SERVICE_ENABLED` | Feature flag that enables the Authenticator Service                                                                             | true                     |
-| `CONJUR_AUTHENTICATOR_SERVICE_URL`             | URL of your authenticator service (HTTP or HTTPS). Must be HTTPS unless allow‑listed.                                           | http://auth-service:8080 |
-| `CONJUR_AUTHENTICATOR_SERVICE_HTTP_ALLOWLIST`  | Comma-separated list of hostnames/IPs allowed for HTTP communication with the authenticator service. Required if using HTTP.    | auth-service             |
-| `CONJUR_AUTHENTICATOR_SERVICE_CA_CERT`         | A path to CA certificate that Conjur uses to validate the TLS certificate of the Authenticator Service. Required if using HTTPS | /path/to/ca.pem          |
+| Parameter                                      | Purpose                                                                                                                           | Default                                           | Example                  |
+|------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------|--------------------------|
+| `CONJUR_FEATURE_AUTHENTICATOR_SERVICE_ENABLED` | Feature flag that enables the Authenticator Service                                                                               | true                                              | true                     |
+| `CONJUR_AUTHENTICATOR_SERVICE_URL`             | URL of your authenticator service (HTTP or HTTPS)\. Must be HTTPS unless allow\-listed\.                                          | http://localhost:5681                             | http://auth-service:8080 |
+| `CONJUR_AUTHENTICATOR_SERVICE_HTTP_ALLOWLIST`  | Comma\-separated list of hostnames/IPs allowed for HTTP communication with the authenticator service\. Required if using HTTP\.   | localhost,127\.0\.0\.1,::1,host\.docker\.internal | auth-service             |
+| `CONJUR_AUTHENTICATOR_SERVICE_CA_CERT`         | A path to CA certificate that Conjur uses to validate the TLS certificate of the Authenticator Service\. Required if using HTTPS  | nil                                               | /path/to/ca\.pem         |
+
 
 ---
 
@@ -84,13 +87,7 @@ The configuration file is a json file with the following structure:
 
   // Sets the HTTP server timeout
   "http_timeout": "10s",
-
-  // Enables the DataDog profiler
-  "enable_profiler": false,
-
-  // Enables the DataDog tracer
-  "enable_tracer": true,
-
+  
   // Sets the environment variable for profiler and tracer
   "environment": "production",
 
@@ -132,7 +129,7 @@ services:
 
 ## 8. Compatibility Matrix
 
-The following table shows the compatibility between Conjur OSS and the SaaS Authenticator Service:
+The following table shows the compatibility between Conjur OSS and the Authenticator Service:
 
 | SaaS Authenticator / Conjur OSS | 1.25.0+ |
 |---------------------------------|---------|
@@ -140,4 +137,4 @@ The following table shows the compatibility between Conjur OSS and the SaaS Auth
 
 ## 9. Certificate Authenticator Configuration Guide
 
-For detailed instructions on configuration, setup, and usage of the Certificate Authenticator, see the [Certificate Authenticator Configuration Guide](AUTH_CONFIG_README.md).
+For detailed instructions on configuration, setup, and usage of the Certificate Authenticator, see the [Certificate Authenticator Configuration Guide](CERTIFICATE_AUTH.md).

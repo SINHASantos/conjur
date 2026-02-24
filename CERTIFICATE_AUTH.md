@@ -209,7 +209,7 @@ DNS.1 = my-workload.dev
 **Note**
 
 The subject alternative names (SANs):
-URI (line 10): spiffe://my-worklaod.dev/my-spiffe-workload (You can ignore it for now, will be used later in the spiffe
+URI (line 10): spiffe://my-workload.dev/my-spiffe-workload (You can ignore it for now, will be used later in the spiffe
 mode example)
 DNS (line 11): my-workload.dev
 
@@ -241,7 +241,7 @@ Create a policy file named `cert-auth.yaml` with the following content:
 
 ```yaml
 - !policy
-  id: authn-cert/<authenticator-id>
+  id: conjur/authn-cert/<authenticator-id>
   body:
     - !webservice
 
@@ -275,22 +275,18 @@ Create a policy file named `cert-auth.yaml` with the following content:
 conjur policy load -f cert-auth.yaml -b root
 ```
 
----
-
 ### 4.2. Set Authenticator Variables
 
 - **Set the `ca-cert` variable:**
 
 ```bash
-conjur variable set -i conjur/authn-cert/<authenticator-id>/ca-cert -v "$(cat <ca-cert.pem>)"
+conjur variable set -i conjur/authn-cert/<authenticator-id>/ca-cert -v "$(cat <rootCA.pem>)"
 ```
 
 Where:
 
 - `<authenticator-id>`: The name you used in the policy (e.g., `my-cert-auth`).
-- `<ca-cert.pem>`: The CA root and intermediate certificates in PEM format.
-
----
+- `<rootCA.pem>`: The CA root and intermediate certificates in PEM format.
 
 ### 4.3. Enable the Authenticator
 
@@ -300,8 +296,6 @@ You must enable the authenticator before it can be used. Add it to the `CONJUR_A
 - You must include the authenticator's ID in the list.
 
 CONJUR_AUTHENTICATORS=authn-jwt/my-jwt-auth,authn-cert/my-cert-auth
-
----
 
 ### 4.4. Configure a Workload
 
@@ -336,8 +330,6 @@ Create a policy file named `cert-workload.yaml` with the following content:
 conjur policy load -f cert-workload.yaml -b root
 ```
 
----
-
 #### 4.4.2. Grant Workload Access to the Authenticator
 
 Create a grant policy file (e.g., `cert-workload-grant.yaml`):
@@ -358,8 +350,6 @@ Create a grant policy file (e.g., `cert-workload-grant.yaml`):
 conjur policy load -f cert-workload-grant.yaml -b root
 ```
 
----
-
 ### 4.5. Authenticate with the Authenticator
 
 The workload authenticates by sending a POST request to the authenticator's endpoint with its client certificate as a
@@ -375,7 +365,7 @@ Where:
 
 - `<conjur-server-hostname>`: Hostname of the Conjur server (e.g., `http://conjur:3000`)
 - `<authenticator-id>`: Name of the authenticator (e.g., `my-cert-auth`)
-- `<account>`: Conjur account name (e.g., `my-account`)
+- `<account>`: Conjur account name (e.g., `cucumber`)
 - `<host-id>`: Workload host ID (e.g., `host/my-workloads/my-workload`)
 
 **CGI/URL-encode the certificate before sending:**
@@ -390,7 +380,7 @@ CERT_ENCODED="$(curl -Gs -o /dev/null -w '%{url_effective}' --data-urlencode "ce
 ```bash
 curl -X POST \
   -H "X-SSL-Client-Certificate: ${CERT_ENCODED}" \
-  "http://conjur:3000/authn-cert/my-cert-auth/my-account/host%2Fmy-workloads%2Fmy-workload/authenticate"
+  "http://conjur:3000/authn-cert/my-cert-auth/cucumber/host%2Fmy-workloads%2Fmy-workload/authenticate"
 ```
 
 **Example successful response:**
@@ -402,8 +392,6 @@ curl -X POST \
   "signature": "VUA..."
 }
 ```
-
----
 
 ### 4.6. Retrieve a Secret
 
@@ -437,15 +425,11 @@ access to it:
 conjur policy load -f app-secrets.yaml -b root
 ```
 
----
-
 #### 4.6.2. Set the Secret Value
 
 ```bash
 conjur variable set -i app-secrets/db-password -v "super-secret-password"
 ```
-
----
 
 #### 4.6.3. Retrieve the Secret
 
@@ -456,7 +440,7 @@ Extract the body response from the authentication request
 ```bash
 TOKEN_RAW=$(curl -X POST \
   -H "X-SSL-Client-Certificate: ${CERT_ENCODED}" \
-  "http://conjur:3000/authn-cert/my-cert-auth/my-account/host%2Fmy-workloads%2Fmy-workload/authenticate")
+  "http://conjur:3000/authn-cert/my-cert-auth/cucumber/host%2Fmy-workloads%2Fmy-workload/authenticate")
 ```
 
 Encode the token in base64 (cross-platform):
@@ -477,17 +461,15 @@ Where:
 
 - `<conjur-server-hostname>`: Hostname of the Conjur server (e.g., `http://conjur:3000`)
 - `<kind>`: The kind of a resource (e.g., `variable`)
-- `<account>`: Conjur account name (e.g., `my-account`)
+- `<account>`: Conjur account name (e.g., `cucumber`)
 - `<identifier>`: Id of the variable (e.g., `app-secrets/db-password`)
 - `version` (optional): The version of the secret to retrieve (e.g., `?version=1`)
 
 **Example:**
 
 ```bash
-curl -H "Authorization: Token token=\"${TOKEN_B64}\"" http://conjur:3000/secrets/my-account/variable/app-secrets/db-password
+curl -H "Authorization: Token token=\"${TOKEN_B64}\"" http://conjur:3000/secrets/cucumber/variable/app-secrets/db-password
 ```
-
----
 
 ### 4.7. Troubleshooting & Tips
 
@@ -496,8 +478,6 @@ curl -H "Authorization: Token token=\"${TOKEN_B64}\"" http://conjur:3000/secrets
 - Always URL-encode the certificate before sending it in the header.
 - If you receive a 401 Unauthorized error, check that the authenticator is enabled and the workload is properly granted
   access.
-
----
 
 ## 5. Example 2: Authenticator in Spiffe Mode
 
@@ -545,22 +525,18 @@ Create a policy file named `cert-auth-spiffe.yaml` with the following content:
 conjur policy load -f cert-auth-spiffe.yaml -b root
 ```
 
----
-
 ### 5.2. Set Authenticator Variables
 
 - **Set the `ca-cert` variable:**
 
 ```bash
-conjur variable set -i conjur/authn-cert/<authenticator-id>/ca-cert -v "$(cat <ca-cert.pem>)"
+conjur variable set -i conjur/authn-cert/<authenticator-id>/ca-cert -v "$(cat <rootCA.pem>)"
 ```
 
 Where:
 
 - `<authenticator-id>`: The name you used in the policy (e.g., `my-spiffe-auth`).
-- `<ca-cert.pem>`: The CA root and intermediate certificates in PEM format.
-
----
+- `<rootCA.pem>`: The CA root and intermediate certificates in PEM format.
 
 ### 5.3. Enable the Authenticator
 
@@ -572,8 +548,6 @@ You must enable the authenticator before it can be used. Add it to the `CONJUR_A
   like this:
 
 CONJUR_AUTHENTICATORS=authn-jwt/my-jwt-auth,authn-cert/my-cert-auth,authn-cert/my-spiffe-auth
-
----
 
 ### 5.4. Configure a Workload
 
@@ -599,8 +573,6 @@ Create a policy file named `cert-workload-spiffe.yaml` with the following conten
 conjur policy load -f cert-workload-spiffe.yaml -b root
 ```
 
----
-
 #### 5.4.2. Grant Workload Access to the Authenticator
 
 Create a grant policy file (e.g., `cert-workload-grant-spiffe.yaml`):
@@ -623,8 +595,6 @@ Create a grant policy file (e.g., `cert-workload-grant-spiffe.yaml`):
 conjur policy load -f cert-workload-grant-spiffe.yaml -b root
 ```
 
----
-
 ### 5.5. Authenticate with the Authenticator
 
 The workload authenticates by sending a POST request to the authenticator's endpoint with its client certificate as a `X-SSL-Client-Certificate` header.
@@ -640,7 +610,7 @@ Where:
 
 - `<conjur-server-hostname>`: Hostname of the Conjur server (e.g., `http://conjur:3000`)
 - `<authenticator-id>`: Name of the authenticator (e.g., `my-spiffe-auth`)
-- `<account>`: Conjur account name (e.g., `my-account`)
+- `<account>`: Conjur account name (e.g., `cucumber`)
 
 **CGI/URL-encode the certificate before sending:**
 
@@ -654,7 +624,7 @@ CERT_ENCODED="$(curl -Gs -o /dev/null -w '%{url_effective}' --data-urlencode "ce
 ```bash
 curl -X POST \
   -H "X-SSL-Client-Certificate: ${CERT_ENCODED}" \
-  "http://conjur:3000/authn-cert/my-cert-auth/my-accountauthenticate"
+  "http://conjur:3000/authn-cert/my-cert-auth/cucumber/authenticate"
 ```
 
 **Example successful response:**
@@ -666,8 +636,6 @@ curl -X POST \
   "signature": "VUA..."
 }
 ```
-
----
 
 ### 5.6. Retrieve a Secret
 
@@ -701,15 +669,11 @@ workload access to it:
 conjur policy load -f app-secrets-spiffe.yaml -b root
 ```
 
----
-
 #### 5.6.2. Set the Secret Value
 
 ```bash
 conjur variable set -i app-secrets/db-password -v "super-secret-password"
 ```
-
----
 
 #### 5.6.3. Retrieve the Secret
 
@@ -720,7 +684,7 @@ Extract the body response from the authentication request
 ```bash
 TOKEN_RAW=$(curl -X POST \
   -H "X-SSL-Client-Certificate: ${CERT_ENCODED}" \
-  "http://conjur:3000/authn-cert/my-cert-auth/my-account/authenticate")
+  "http://conjur:3000/authn-cert/my-cert-auth/cucumber/authenticate")
 ```
 
 Encode the token in base64 (cross-platform):
@@ -741,17 +705,15 @@ Where:
 
 - `<conjur-server-hostname>`: Hostname of the Conjur server (e.g., `http://conjur:3000`)
 - `<kind>`: The kind of a resource (e.g., `variable`)
-- `<account>`: Conjur account name (e.g., `my-account`)
+- `<account>`: Conjur account name (e.g., `cucumber`)
 - `<identifier>`: Id of the variable (e.g., `app-secrets/db-password`)
 - `version` (optional): The version of the secret to retrieve (e.g., `?version=1`)
 
 **Example:**
 
 ```bash
-curl -H "Authorization: Token token=\"${TOKEN_B64}\"" http://conjur:3000/secrets/my-account/variable/app-secrets/db-password
+curl -H "Authorization: Token token=\"${TOKEN_B64}\"" http://conjur:3000/secrets/cucumber/variable/app-secrets/db-password
 ```
-
----
 
 ### 5.7. Troubleshooting & Tips
 
