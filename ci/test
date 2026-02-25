@@ -158,8 +158,12 @@ main() {
   # Cleanup any bundle data
   rm -rf ./.bundle || sudo rm -rf ./.bundle
 
-  TAG=$(version_tag)
+  LOCAL_TAG="$(version_tag)"
+  VERSION=$(<VERSION)
+  # Normalize version number in the case of '+' included
+  VERSION="$(echo -n "${VERSION}" | tr "+" "_")"
 
+  TAG="${VERSION}-${LOCAL_TAG}"
   # Change into the "ci" directory
   cd "$test_dir"
   "./test_suites/$test_suite/test"
