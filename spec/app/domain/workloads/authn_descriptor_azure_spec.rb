@@ -28,7 +28,7 @@ RSpec.describe Workloads::AuthnDescriptor, type: :model do
       describe "and data validating" do
         context "with valid data using azur data keys" do
           it "accepts all allowed keys with valid values" do
-            valid_data = Workloads::Validating::AuthnDescriptorValidation::AZURE_DATA_KEYS
+            valid_data = Workloads::AuthnDescriptor::AZURE_DATA_KEYS
                            .map { |adk| { adk => "azuredatavalue" } }
                            .reduce({}, :merge)
                            .symbolize_keys

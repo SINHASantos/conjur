@@ -14,15 +14,18 @@ module Workloads
                 ansible terraform spring aws azure gcp mule_app ai_agent
                 mcp_server bitbucket octupus virtual_machine iot_device other].freeze
 
-      OTHER_TYPE = 'other'.freeze
-      KUBE_TYPE = 'kubernetes'.freeze
-      KUBE_SUBTYPE_DEFAULT = 'openshift'.freeze
+      OTHER_TYPE = 'other'
+      KUBE_TYPE = 'kubernetes'
+      KUBE_SUBTYPE_DEFAULT = 'openshift'
       KUBE_SUBTYPES = %w[gke openshift eks aks].freeze
       KUBE_SUBTYPES_STR = KUBE_SUBTYPES.join(', ').freeze
       MAX_ANNOTATIONS_SIZE = 20
       NAME_PATTERN = /\A[a-zA-Z0-9:_{}\-.\/"]+\z/.freeze
       NAME_LENGTH_MIN = 3
       NAME_LENGTH_MAX = 120
+
+      # Authn types that can be repeated in the descriptors array
+      REPEATABLE_AUTHN_TYPES = %w[jwt azure certificate].freeze
 
       def type?(type)
         @type == type
@@ -82,8 +85,19 @@ module Workloads
       end
 
       def init_authn_descriptors(authn_descriptors)
-        unless authn_descriptors.is_a?(Array) && authn_descriptors.size == 1
-          errors.add(:authn_descriptors, "must be an array with exactly one descriptor")
+        err_msg = "'authn_descriptors' must be an array with one or two descriptors. Each authn type (except 'jwt', 'certificate', and 'azure') can appear at most once."
+        unless authn_descriptors.is_a?(Array) && (1..2).include?(authn_descriptors.size)
+          errors.add(:authn_descriptors, err_msg)
+          return
+        end
+
+        repeatable_types_fine = authn_descriptors
+          .select { |d| d.is_a?(Hash) }
+          .group_by { |d| d.symbolize_keys[:type] }
+          .all? { |type, group| REPEATABLE_AUTHN_TYPES.include?(type) || group.length <= 1 }
+
+        unless repeatable_types_fine
+          errors.add(:authn_descriptors, err_msg)
           return
         end
 

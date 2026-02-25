@@ -27,7 +27,7 @@ RSpec.describe Workloads::AuthnDescriptor, type: :model do
 
       describe "and data validating" do
         let(:data) do
-          (1..Workloads::Validating::AuthnDescriptorValidation::MAX_CLAIMS_SIZE - 4)
+          (1..Workloads::AuthnDescriptor::MAX_CLAIMS_SIZE - 4)
             .map { |i| ["jwt_claim_key_#{i}", "jwt_claim_value_#{i}"] }
             .to_h
             .merge(symbol_key: :symbol_value)

@@ -11,6 +11,8 @@ module Workloads
     include ActiveModel::Validations
     include Workloads::Validating::WorkloadValidation
 
+    DEFAULT_WORKLOAD_TYPE = 'other'
+
     attr_reader :name, :branch, :type, :subtype, :owner,
                 :authn_descriptors, :annotations, :restricted_to
 

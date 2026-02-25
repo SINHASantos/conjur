@@ -140,8 +140,12 @@ class Resource < Sequel::Model
         order(Sequel.desc(rank))
     end
 
+    def check_visible_to(role_id)
+      from(Sequel.function(:visible_resources, role_id).as(:resources))
+    end
+
     def visible_to role
-      from(Sequel.function(:visible_resources, role.id).as(:resources))
+      check_visible_to(role.id)
     end
 
     def numeric? val

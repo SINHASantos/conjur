@@ -30,13 +30,8 @@ module Branches
     end
     # rubocop:enable Metrics/ParameterLists
 
-    def read_and_auth_branch(role, action, account, identifier)
-      log_debug("role.id = #{role.id}", action:, account:, identifier:)
-
-      policy = @res_service.read_and_auth_policy(role, action, account, identifier)
-      Branch.from_model(policy)
-    rescue Exceptions::Forbidden, Exceptions::RecordNotFound => e
-      raise Exceptions::RecordNotFound, full_id(account, 'branch', identifier)
+    def check_branch_exists(account, identifier)
+      @res_service.check_exists(account, 'policy', identifier, 'branch')
     end
 
     def read_branch(role, account, identifier)
@@ -63,7 +58,7 @@ module Branches
 
       return if root?(identifier)
 
-      get_branch(account, parent_of(identifier))
+      check_branch_exists(account, parent_of(identifier))
     end
 
     def create_branch(account, branch)
@@ -103,7 +98,7 @@ module Branches
     def update_branch(account, branch_up_part, identifier)
       log_debug(account:, branch_up_part:, identifier:)
 
-      policy = get_branch_pol(account, identifier)
+      policy = @res_service.get_res(account, 'policy', identifier, 'branch')
 
       update_owner(account, policy, branch_up_part.owner) if branch_up_part.owner.set?
       update_annotations(policy, branch_up_part.annotations) unless branch_up_part.annotations.empty?
@@ -112,8 +107,7 @@ module Branches
 
     def check_branch_not_conflict(account, identifier)
       log_debug(account:, identifier:)
-
-      return if fetch_branch(account, identifier).nil?
+      return if @res_service.not_exists?(account, 'policy', identifier)
 
       raise Exceptions::RecordExists.new('Branch', full_id(account, 'branch', identifier))
     end
@@ -125,10 +119,10 @@ module Branches
       total_count = base_scope.count
 
       branches = @res_scopes_service.paginate_scope(paging, base_scope)
-        .eager(owner: proc { |ds| ds.select(:role_id) })
-        .eager(:annotations)
-        .all
-        .map { |pol| Branch.from_model(pol) }
+                                    .eager(owner: proc { |ds| ds.select(:role_id) })
+                                    .eager(:annotations)
+                                    .all
+                                    .map { |pol| Branch.from_model(pol) }
 
       # result to be returned
       { branches: branches,
@@ -139,8 +133,8 @@ module Branches
       log_debug("role.id = #{role.id}", account:, identifier:)
 
       resources = @res_scopes_service.resources_to_del_scope(account, identifier)
-        .order(Sequel.lit("length(resource_id)").desc)
-        .all
+                                     .order(Sequel.lit("length(resource_id)").desc)
+                                     .all
 
       resources.each do |res|
         raise Exceptions::RecordNotFound, full_id(account, res.kind, res.identifier) unless role.allowed_to?(:update, res)
@@ -153,12 +147,6 @@ module Branches
     end
 
     private
-
-    def get_branch_pol(account, identifier)
-      @res_service.get_res(account, 'policy', identifier)
-    rescue Exceptions::RecordNotFound
-      raise Exceptions::RecordNotFound, full_id(account, 'branch', identifier)
-    end
 
     def update_annotations(policy, annotations)
       log_debug(policy:, annotations:)
@@ -173,8 +161,8 @@ module Branches
 
     def get_saved_annotations(policy)
       Annotations::Annotations.from_model(policy.annotations)
-        .to_h
-        .deep_transform_keys(&:to_sym)
+                              .to_h
+                              .deep_transform_keys(&:to_sym)
     end
 
     def update_owner(account, policy, owner)

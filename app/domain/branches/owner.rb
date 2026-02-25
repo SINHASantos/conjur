@@ -11,6 +11,7 @@ module Branches
     attr_reader :kind, :id
 
     validates :kind, presence: true, inclusion: { in: OWNER_KINDS, message: OWNER_KINDS_MSG }
+    validate -> { validate_attrs_class(%i[kind id], String) }
     validates :id, presence: true, format: { with: USER_PATH_PATTERN, message: USER_PATH_PATTERN_MSG },
               if: -> { kind == 'user' }
     validates :id, presence: true, format: { with: PATH_PATTERN, message: PATH_PATTERN_MSG },
@@ -34,11 +35,19 @@ module Branches
 
 
     def self.from_model_id(owner_id)
-      new(**{kind: kind(owner_id), id: identifier(owner_id)})
+      new(**self.h_from_model_id(owner_id))
+    end
+
+    def self.h_from_model_id(owner_id)
+      {kind: kind(owner_id), id: identifier(owner_id)}
     end
 
     def as_json(options = {})
       super(options).except("context_for_validation", "errors", "is_set")
+    end
+
+    def to_h
+      { kind: @kind, id: @id }
     end
 
     def not_admin?

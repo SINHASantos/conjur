@@ -90,8 +90,85 @@ RSpec.describe Workloads::Workload, type: :model do
         expect {
           described_class.new(**input.merge(authn_descriptors: invalid_authn_desc))
         }.to raise_error(Validation::DomainValidationError,
-                         "Authn descriptors must be an array with exactly one descriptor")
+                         /authn_descriptors.*must be an array with one or two descriptors/i)
       end
+    end
+
+    it 'raises when authn_descriptors array is empty' do
+      expect {
+        described_class.new(**input.merge(authn_descriptors: []))
+      }.to raise_error(Validation::DomainValidationError,
+                       /authn_descriptors.*must be an array with one or two descriptors/i)
+    end
+
+    it 'raises when authn_descriptors has more than two elements' do
+      descriptors = [
+        { type: 'api_key' },
+        { type: 'jwt', service_id: 'jwtsvc', data: {} },
+        { type: 'aws', service_id: 'awssvc', data: {} }
+      ]
+
+      expect {
+        described_class.new(**input.merge(authn_descriptors: descriptors))
+      }.to raise_error(Validation::DomainValidationError,
+                       /authn_descriptors.*must be an array with one or two descriptors/i)
+    end
+
+    it 'raises when a non-repeatable authn type appears more than once' do
+      descriptors = [
+        { type: 'api_key' },
+        { type: 'api_key' }
+      ]
+
+      expect {
+        described_class.new(**input.merge(authn_descriptors: descriptors))
+      }.to raise_error(Validation::DomainValidationError,
+                       /Each authn type .* can appear at most once/i)
+    end
+
+    it 'allows duplicate repeatable authn type jwt' do
+      descriptors = [
+        { type: 'jwt', service_id: 'jwtsvc1', data: {} },
+        { type: 'jwt', service_id: 'jwtsvc2', data: {} }
+      ]
+
+      expect {
+        described_class.new(**input.merge(authn_descriptors: descriptors))
+      }.not_to raise_error
+    end
+
+    it 'allows duplicate repeatable authn type azure' do
+      descriptors = [
+        { type: 'azure', service_id: 'azuresvc1', data: {} },
+        { type: 'azure', service_id: 'azuresvc2', data: {} }
+      ]
+
+      expect {
+        described_class.new(**input.merge(authn_descriptors: descriptors))
+      }.not_to raise_error
+    end
+
+    it 'raises for duplicate cert authn type with current validation list' do
+      descriptors = [
+        { type: 'cert', service_id: 'certsvc1', data: {} },
+        { type: 'cert', service_id: 'certsvc2', data: {} }
+      ]
+
+      expect {
+        described_class.new(**input.merge(authn_descriptors: descriptors))
+      }.to raise_error(Validation::DomainValidationError,
+                       /Each authn type .* can appear at most once/i)
+    end
+
+    it 'propagates descriptor validation errors with descriptor index' do
+      descriptors = [
+        { type: 'jwt', service_id: '', data: {} }
+      ]
+
+      expect {
+        described_class.new(**input.merge(authn_descriptors: descriptors))
+      }.to raise_error(Validation::DomainValidationError,
+                       /in authn_descriptors\[0\]/)
     end
 
     # annotations
@@ -169,6 +246,117 @@ RSpec.describe Workloads::Workload, type: :model do
         }.to raise_error(Validation::DomainValidationError,
                          /restricted_to must be an array/)
       end
+    end
+
+    # type
+    it 'defaults type to other when type is nil' do
+      workload = described_class.new(**input.merge(type: nil))
+      expect(workload.type).to eq('other')
+    end
+
+    it 'defaults type to other when type is blank string' do
+      workload = described_class.new(**input.merge(type: ''))
+      expect(workload.type).to eq('other')
+    end
+
+    it 'defaults type to other when type is whitespace' do
+      workload = described_class.new(**input.merge(type: '   '))
+      expect(workload.type).to eq('other')
+    end
+
+    it 'normalizes type to lowercase' do
+      workload = described_class.new(**input.merge(type: 'JENKINS'))
+      expect(workload.type).to eq('jenkins')
+    end
+
+    ['invalid_type']
+      .each do |invalid_type|
+      it "raises DomainValidationError when type has unsupported value = '#{invalid_type}'" do
+        expect {
+          described_class.new(**input.merge(type: invalid_type))
+        }.to raise_error(Validation::DomainValidationError,
+                         /contains unsupported value/i)
+      end
+    end
+
+    [:symbol, 34, true, [], {}, //]
+      .each do |invalid_type|
+      it "raises DomainValidationError when type has non-string value = '#{invalid_type}'" do
+        expect {
+          described_class.new(**input.merge(type: invalid_type))
+        }.to raise_error(Validation::DomainValidationError,
+                         /Type must be a String/i)
+      end
+    end
+
+    # subtype
+    it 'raises DomainValidationError when subtype is invalid for kubernetes type' do
+      expect {
+        described_class.new(**input.merge(type: 'kubernetes', subtype: 'invalid_subtype'))
+      }.to raise_error(Validation::DomainValidationError,
+                       /must be one of: gke, openshift, eks, aks/)
+    end
+
+    it 'raises DomainValidationError when subtype is not empty for non-kubernetes type' do
+      expect {
+        described_class.new(**input.merge(type: 'jenkins', subtype: 'non_empty'))
+      }.to raise_error(Validation::DomainValidationError,
+                       /is only allowed for type 'kubernetes'/)
+    end
+
+    it 'defaults subtype to openshift for kubernetes type when subtype is blank' do
+      workload = described_class.new(**input.merge(type: 'kubernetes', subtype: ''))
+      expect(workload.subtype).to eq('openshift')
+    end
+
+    it 'sets subtype to empty for non-kubernetes type when subtype is nil' do
+      workload = described_class.new(**input.merge(type: 'jenkins', subtype: nil))
+      expect(workload.subtype).to eq('')
+    end
+
+    # owner
+    it 'creates workload with default owner when owner is nil' do
+      workload = described_class.new(**input.merge(owner: nil))
+      expect(workload.owner).to be_a(Branches::Owner)
+      expect(workload.owner.set?).to be(false)
+    end
+
+    ['invalid_kind']
+      .each do |invalid_kind|
+      it "raises DomainValidationError when owner kind has invalid value = '#{invalid_kind}'" do
+        expect {
+          described_class.new(**input.merge(owner: { kind: invalid_kind, id: 'alice' }))
+        }.to raise_error(Validation::DomainValidationError,
+                         /valid owner kind/i)
+      end
+    end
+
+    [nil, '', ' ', 'invalid id', :symbol, 34, true, [], {}, //]
+      .each do |invalid_id|
+      it "raises DomainValidationError when owner id has invalid value = '#{invalid_id}'" do
+        expect {
+          described_class.new(**input.merge(owner: { kind: 'user', id: invalid_id }))
+        }.to raise_error(Validation::DomainValidationError,
+                         /string|path|blank/i)
+      end
+    end
+
+    # authn_descriptors - additional valid combinations
+    it 'accepts two descriptors with different non-repeatable types' do
+      descriptors = [
+        { type: 'api_key' },
+        { type: 'aws', service_id: 'awssvc', data: {} }
+      ]
+
+      expect {
+        described_class.new(**input.merge(authn_descriptors: descriptors))
+      }.not_to raise_error
+    end
+
+    # annotations defaults
+    it 'creates workload with empty annotations when annotations is nil' do
+      workload = described_class.new(**input.merge(annotations: nil))
+      expect(workload.annotations).to eq({})
     end
   end
 end

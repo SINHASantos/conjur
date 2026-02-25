@@ -27,7 +27,7 @@ class BranchesController < V2RestController
     branch = Branches::Branch.new(**input)
     log_debug("branch = #{branch}")
 
-    authorize_create_in_parent(branch)
+    auth_create_in_parent(branch)
     check_branch_not_conflict(branch)
     check_owner_exists_if_set(branch)
 
@@ -42,7 +42,7 @@ class BranchesController < V2RestController
     url_params = permit_url_params(URL_REQUIRED_PARAMS_IDFR)
     log_debug("url_params = #{url_params}")
 
-    authorize_read(path_identifier)
+    auth_read(path_identifier)
 
     render(json: get_branch(path_identifier))
     audit_action_fine(:get)
@@ -77,7 +77,7 @@ class BranchesController < V2RestController
     check_not_empty(input)
     log_debug("url_params = #{url_params}, input = #{input}")
 
-    authorize_update(path_identifier)
+    auth_update(path_identifier)
 
     branch_up = Branches::BranchUpPart.new(**input)
     log_debug("branch_up = #{branch_up}")
@@ -98,7 +98,7 @@ class BranchesController < V2RestController
     url_params = permit_url_params(URL_REQUIRED_PARAMS_IDFR)
     log_debug("url_params = #{url_params}")
 
-    authorize_branch_for_del(path_identifier)
+    auth_del(path_identifier)
     delete_branch(path_identifier)
 
     head(:no_content)
@@ -126,8 +126,8 @@ class BranchesController < V2RestController
     permit_body_params(BRANCH_REQUIRED_PARAMS, BRANCH_OPTIONAL_PARAMS)
   end
 
-  def authorize_create_in_parent(branch)
-    read_and_auth_branch(:create, branch.branch)
+  def auth_create_in_parent(branch)
+    auth_action(:create, 'policy', branch.branch, 'branch')
   end
 
   def check_branch_not_conflict(branch)
@@ -147,8 +147,8 @@ class BranchesController < V2RestController
 
   # show
 
-  def authorize_read(identifier)
-    read_and_auth_branch(:read, identifier)
+  def auth_read(identifier)
+    auth_action(:read, 'policy', identifier, 'branch')
   end
 
   def get_branch(identifier)
@@ -165,9 +165,8 @@ class BranchesController < V2RestController
 
   # update
 
-  def authorize_update(identifier)
-    read_and_auth_branch(:read, identifier)
-    read_and_auth_branch(:update, identifier)
+  def auth_update(identifier)
+    auth_any_actions(%i[read update], 'policy', identifier, 'branch')
   end
 
   def update_branch(branch_up, identifier = path_identifier)
@@ -177,8 +176,8 @@ class BranchesController < V2RestController
 
   # delete
 
-  def authorize_branch_for_del(identifier)
-    read_and_auth_branch(:update, identifier)
+  def auth_del(identifier)
+    auth_action(:update, 'policy', identifier, 'branch')
   end
 
   def delete_branch(identifier)

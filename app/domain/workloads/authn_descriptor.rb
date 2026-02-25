@@ -11,16 +11,26 @@ module Workloads
     include Workloads::Validating::AuthnDescriptorValidation
     include ActiveModel::Validations
 
-    attr_accessor :type, :service_id, :data
+    TYPES = %w[api_key gcp jwt cert aws azure ldap].freeze
+    API_KEY = "api_key"
+    CERT = "cert"
+    JWT = "jwt"
+    AWS = "aws"
+    GCP = "gcp"
+    SAN_DATA_KEYS = %i[san_uri san_dns san_ip].freeze
+    SAN_DATA_STR_KEYS = SAN_DATA_KEYS.map(&:to_s).freeze
+    CERT_DATA_KEYS = (%i[cn] + SAN_DATA_KEYS).freeze
+    GCP_DATA_KEYS = %i[instance_name project_id service_account_id service_account_email].freeze
+    AZURE_DATA_KEYS = %i[subscription_id resource_group user_assigned_identity system_assigned_identity].freeze
+
+    attr_reader :type, :service_id, :data
+
     validate -> { validate_attr_class(:type, String) }
 
     validates :type, inclusion: { in: TYPES, message: "contains unsupported value: %{value}" },
               if: -> { type.is_a?(String) }
 
     validate -> { validate_attr_class(:service_id, String) },
-             if: -> { not_api_key_type? }
-
-    validate -> { validate_attr_class(:data, Hash) },
              if: -> { not_api_key_type? }
 
     validates :service_id,
@@ -34,7 +44,8 @@ module Workloads
 
     validate -> { errors.add(:data, "api_key descriptor must not contain 'data'") unless data.nil? },
              if: -> { api_key? }
-    validate :validate_data
+    validate -> { validate_attr_class(:data, Hash) && validate_data },
+             if: -> { !data.nil? && not_api_key_type? }
 
     def initialize(**params)
       @type = params[:type]
@@ -43,7 +54,6 @@ module Workloads
 
       valid?
       raise Validation::DomainValidationError.new(errors.full_messages.to_sentence, errors) if errors.present?
-
       @service_id ||= ''
       @data ||= {}
     end
@@ -58,6 +68,18 @@ module Workloads
       except_keys << "data" if api_key?
 
       super(options).except(*except_keys)
+    end
+
+    def branch_path
+      auth_branch = ::Authenticators::TypeConverter.get_full_branch_from_type(@type)
+      return @branch_path ||= auth_branch if type?('gcp')
+      @branch_path ||= [auth_branch, @service_id].join('/')
+    end
+
+    def anns_path
+      authn_type = ::Authenticators::TypeConverter.get_branch_from_type(@type)
+      return @anns_path ||= authn_type if type?('gcp')
+      @anns_path ||= [authn_type, @service_id].join('/')
     end
   end
 end

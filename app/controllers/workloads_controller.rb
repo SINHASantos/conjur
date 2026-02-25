@@ -35,14 +35,28 @@ class WorkloadsController < V2RestController
     workload = Workloads::Workload.new(**input)
     log_debug(workload:)
 
-    authorize_create_in_parent(workload)
-    # check_workload_not_exists(workload)
+    auth_create_or_up_in_parent(workload)
     check_owner_exists_if_set(workload)
 
     render(json: create_workload(workload), status: :created)
     audit_success('workload', :create, path_identifier, audit_payload)
   rescue => e
     audit_failure('workload', :create, path_identifier, e.message, audit_payload)
+    handle_exception(e)
+  end
+
+  def show
+    url_params = permit_url_params(URL_REQUIRED_PARAMS_IDFR)
+    log_debug("url_params = #{url_params}")
+
+    ws = Workloads::WorkloadShow.new(**url_params)
+    auth_read(path_identifier)
+    workload_view = read_workload(ws)
+
+    render(json: workload_view)
+    audit_action_fine(:get)
+  rescue => e
+    audit_action_failure(:get, e.message)
     handle_exception(e)
   end
 
@@ -55,8 +69,7 @@ class WorkloadsController < V2RestController
     branch_identifier, workload_name = parse_workload_identifier(path_identifier)
     log_debug(branch_identifier:, workload_name:)
 
-    authorize_delete_in_parent(branch_identifier)
-
+    auth_del_in_parent(path_identifier)
     delete_workload(branch_identifier, workload_name)
 
     head :no_content
@@ -67,6 +80,18 @@ class WorkloadsController < V2RestController
   end
 
   private
+
+  def audit_action_fine(action, identifier = path_identifier, body_json_str = nil)
+    audit_success('workload', action, identifier, body_json_str)
+  end
+
+  def audit_action_failure(action, err_msg, identifier = path_identifier, body_json_str = nil)
+    audit_failure('workload', action, identifier, err_msg, body_json_str)
+  end
+
+  def read_workload(workload_show)
+    @workload_service.read_workload(current_user, account, workload_show)
+  end
 
   def permit_create_url_params
     permit_url_params(URL_REQUIRED_PARAMS)
@@ -100,18 +125,20 @@ class WorkloadsController < V2RestController
     permit_body_params(WORKLOAD_REQUIRED_PARAMS, optional_params)
   end
 
-  private
-
   def manage_restricted_ip_enabled(params)
     restricted_ip_enabled? ? params.union(WORKLOAD_OPTIONAL_RESTRICTED_TO_PARAMS) : params
   end
 
-  def authorize_create_in_parent(workload)
-    read_and_auth_branch(:create, workload.branch)
+  def auth_create_or_up_in_parent(workload)
+    auth_create_or_up_in_branch(workload.branch)
   end
 
-  def authorize_delete_in_parent(branch_identifier)
-    read_and_auth_branch(:update, branch_identifier)
+  def auth_read(workload_identifier)
+    auth_action(:read, 'host', workload_identifier, 'workload')
+  end
+
+  def auth_del_in_parent(identifier)
+    auth_action(:update, 'policy', parent_of(identifier), 'branch')
   end
 
   def check_workload_not_exists(workload)

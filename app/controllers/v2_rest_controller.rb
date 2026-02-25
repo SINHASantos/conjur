@@ -16,14 +16,13 @@ class V2RestController < RestController
 
   def initialize(
     *args,
-    branch_service: Branches::BranchService.instance,
+    auth_service: Authorisation::AuthorisationService.instance,
     logger: Rails.logger,
 
     **kwargs
   )
     super(*args, **kwargs)
-
-    @branch_service = branch_service
+    @auth_service = auth_service
     @logger = logger
   end
 
@@ -70,13 +69,28 @@ class V2RestController < RestController
     @account ||= permit_url_params[:account]
   end
 
-  def read_and_auth_parent_branch(action, identifier)
-    branch_identifier = parent_of(identifier)
-    @branch_service.read_and_auth_branch(current_user, action, account, branch_identifier)
+  def auth_action_in_branch(action, identifier)
+    @auth_service.auth_action(current_user, action, account, 'policy', identifier, 'branch')
   end
 
-  def read_and_auth_branch(action, identifier)
-    @branch_service.read_and_auth_branch(current_user, action, account, identifier)
+  def auth_create_or_up_in_branch(identifier)
+    @auth_service.auth_create_or_up_in_branch(current_user, account, identifier)
+  end
+
+  def auth_create_or_up(kind, identifier, kind_for_error = nil)
+    @auth_service.auth_create_or_up(current_user, account, kind, identifier, kind_for_error)
+  end
+
+  def auth_any_actions(actions, kind, identifier, kind_for_error = nil)
+    @auth_service.auth_any_actions(current_user, actions, account, kind, identifier, kind_for_error)
+  end
+
+  def auth_action(action, kind, identifier, kind_for_error = nil)
+    @auth_service.auth_action(current_user, action, account, kind, identifier, kind_for_error)
+  end
+
+  def can_action?(action, kind, res_id)
+    @auth_service.can_action?(current_user, action, kind, res_id)
   end
 
   def audit_payload

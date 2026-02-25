@@ -48,29 +48,6 @@ RSpec.describe(Branches::BranchService) do
                     annotations: [])
   end
 
-  describe '#read_and_auth_branch' do
-    it 'returns a branch when resource exists and user is authorized' do
-      expect(res_service).to receive(:read_and_auth_policy)
-        .with(role, 'read', account, identifier)
-        .and_return(policy)
-
-      expect(Branches::Branch).to receive(:from_model)
-        .with(policy)
-        .and_return(branch)
-
-      result = service.read_and_auth_branch(role, 'read', account, identifier)
-      expect(result).to eq(branch)
-    end
-
-    it 'raises RecordNotFound when resource does not exist' do
-      expect(res_service).to receive(:read_and_auth_policy)
-        .with(role, 'read', account, identifier)
-        .and_raise(Exceptions::RecordNotFound.new("not found"))
-
-      expect { service.read_and_auth_branch(role, 'read', account, identifier) }.to raise_error(Exceptions::RecordNotFound)
-    end
-  end
-
   describe '#read_branch' do
     it 'returns a branch when resource exists' do
       expect(res_service).to receive(:read_res)
@@ -154,11 +131,11 @@ RSpec.describe(Branches::BranchService) do
     end
 
     context 'with non-root branch' do
-      it 'calls get_branch with parent identifier' do
+      it 'calls check_branch_exists with parent identifier' do
         allow(service).to receive(:root?).with(identifier).and_return(false)
-        allow(service).to receive(:parent_identifier).with(identifier).and_return('data')
+        allow(service).to receive(:parent_of).with(identifier).and_return('data')
 
-        expect(service).to receive(:get_branch).with(account, 'data')
+        expect(service).to receive(:check_branch_exists).with(account, 'data')
         service.check_parent_branch_exists(account, identifier)
       end
     end
@@ -224,7 +201,9 @@ RSpec.describe(Branches::BranchService) do
     end
 
     before do
-      allow(service).to receive(:get_branch_pol).with(account, identifier).and_return(policy)
+      allow(res_service).to receive(:get_res)
+        .with(account, 'policy', identifier, 'branch')
+        .and_return(policy)
       allow(service).to receive(:fetch_branch).with(account, policy.identifier).and_return(branch)
     end
 
@@ -258,7 +237,9 @@ RSpec.describe(Branches::BranchService) do
   describe '#check_branch_not_conflict' do
     context 'when branch does not exist' do
       before do
-        allow(service).to receive(:fetch_branch).with(account, identifier).and_return(nil)
+        allow(res_service).to receive(:not_exists?)
+          .with(account, 'policy', identifier)
+          .and_return(true)
       end
 
       it 'returns nil' do
@@ -269,7 +250,9 @@ RSpec.describe(Branches::BranchService) do
 
     context 'when branch exists' do
       before do
-        allow(service).to receive(:fetch_branch).with(account, identifier).and_return(branch)
+        allow(res_service).to receive(:not_exists?)
+          .with(account, 'policy', identifier)
+          .and_return(false)
         allow(service).to receive(:full_id).with(account, 'branch', identifier).and_return('rspec:branch:data/branch1')
       end
 

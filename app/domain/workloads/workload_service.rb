@@ -9,7 +9,12 @@ module Workloads
     include Domain
     include Logging
 
+    AUTHN_ANNS_PREFIX = 'authn-'
+    AUTHN_API_KEY_ANNS = 'authn/api-key'
+    TYPE_ANN_KEY = 'type'
+
     def initialize(
+      auth_service: Authorisation::AuthorisationService.instance,
       authn_descriptor_service: AuthnDescriptorService.instance,
       annotation_service: Annotations::AnnotationService.instance,
       owner_service: Branches::OwnerService.instance,
@@ -19,6 +24,7 @@ module Workloads
       config: Rails.application.config.conjur_config,
       logger: Rails.logger
     )
+      @auth_service = auth_service
       @authn_descriptor_service = authn_descriptor_service
       @annotation_service = annotation_service
       @owner_service = owner_service
@@ -48,7 +54,9 @@ module Workloads
       save_restricted_to(host_role, workload.restricted_to)
 
       # annotations
-      collect_annotations(workload).each do |a_key, a_value|
+      annotations = collect_annotations(workload)
+      log_debug(annotations:)
+      annotations.each do |a_key, a_value|
         @annotation_service.create_annotation(host_id, a_key, a_value, policy_id)
       end
 
@@ -58,7 +66,15 @@ module Workloads
       end
 
       # result
-      workload_as_json(host_role, owner_id, workload)
+      prepare_workload_view(account, host_res, host_role, true).as_json
+    end
+
+    def read_workload(role, account, workload_show)
+      log_debug("role.id = #{role.id}", account:, workload_show:)
+      identifier = workload_show.identifier
+      host_res = @res_service.read_res(role, account, 'host', identifier)
+      host_role = host_res.role
+      prepare_workload_view(account, host_res, host_role)
     end
 
     def delete_workload(role, account, branch_identifier, workload_name)
@@ -69,11 +85,10 @@ module Workloads
       log_debug(host_id:)
 
       # Fetch host resource to verify existence
-      @res_service.get_res(account, 'host', to_identifier(branch_identifier, workload_name))
-
-      log_debug("Starting recursive deletion for: #{host_id}")
+      @res_service.check_exists(account, 'host', to_identifier(branch_identifier, workload_name))
 
       # Recursively delete the workload and all owned resources
+      log_debug("Starting recursive deletion for: #{host_id}")
       delete_resource_recursively!(host_id, role, Set.new)
 
       log_debug("Successfully deleted workload: #{host_id}")
@@ -82,6 +97,52 @@ module Workloads
     end
 
     private
+
+    def prepare_workload_view(account, host_res, host_role, show_api_key = false)
+      restricted_to = restricted_ip_enabled? ? host_role.restricted_to.map(&:to_s) : nil
+      api_key = show_api_key ? host_role.api_key : nil
+      annotations = Annotations::Annotations.from_model(host_res.annotations)
+      type, subtype = regain_type_and_subtype!(annotations)
+
+      authn_desc_anns_list, not_authn_desc_anns_list = annotations.partition do |k, _|
+        k.start_with?(AUTHN_ANNS_PREFIX) ||
+          k == TYPE_ANN_KEY ||
+          k == AUTHN_API_KEY_ANNS
+      end
+
+      authn_desc_anns = authn_desc_anns_list.to_h
+      workload_anns = not_authn_desc_anns_list.to_h
+      log_debug(authn_desc_anns:, workload_anns:)
+
+      authn_desc_views = @authn_descriptor_service
+                           .regain_authn_desc_views(account,
+                                                    host_res.id,
+                                                    authn_desc_anns,
+                                                    api_key,
+                                                    show_api_key)
+      log_debug(authn_desc_views:)
+
+      workload_view(host_res.identifier,
+                    type,
+                    subtype,
+                    host_res.owner_id,
+                    authn_desc_views,
+                    workload_anns,
+                    restricted_to)
+    end
+
+    def workload_view(host_identifier, type, subtype, owner_id, authn_desc_views, annotations, restricted_to = nil)
+      {
+        name: res_name(host_identifier),
+        branch: parent_of(host_identifier),
+        type:,
+        subtype:,
+        owner: Branches::Owner.h_from_model_id(owner_id),
+        annotations:,
+        restricted_to:,
+        authn_descriptors: authn_desc_views
+      }.compact
+    end
 
     # Recursively delete a resource and all its owned resources
     # @param record_id [String] Full resource ID
@@ -132,18 +193,9 @@ module Workloads
       unless role.allowed_to?(:update, resource)
         raise Exceptions::Forbidden.new(
           "Insufficient permissions to delete resource '#{record_id}'. " \
-          "Update permission required."
+            "Update permission required."
         )
       end
-    end
-
-    def workload_as_json(host_role, owner_id, workload)
-      owner = Branches::Owner.from_model_id(owner_id).as_json
-      authn_descriptors = @authn_descriptor_service
-                            .format_authn_descriptors(host_role, workload.authn_descriptors)
-
-      workload.as_json
-              .merge({ owner:, authn_descriptors: })
     end
 
     def save_restricted_to(host_role, restricted_to_arr)
@@ -192,5 +244,18 @@ module Workloads
       { 'type' => value }
     end
 
+    def regain_type_and_subtype!(annotations)
+      type = annotations.delete('type') || Workload::DEFAULT_WORKLOAD_TYPE
+      if type.start_with?("#{Validating::WorkloadValidation::KUBE_TYPE}/")
+        type, subtype = type.split('/')
+        return type, subtype
+      end
+
+      [type, annotations.delete('subtype')]
+    end
+
+    def restricted_ip_enabled?
+      @restricted_ip_enabled ||= @config.try(:conjur_restricted_ip_enabled)
+    end
   end
 end

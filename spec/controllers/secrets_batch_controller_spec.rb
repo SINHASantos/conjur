@@ -101,14 +101,14 @@ describe(SecretsBatchController, type: :request) do
       post_payload(body, batch_url, { 'Accept' => "" })
       assert_response :bad_request
       response_data = JSON.parse(response.body)
-      expect(response_data['message']).to eq('CONJ00194W The api belongs to v2 APIs but it missing the version "application/x.secretsmgr.v2beta+json" in the Accept header')
+      expect(response_data['message']).to eq('CONJ00194W The api belongs to v2 APIs but it missing the version "application/x.secretsmgr.v2beta+json" in the accept header')
     end
 
     it 'denies access when only v2 header is present' do
       post_payload(body, batch_url, v2_api_header)
       assert_response :bad_request
       response_data = JSON.parse(response.body)
-      expect(response_data['message']).to eq('CONJ00194W The api belongs to v2 APIs but it missing the version "application/x.secretsmgr.v2beta+json" in the Accept header')
+      expect(response_data['message']).to eq('CONJ00194W The api belongs to v2 APIs but it missing the version "application/x.secretsmgr.v2beta+json" in the accept header')
     end
 
     it 'allows access when header is present' do
