@@ -96,34 +96,58 @@ module Authentication
         # for very early K8s versions usage of "status.podIP" field_selector on
         # versions of k8s that do not support it results in no pods returned
         # from #get_pods
-        k8s_client_for_method("get_pods")
-          .get_pods(field_selector: "", namespace: namespace)
-          .select do |pod|
-          # Just in case the filter is mis-implemented on the server side.
-          pod.status.podIP == request_ip
-        end.first
+        log_api_call(
+          method_name: 'get_pods',
+          namespace: namespace,
+          resource_name: "IP:#{request_ip}"
+        ) do
+          k8s_client_for_method("get_pods")
+            .get_pods(field_selector: "", namespace: namespace)
+            .select do |pod|
+              # Just in case the filter is mis-implemented on the server side.
+              pod.status.podIP == request_ip
+            end.first
+        end
       end
 
       # Locates the Pod with a given podname in a namespace.
       #
       # @return nil if no such Pod exists.
       def pod_by_name(podname, namespace)
-        k8s_client_for_method("get_pod").get_pod(podname, namespace)
+        log_api_call(
+          method_name: 'get_pod',
+          namespace: namespace,
+          resource_name: podname
+        ) do
+          k8s_client_for_method("get_pod").get_pod(podname, namespace)
+        end
       end
 
       # Returns the labels hash for a Namespace with a given name.
       #
       # @return nil if no such Namespace exists.
       def namespace_labels_hash(namespace)
-        namespace_object = k8s_client_for_method("get_namespace").get_namespace(namespace)
+        result = log_api_call(
+          method_name: 'get_namespace',
+          namespace: namespace,
+          resource_name: namespace
+        ) do
+          k8s_client_for_method("get_namespace").get_namespace(namespace)
+        end
 
-        return namespace_object.metadata.labels.to_h unless namespace_object.nil?
+        result.metadata.labels.to_h unless result.nil?
       end
 
       # Locates pods matching label selector in a namespace.
       #
       def pods_by_label(label_selector, namespace)
-        k8s_client_for_method("get_pods").get_pods(label_selector: label_selector, namespace: namespace)
+        log_api_call(
+          method_name: 'get_pods',
+          namespace: namespace,
+          resource_name: "label:#{label_selector}"
+        ) do
+          k8s_client_for_method("get_pods").get_pods(label_selector: label_selector, namespace: namespace)
+        end
       end
 
       # Look up an object according to the resource name. In Kubernetes, the
@@ -135,8 +159,14 @@ module Authentication
       # @return nil if no such object exists.
       def find_object_by_name resource_name, name, namespace
         begin
-          handle_object_not_found do
-            invoke_k8s_method("get_#{resource_name}", name, namespace)
+          log_api_call(
+            method_name: "get_#{resource_name}",
+            namespace: namespace,
+            resource_name: name
+          ) do
+            handle_object_not_found do
+              invoke_k8s_method("get_#{resource_name}", name, namespace)
+            end
           end
         rescue KubeException => e
           # This error message can be a bit confusing when multiple authorizers are
@@ -159,19 +189,46 @@ module Authentication
       # Methods move around between API versions across releases, so search the
       # client API objects to find the method we are looking for.
       def k8s_client_for_method method_name
-        k8s_clients.find do |client|
-          begin
-            client.respond_to?(method_name)
-          rescue => e
-            if e.kind_of?(KubeException)
-              raise e unless e.error_code == 404
-            end
+        successful_client = nil
 
-            false
+        k8s_clients.each_with_index do |client, index|
+          api_version = client_api_version(client, index)
+
+          Rails.logger.debug(
+            LogMessages::Authentication::AuthnK8s::K8sClientVersionSearchStarting.new(
+              method_name,
+              api_version
+            )
+          )
+
+          begin
+            if client.respond_to?(method_name)
+              successful_client = client
+
+              Rails.logger.debug(
+                LogMessages::Authentication::AuthnK8s::K8sClientVersionSearchComplete.new(
+                  method_name,
+                  api_version
+                )
+              )
+
+              break
+            end
+          rescue => e
+            raise e if e.is_a?(KubeException) && (e.error_code != 404)
+
+            Rails.logger.debug(
+              LogMessages::Authentication::AuthnK8s::K8sClientVersionAttemptFailed.new(
+                method_name,
+                api_version
+              )
+            )
           end
-        end.tap { |client|
-          raise Errors::Authentication::AuthnK8s::NoMatchingClient, method_name if client.blank?
-        }
+        end
+
+        raise Errors::Authentication::AuthnK8s::NoMatchingClient, method_name if successful_client.nil?
+
+        successful_client
       end
 
       # If more API versions appear, add them here.
@@ -220,6 +277,46 @@ module Authentication
         rescue KubeException
           raise unless $!.error_code == 404
         end
+      end
+
+      private
+
+      def log_api_call(method_name:, namespace: nil, resource_name: nil)
+        # Log start
+        Rails.logger.debug(
+          LogMessages::Authentication::AuthnK8s::K8sApiCallStarting.new(
+            method_name,
+            namespace || 'N/A',
+            resource_name || 'N/A'
+          )
+        )
+
+        # Execute the API call
+        result = yield if block_given?
+
+        # Log completion
+        Rails.logger.debug(
+          LogMessages::Authentication::AuthnK8s::K8sApiCallComplete.new(
+            method_name
+          )
+        )
+
+        result
+      end
+
+      def client_api_version(client, index)
+        # Map client index to API version string
+        versions = [
+          '/api/v1',
+          '/apis/apps/v1',
+          '/apis/apps/v1beta2',
+          '/apis/apps/v1beta1',
+          '/apis/extensions/v1',
+          '/apis/extensions/v1beta1',
+          '/oapi/v1',
+          '/apis/apps.openshift.io/v1'
+        ]
+        versions[index] || 'unknown'
       end
     end
   end
