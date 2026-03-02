@@ -64,6 +64,14 @@ To perform the steps in this guide, you need:
 
 The Certificate Authenticator is a Secrets Manager component that allows workloads to authenticate using X.509 client certificates. It validates presented certificates against a trusted CA chain and configurable restrictions, and maps authenticated certificates to Secrets Manager roles based on the request path or SPIFFE IDs.
 
+Certificate authentication requires a **trusted TLS terminator** (such as NGINX or other proxy) in front of Conjur.
+The client must present its certificate as part of a **TLS handshake** with that terminator. This handshake is where
+clients prove ownership of the private key associated with the certificate.
+
+A valid deployment must ensure that:
+- Clients present certificates during a TLS handshake with the TLS terminator
+- The TLS terminator proxy injects the client certificate into `X-SSL-Client-Certificate` for the authentication request
+
 ## 2. Configuration Options
 
 ### 2.1 Variables
@@ -206,16 +214,15 @@ URI.1 = spiffe://my-workload.dev/my-spiffe-workload
 DNS.1 = my-workload.dev
 ```
 
-**Note**
-
-The subject alternative names (SANs):
-URI (line 10): spiffe://my-workload.dev/my-spiffe-workload (You can ignore it for now, will be used later in the spiffe
-mode example)
-DNS (line 11): my-workload.dev
-
-These value will be embedded into the client certificate and used when your workload authenticates to Conjur.
-(In the following example only DNS is specified in the workload policy, but you can choose to use any of the supported
-SAN types or the common name instead.)
+> **Note**
+>
+> The subject alternative names (SANs):
+> 
+> - URI (line 10): spiffe://my-workload.dev/my-spiffe-workload (You can ignore it for now, will be used later in the spiffe mode example)
+> - DNS (line 11): my-workload.dev
+>
+> These values will be embedded into the client certificate and used when your workload authenticates to Conjur.
+> In the following example only DNS is specified in the workload policy, but you can choose to use any of the supported SAN types or the common name instead.
 
 #### 3.2.4 Create and sign the client certificate
 
@@ -262,12 +269,12 @@ Create a policy file named `cert-auth.yaml` with the following content:
       resource: !webservice
 ```
 
-**Notes:**
-
-- Replace `<authenticator-id>` with a unique name for your certificate authenticator (e.g., `my-cert-auth`).
-- The `ca-cert` variable is required. You may provide either `crl` **or** `crl-url` (not both).
-- `apps` group: workloads that can authenticate with this authenticator.
-- `operators` group: users who can manage the authenticator.
+> **Note**
+> 
+> - Replace `<authenticator-id>` with a unique name for your certificate authenticator (e.g., `my-cert-auth`).
+> - The `ca-cert` variable is required. You may provide either `crl` **or** `crl-url` (not both).
+> - `apps` group: workloads that can authenticate with this authenticator.
+> - `operators` group: users who can manage the authenticator.
 
 - **Load the policy file to the `root` branch:**
 
@@ -317,12 +324,12 @@ Create a policy file named `cert-workload.yaml` with the following content:
         # authn-cert/<authenticator-id>/cn: <common-name>
 ```
 
-**Notes:**
-
-- Replace `<workload-namespace>` (e.g., `my-workloads`) and `<workload-name>` (e.g., `my-workload`). and <san_dns> (e.g., `my-workload.dev`).
-- At least one annotation is required for authentication.
-- The annotation key must match the authenticator ID exactly as defined in the previous step.
-- The annotation value(s) must match the corresponding field in the client certificate presented during authentication. For example, if you use the `san-dns` annotation with the value `my-workload.dev`, then the client certificate must contain a DNS SAN with the value `my-workload.dev` in order for authentication to succeed.
+> **Note**
+>
+> - Replace `<workload-namespace>` (e.g., `my-workloads`) and `<workload-name>` (e.g., `my-workload`). and <san_dns> (e.g., `my-workload.dev`).
+> - At least one annotation is required for authentication.
+> - The annotation key must match the authenticator ID exactly as defined in the previous step.
+> - The annotation value(s) must match the corresponding field in the client certificate presented during authentication. For example, if you use the `san-dns` annotation with the value `my-workload.dev`, then the client certificate must contain a DNS SAN with the value `my-workload.dev` in order for authentication to succeed.
 
 **Load the policy file:**
 
@@ -340,9 +347,9 @@ Create a grant policy file (e.g., `cert-workload-grant.yaml`):
   member: !host <workload-namespace>/<workload-name>
 ```
 
-**Notes:**
-
-- The grant must match the group and host names exactly as defined in previous steps.
+> **Note**
+>
+> The grant must match the group and host names exactly as defined in previous steps.
 
 **Load the grant policy:**
 
@@ -352,8 +359,18 @@ conjur policy load -f cert-workload-grant.yaml -b root
 
 ### 4.5. Authenticate with the Authenticator
 
-The workload authenticates by sending a POST request to the authenticator's endpoint with its client certificate as a
-`X-SSL-Client-Certificate` header.
+Authentication is performed by sending a POST request to the authenticator's endpoint with the client certificate included as a `X-SSL-Client-Certificate` header.
+
+> **Important**
+>
+> The following request examples are provided **solely to illustrate the authentication flow**
+> and to show **what Conjur receives from a trusted TLS terminator** after a successful TLS handshake with a client certificate.
+>
+> In a production deployment:
+> - Workloads authenticate by presenting certificates during a **TLS handshake** with a trusted proxy (such as NGINX).
+> - The proxy should extract the client certificate from the handshake and inject it into the`X-SSL-Client-Certificate` header.
+>
+> The steps below are shown to make the HTTP request explicit and reproducible for demonstration and troubleshooting purposes.
 
 **Endpoint format:**
 
@@ -417,9 +434,9 @@ access to it:
   resource: !variable app-secrets/db-password
 ```
 
-**Notes:**
-
-- Replace `<workload-namespace>` (e.g., `my-workloads`) and `<workload-name>` (e.g., `my-workload`).
+> **Note**
+> 
+> Replace `<workload-namespace>` (e.g., `my-workloads`) and `<workload-name>` (e.g., `my-workload`).
 
 ```bash
 conjur policy load -f app-secrets.yaml -b root
@@ -515,9 +532,9 @@ Create a policy file named `cert-auth-spiffe.yaml` with the following content:
       resource: !webservice
 ```
 
-**Notes:**
-
-- Replace `<authenticator-id>` with a unique name for your certificate authenticator (e.g., `my-spiffe-auth`).
+> **Note**
+> 
+> Replace `<authenticator-id>` with a unique name for your certificate authenticator (e.g., `my-spiffe-auth`).
 
 - **Load the policy file to the `root` branch:**
 
@@ -563,9 +580,9 @@ Create a policy file named `cert-workload-spiffe.yaml` with the following conten
       id: <workload-name>
 ```
 
-**Notes:**
-
-- Replace `<workload-namespace>` (e.g., `my-workloads`) and `<workload-name>` (e.g., `my-spiffe-workload).
+> **Note**
+>
+> Replace `<workload-namespace>` (e.g., `my-workloads`) and `<workload-name>` (e.g., `my-spiffe-workload).
 
 **Load the policy file:**
 
@@ -583,11 +600,9 @@ Create a grant policy file (e.g., `cert-workload-grant-spiffe.yaml`):
   member: !host <workload-namespace>/<workload-name>
 ```
 
-**Notes:**
-
-- The grant must match the group and host names exactly as defined in previous steps. (for example: <
-  workload-namespace> = `my-workloads/spiffe`, <workload-name> = `my-spiffe-workload`, <authenticator-id> =
-  `my-spiffe-auth`)
+> **Note**
+>
+> The grant must match the group and host names exactly as defined in previous steps. (for example: <workload-namespace> = `my-workloads/spiffe`, <workload-name> = `my-spiffe-workload`, <authenticator-id> =`my-spiffe-auth`)
 
 **Load the grant policy:**
 
@@ -597,15 +612,24 @@ conjur policy load -f cert-workload-grant-spiffe.yaml -b root
 
 ### 5.5. Authenticate with the Authenticator
 
-The workload authenticates by sending a POST request to the authenticator's endpoint with its client certificate as a `X-SSL-Client-Certificate` header.
-As opposed to the host mode example, there is no need to provide the hosts id in the endpoint since the authenticator will extract the identity from the certificate SAN URI and map it to the correct host.
+Authentication is performed by sending a POST request to the authenticator's endpoint with the client certificate included as a `X-SSL-Client-Certificate` header.
+
+> **Important**
+>
+> The following request examples are provided **solely to illustrate the authentication flow** and to show **what Conjur receives from a trusted TLS terminator** after a successful
+> TLS handshake with a client certificate.
+>
+> In a production deployment:
+> - Workloads authenticate by presenting certificates during a **TLS handshake** with a trusted proxy (such as NGINX).
+> - The proxy should extract the client certificate from the handshake and inject it into the`X-SSL-Client-Certificate` header.
+> 
+> The steps below are shown to make the HTTP request explicit and reproducible for demonstration and troubleshooting purposes.
 
 **Endpoint format:**
 
 ```
 POST <conjur-server-hostname>/authn-cert/<authenticator-id>/<account>/authenticate
 ```
-
 Where:
 
 - `<conjur-server-hostname>`: Hostname of the Conjur server (e.g., `http://conjur:3000`)
@@ -661,9 +685,9 @@ workload access to it:
   resource: !variable app-secrets/db-password
 ```
 
-**Notes:**
-
-- Replace `<workload-namespace>` (e.g., `my-workloads/spiffe`) and `<workload-name>` (e.g., `my-spiffe-workload`).
+> **Note**
+>
+> Replace `<workload-namespace>` (e.g., `my-workloads/spiffe`) and `<workload-name>` (e.g., `my-spiffe-workload`).
 
 ```bash
 conjur policy load -f app-secrets-spiffe.yaml -b root
