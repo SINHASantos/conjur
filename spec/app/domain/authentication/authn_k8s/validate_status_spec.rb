@@ -160,6 +160,33 @@ describe(Authentication::AuthnK8s::ValidateStatus) do
     include_examples 'does not raise an error'
   end
 
+  context 'when the access token is present in policy but nil' do
+    # Token key exists but value is nil - should fall back to file
+    let(:authenticator_secrets) do
+      {
+        'kubernetes/service-account-token' => nil,
+        'kubernetes/ca-cert' => k8s_ca_certificate_pem,
+        'kubernetes/api-url' => k8s_api_url,
+        'ca/cert' => conjur_ca_certificate_pem,
+        'ca/key' => conjur_ca_private_key_pem
+      }
+    end
+
+    before do
+      allow(File)
+        .to receive(:exist?)
+        .with(Authentication::AuthnK8s::SERVICEACCOUNT_TOKEN_PATH)
+        .and_return(true)
+
+      allow(File)
+        .to receive(:read)
+        .with(Authentication::AuthnK8s::SERVICEACCOUNT_TOKEN_PATH)
+        .and_return(k8s_service_account_token)
+    end
+
+    include_examples 'does not raise an error'
+  end
+
   context 'when the access token has leading whitespace' do
     let(:k8s_service_account_token) do
       "\r\n#{JWT.encode({ data: 'test' }, nil, 'none')}"
@@ -249,6 +276,214 @@ describe(Authentication::AuthnK8s::ValidateStatus) do
     include_examples 'does not raise an error'
   end
 
+  context 'when the API url is present in policy but nil' do
+    # API URL key exists but value is nil - should fall back to environment
+    let(:authenticator_secrets) do
+      {
+        'kubernetes/service-account-token' => k8s_service_account_token,
+        'kubernetes/ca-cert' => k8s_ca_certificate_pem,
+        'kubernetes/api-url' => nil,
+        'ca/cert' => conjur_ca_certificate_pem,
+        'ca/key' => conjur_ca_private_key_pem
+      }
+    end
+
+    let(:k8s_api_host) { 'k8s_host' }
+    let(:k8s_api_port) { '8443' }
+
+    before do
+      allow(ENV)
+        .to receive(:[])
+        .with('KUBERNETES_SERVICE_HOST')
+        .and_return(k8s_api_host)
+
+      allow(ENV)
+        .to receive(:[])
+        .with('KUBERNETES_SERVICE_PORT')
+        .and_return(k8s_api_port)
+
+      # Re-stub the HTTP request with the environment-based URL
+      stub_request(:get, "https://#{k8s_api_host}:#{k8s_api_port}/apis")
+        .with(
+          headers: {
+            'Accept' => 'application/json',
+            'Accept-Encoding' => /^.*$/,
+            'Authorization' => "Bearer #{k8s_service_account_token.strip}",
+            'Host' => "#{k8s_api_host}:#{k8s_api_port}",
+            'User-Agent' => %r{^rest-client/.*$}
+          }
+        )
+        .to_return(status: 200, body: "", headers: {})
+    end
+
+    include_examples 'does not raise an error'
+  end
+
+  context 'when both policy API url and environment API url are set' do
+    # Both sources present - policy should take precedence
+    let(:k8s_api_host) { 'policy_api_host' }
+    let(:k8s_api_port) { '9443' }
+    let(:env_api_host) { 'different_env_host' }
+    let(:env_api_port) { '7443' }
+
+    before do
+      allow(ENV)
+        .to receive(:[]).and_call_original
+      allow(ENV)
+        .to receive(:[])
+        .with('KUBERNETES_SERVICE_HOST')
+        .and_return(env_api_host)
+
+      allow(ENV)
+        .to receive(:[])
+        .with('KUBERNETES_SERVICE_PORT')
+        .and_return(env_api_port)
+
+      # Stub the HTTP call using the policy-configured URL (desired behavior)
+      stub_request(:get, "https://#{k8s_api_host}:#{k8s_api_port}/apis")
+        .with(
+          headers: {
+            'Accept' => 'application/json',
+            'Accept-Encoding' => /^.*$/,
+            'Authorization' => "Bearer #{k8s_service_account_token.strip}",
+            'Host' => "#{k8s_api_host}:#{k8s_api_port}",
+            'User-Agent' => %r{^rest-client/.*$}
+          }
+        )
+        .to_return(status: 200, body: "", headers: {})
+    end
+
+    it 'uses the policy config instead of environment variables' do
+      # Policy kubernetes/api-url should take precedence over KUBERNETES_SERVICE_HOST
+      expect do
+        subject.call(account: account, service_id: service_id)
+      end.not_to raise_error
+    end
+  end
+
+  context 'when both policy CA cert and file CA cert are set' do
+    # Both sources present - policy should take precedence
+    let(:file_ca_certificate) do
+      Util::OpenSsl::X509::Certificate.from_subject(
+        subject: 'CN=File CA'
+      )
+    end
+
+    before do
+      allow(File)
+        .to receive(:exist?).and_call_original
+      allow(File)
+        .to receive(:exist?)
+        .with(Authentication::AuthnK8s::SERVICEACCOUNT_CA_PATH)
+        .and_return(true)
+
+      allow(File)
+        .to receive(:read).and_call_original
+      allow(File)
+        .to receive(:read)
+        .with(Authentication::AuthnK8s::SERVICEACCOUNT_CA_PATH)
+        .and_return(file_ca_certificate.to_pem)
+
+      # Stub the HTTP call using the policy-configured token and URL
+      stub_request(:get, "#{k8s_api_url.strip}/apis")
+        .with(
+          headers: {
+            'Accept' => 'application/json',
+            'Accept-Encoding' => /^.*$/,
+            'Authorization' => "Bearer #{k8s_service_account_token.strip}",
+            'Host' => "#{k8s_api_host}#{":#{k8s_api_port}" if k8s_api_port}",
+            'User-Agent' => %r{^rest-client/.*$}
+          }
+        )
+        .to_return(status: 200, body: "", headers: {})
+    end
+
+    it 'uses the policy CA cert instead of file-based cert' do
+      # Policy kubernetes/ca-cert should take precedence over mounted certificate file
+      expect do
+        subject.call(account: account, service_id: service_id)
+      end.not_to raise_error
+    end
+  end
+
+  context 'when the CA cert is present in policy but nil' do
+    # CA cert key exists but value is nil - should fall back to file
+    let(:authenticator_secrets) do
+      {
+        'kubernetes/service-account-token' => k8s_service_account_token,
+        'kubernetes/ca-cert' => nil,
+        'kubernetes/api-url' => k8s_api_url,
+        'ca/cert' => conjur_ca_certificate_pem,
+        'ca/key' => conjur_ca_private_key_pem
+      }
+    end
+
+    let(:file_ca_certificate) do
+      Util::OpenSsl::X509::Certificate.from_subject(
+        subject: 'CN=File CA'
+      )
+    end
+
+    before do
+      allow(File)
+        .to receive(:exist?).and_call_original
+      allow(File)
+        .to receive(:exist?)
+        .with(Authentication::AuthnK8s::SERVICEACCOUNT_CA_PATH)
+        .and_return(true)
+
+      allow(File)
+        .to receive(:read).and_call_original
+      allow(File)
+        .to receive(:read)
+        .with(Authentication::AuthnK8s::SERVICEACCOUNT_CA_PATH)
+        .and_return(file_ca_certificate.to_pem)
+    end
+
+    include_examples 'does not raise an error'
+  end
+
+  context 'when both policy service account token and file token are set' do
+    # Both sources present - policy should take precedence
+    let(:file_service_token) { JWT.encode({ data: 'file_token' }, nil, 'none') }
+
+    before do
+      allow(File)
+        .to receive(:exist?).and_call_original
+      allow(File)
+        .to receive(:exist?)
+        .with(Authentication::AuthnK8s::SERVICEACCOUNT_TOKEN_PATH)
+        .and_return(true)
+
+      allow(File)
+        .to receive(:read).and_call_original
+      allow(File)
+        .to receive(:read)
+        .with(Authentication::AuthnK8s::SERVICEACCOUNT_TOKEN_PATH)
+        .and_return(file_service_token)
+
+      # Stub the HTTP call using the policy-configured token (desired behavior)
+      stub_request(:get, "#{k8s_api_url.strip}/apis")
+        .with(
+          headers: {
+            'Accept' => 'application/json',
+            'Accept-Encoding' => /^.*$/,
+            'Authorization' => "Bearer #{k8s_service_account_token.strip}",
+            'Host' => "#{k8s_api_host}#{":#{k8s_api_port}" if k8s_api_port}",
+            'User-Agent' => %r{^rest-client/.*$}
+          }
+        )
+        .to_return(status: 200, body: "", headers: {})
+    end
+
+    it 'uses the policy token instead of file-based token' do
+      # Policy kubernetes/service-account-token should take precedence over mounted token file
+      expect do
+        subject.call(account: account, service_id: service_id)
+      end.not_to raise_error
+    end
+  end
+
   context 'when the API url is invalid' do
     let(:k8s_api_url) { 'not a url' }
 
@@ -279,14 +514,15 @@ describe(Authentication::AuthnK8s::ValidateStatus) do
     )
   end
 
-  context 'when the API CA is empty' do
+  context 'when the API CA policy variable is blank (empty string)' do
+    # An empty string is treated as unconfigured; falls through to file,
+    # then raises RequiredResourceMissing when no file is present either.
     let(:k8s_ca_certificate_pem) { '' }
 
     include_examples(
       'raises an error',
-      Errors::Authentication::AuthnK8s::InvalidApiCert,
-      "CONJ00154E Invalid Kubernetes API CA certificate: " \
-        "Unable to read certificate: PEM_read_bio_X509: no start line (Expecting: CERTIFICATE)"
+      Errors::Conjur::RequiredResourceMissing,
+      "CONJ00036E Missing required resource: kubernetes/ca-cert"
     )
   end
 

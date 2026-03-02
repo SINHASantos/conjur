@@ -489,5 +489,33 @@ bGenr4vsPuSFsycM03/EcQDT
         expect(first_token).to eq(second_token)
       end
     end
+
+    context "when both policy config and environment variables exist" do
+      let(:policy_api_url) { "https://policy.k8s.local:6443" }
+      let(:env_api_host) { "env.k8s.local" }
+      let(:env_api_port) { "5443" }
+
+      before do
+        # Set policy API URL via webservice variable
+        allow(webservice).to receive(:variable)
+          .with(Authentication::AuthnK8s::VARIABLE_API_URL)
+          .and_return(double("MockVariable", secret: double("MockSecret", value: policy_api_url)))
+
+        # Set environment variables
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[])
+          .with("KUBERNETES_SERVICE_HOST")
+          .and_return(env_api_host)
+
+        allow(ENV).to receive(:[])
+          .with("KUBERNETES_SERVICE_PORT")
+          .and_return(env_api_port)
+      end
+
+      it "uses the policy API URL instead of environment variables" do
+        # Policy config should take precedence: return policy_api_url, not env variables
+        expect(subject.api_url).to eq(policy_api_url)
+      end
+    end
   end
 end

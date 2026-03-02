@@ -68,13 +68,28 @@ module Authentication
       end
 
       def api_url
+        # Policy configuration takes precedence over environment variables
+        begin
+          api_url_from_policy = variable_api_url
+          unless api_url_from_policy.blank?
+            Rails.logger.debug("Loading Kubernetes API URL from policy configuration (kubernetes/api-url)")
+            return api_url_from_policy
+          end
+        rescue
+          # If policy config is not available, fall through to environment variables
+          Rails.logger.debug("Policy configuration for kubernetes/api-url not available")
+        end
+
+        # Fall back to environment variables if policy config is not present (nil)
         host = ENV['KUBERNETES_SERVICE_HOST']
         port = ENV['KUBERNETES_SERVICE_PORT']
 
         if host.present? && port.present?
+          Rails.logger.debug("Loading Kubernetes API URL from environment variables (KUBERNETES_SERVICE_HOST:KUBERNETES_SERVICE_PORT)")
           "https://#{host}:#{port}"
         else
-          variable_api_url
+          Rails.logger.error("Neither policy configuration (kubernetes/api-url) nor environment variables (KUBERNETES_SERVICE_HOST:KUBERNETES_SERVICE_PORT) available for Kubernetes API URL")
+          nil
         end
       end
 
@@ -191,9 +206,7 @@ module Authentication
       def k8s_client_for_method method_name
         successful_client = nil
 
-        k8s_clients.each_with_index do |client, index|
-          api_version = client_api_version(client, index)
-
+        k8s_clients.each do |client, api_version|
           Rails.logger.debug(
             LogMessages::Authentication::AuthnK8s::K8sClientVersionSearchStarting.new(
               method_name,
@@ -233,39 +246,41 @@ module Authentication
 
       # If more API versions appear, add them here.
       # List them in the order that you want them to be searched for methods.
+      # Each entry is a [client, api_version_string] pair so that the version
+      # label stays co-located with the client definition and never drifts.
       def k8s_clients
         @clients ||= [
-          kube_client,
-          KubeClientFactory.client(
+          [kube_client, '/api/v1'],
+          [KubeClientFactory.client(
             api: 'apis/apps', version: 'v1', host_url: api_url,
             options: options
-          ),
-          KubeClientFactory.client(
+          ), '/apis/apps/v1'],
+          [KubeClientFactory.client(
             api: 'apis/apps', version: 'v1beta2', host_url: api_url,
             options: options
-          ),
-          KubeClientFactory.client(
+          ), '/apis/apps/v1beta2'],
+          [KubeClientFactory.client(
             api: 'apis/apps', version: 'v1beta1', host_url: api_url,
             options: options
-          ),
-          KubeClientFactory.client(
+          ), '/apis/apps/v1beta1'],
+          [KubeClientFactory.client(
             api: 'apis/extensions', version: 'v1', host_url: api_url,
             options: options
-          ),
-          KubeClientFactory.client(
+          ), '/apis/extensions/v1'],
+          [KubeClientFactory.client(
             api: 'apis/extensions', version: 'v1beta1', host_url: api_url,
             options: options
-          ),
+          ), '/apis/extensions/v1beta1'],
           # OpenShift 3.3 DeploymentConfig
-          KubeClientFactory.client(
+          [KubeClientFactory.client(
             api: 'oapi', version: 'v1', host_url: api_url,
             options: options
-          ),
+          ), '/oapi/v1'],
           # OpenShift 3.7 DeploymentConfig
-          KubeClientFactory.client(
+          [KubeClientFactory.client(
             api: 'apis/apps.openshift.io', version: 'v1', host_url: api_url,
             options: options
-          )
+          ), '/apis/apps.openshift.io/v1']
         ]
       end
 
@@ -302,21 +317,6 @@ module Authentication
         )
 
         result
-      end
-
-      def client_api_version(client, index)
-        # Map client index to API version string
-        versions = [
-          '/api/v1',
-          '/apis/apps/v1',
-          '/apis/apps/v1beta2',
-          '/apis/apps/v1beta1',
-          '/apis/extensions/v1',
-          '/apis/extensions/v1beta1',
-          '/oapi/v1',
-          '/apis/apps.openshift.io/v1'
-        ]
-        versions[index] || 'unknown'
       end
     end
   end

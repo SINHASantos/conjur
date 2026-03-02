@@ -208,19 +208,26 @@ module Authentication
       end
 
       def k8s_service_account_token_input
-        # First check if we're using a service account token file (i.e when
-        # we're running inside of Kubernetes)
+        # Policy configuration takes precedence over mounted service account token
+        token = authenticator_secrets['kubernetes/service-account-token']
+        unless token.nil?
+          Rails.logger.debug("Loading kubernetes/service-account-token from policy configuration")
+          return token
+        end
+
+        # Fall back to service account token file if policy config is not present
+        # (i.e when we're running inside of Kubernetes)
         if File.exist?(SERVICEACCOUNT_TOKEN_PATH)
+          Rails.logger.debug("Loading kubernetes/service-account-token from mounted file at #{SERVICEACCOUNT_TOKEN_PATH}")
           return File.read(SERVICEACCOUNT_TOKEN_PATH)
         end
 
-        # Because this variable is optional, it's possible for it to be nil and
-        # we need to handle that case.
-        authenticator_secrets['kubernetes/service-account-token'] || \
-          raise(
-            Errors::Conjur::RequiredResourceMissing,
-            'kubernetes/service-account-token'
-          )
+        # If neither policy nor file source is available, raise an error
+        Rails.logger.warn("Neither policy configuration nor mounted file available for kubernetes/service-account-token")
+        raise(
+          Errors::Conjur::RequiredResourceMissing,
+          'kubernetes/service-account-token'
+        )
       end
 
       def k8s_ca_certificate
@@ -231,16 +238,23 @@ module Authentication
       end
 
       def k8s_ca_certificate_input
-        # First check if we're using a CA bundle file (i.e when we're running
-        # inside of Kubernetes)
+        # Policy configuration takes precedence over mounted CA certificate
+        policy_cert = authenticator_secrets['kubernetes/ca-cert']
+        unless policy_cert.blank?
+          Rails.logger.debug("Loading kubernetes/ca-cert from policy configuration")
+          return policy_cert
+        end
+
+        # Fall back to CA bundle file if policy config is not present
+        # (i.e when we're running inside of Kubernetes)
         if File.exist?(SERVICEACCOUNT_CA_PATH)
+          Rails.logger.debug("Loading kubernetes/ca-cert from mounted file at #{SERVICEACCOUNT_CA_PATH}")
           return File.read(SERVICEACCOUNT_CA_PATH)
         end
 
-        # Because this variable is optional, it's possible for it to be nil and
-        # we need to handle that case.
-        authenticator_secrets['kubernetes/ca-cert'] || \
-          raise(Errors::Conjur::RequiredResourceMissing, 'kubernetes/ca-cert')
+        # If neither policy nor file source is available, raise an error
+        Rails.logger.warn("Neither policy configuration nor mounted file available for kubernetes/ca-cert")
+        raise(Errors::Conjur::RequiredResourceMissing, 'kubernetes/ca-cert')
       end
 
       def k8s_api_url
@@ -248,18 +262,25 @@ module Authentication
       end
 
       def k8s_api_url_input
-        # The API URL may come from environment variables, if they're present
+        # Policy configuration takes precedence over environment variables
+        api_url = authenticator_secrets['kubernetes/api-url']
+        unless api_url.nil?
+          Rails.logger.debug("Loading kubernetes/api-url from policy configuration")
+          return api_url
+        end
+
+        # Fall back to environment variables if policy config is not present
         host = ENV['KUBERNETES_SERVICE_HOST']
         port = ENV['KUBERNETES_SERVICE_PORT']
 
         if host.present? && port.present?
+          Rails.logger.debug("Loading kubernetes/api-url from environment variables (KUBERNETES_SERVICE_HOST:KUBERNETES_SERVICE_PORT)")
           return "https://#{host}:#{port}"
         end
 
-        # Because this variable is optional, it's possible for it to be nil and
-        # we need to handle that case.
-        authenticator_secrets['kubernetes/api-url'] || \
-          raise(Errors::Conjur::RequiredResourceMissing, 'kubernetes/api-url')
+        # If neither policy nor environment sources are available, raise an error
+        Rails.logger.warn("Neither policy configuration nor environment variables available for kubernetes/api-url")
+        raise(Errors::Conjur::RequiredResourceMissing, 'kubernetes/api-url')
       end
 
       def conjur_ca_certificate

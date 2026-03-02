@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Additional debug logging in authn-k8s. CNJR-12870
 
+### Changed
+- Previously, environment variables took precedence over policy values for
+  authn-k8s configuration. Now policy values, if provided, take precedence.
+  CNJR-10647
+
 ### Security
 - Upgrade rack to 3.2.5 to resolve CVE-2026-22860. CONJSE-2081
 
