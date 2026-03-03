@@ -1192,6 +1192,12 @@ pipeline {
               INFRAPOOL_EXECUTORV2ARM_AGENT_0.agentSh './publish-images.sh --release --arch=arm64'
               INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './publish-manifest.sh'
             }
+
+            // Download and prepare SaaS Authenticator binaries
+            downloadAndPrepareSaasAuthenticatorService(targetDir: 'authenticator', versionBinaries: true)
+
+            // Transfer the extracted binary files to the InfraPool agent
+            INFRAPOOL_EXECUTORV2_AGENT_0.agentPut(from: 'authenticator/authenticator_linux_*', to: assetDirectory)
           }
         }
       }
@@ -1447,7 +1453,10 @@ def defaultCucumberFilterTags(env) {
 // Downloads the Saas Authenticator Bundle and copies the binaries and
 // Dockerfile to the specified target directory.
 // Returns the Saas Authenticator version that was downloaded.
-def downloadAndPrepareSaasAuthenticatorService(targetDir = 'ci/saas-auth') {
+def downloadAndPrepareSaasAuthenticatorService(
+  targetDir = 'ci/saas-auth',
+  versionBinaries = false
+) {
   echo "Downloading Saas Authenticator Bundle to ${targetDir}"
   conjEntArtifactory.jfCliLogin()
 
@@ -1465,16 +1474,19 @@ def downloadAndPrepareSaasAuthenticatorService(targetDir = 'ci/saas-auth') {
   def filename = meta.path.substring(meta.path.lastIndexOf('/') + 1)
   sh "tar xjf ${filename} -v"
 
-  def saasVersion = meta.props['build.number'][0]
+  def saasVersion = meta.props['core.build.number'][0]
   echo "Downloaded Saas Authenticator version: ${saasVersion}"
 
   // Ensure target directory exists
   sh "mkdir -p ${targetDir}"
 
+  // We want to version binaries that will be attached to Conjur release for users QOL
+  def versionSuffix = versionBinaries ? "_${saasVersion}" : ""
+
   // Copy and rename binaries to target directory
   sh """
-    cp bundle/core/authenticator_linux_amd64 ${targetDir}/authenticator_linux_amd64
-    cp bundle/core/authenticator_linux_arm64 ${targetDir}/authenticator_linux_arm64
+    cp bundle/core/authenticator_linux_amd64 ${targetDir}/authenticator_linux${versionSuffix}_amd64
+    cp bundle/core/authenticator_linux_arm64 ${targetDir}/authenticator_linux${versionSuffix}_arm64
     cp bundle/core/Dockerfile ${targetDir}/Dockerfile
   """
 
