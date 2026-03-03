@@ -87,12 +87,6 @@ The configuration file is a json file with the following structure:
 
   // Sets the HTTP server timeout
   "http_timeout": "10s",
-  
-  // Sets the environment variable for profiler and tracer
-  "environment": "production",
-
-  // Sets the version of the application
-  "version": "1.2.3",
 
   // Feature flag for the legacy JWT behavior allowing missing issuer/audience values
   "allow_missing_jwt_claims": false

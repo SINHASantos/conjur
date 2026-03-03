@@ -14,6 +14,9 @@ To perform the steps in this guide, you need:
 
 ## Table of Contents
 1. [Overview](#1-overview)
+   - [TLS termination](#11-tls-termination)
+   - [Trusted Proxy Configuration](#12-trusted-proxy-configuration)
+   - [Authentication Flow](#13-certificate-authentication-flow)
 2. [Configuration Options](#2-configuration-options)
     - [Variables](#21-variables)
     - [Host Annotations](#22-host-annotations)
@@ -62,9 +65,13 @@ To perform the steps in this guide, you need:
 
 ## 1. Overview
 
-The Certificate Authenticator is a Secrets Manager component that allows workloads to authenticate using X.509 client certificates. It validates presented certificates against a trusted CA chain and configurable restrictions, and maps authenticated certificates to Secrets Manager roles based on the request path or SPIFFE IDs.
+The Certificate Authenticator is a Secrets Manager component that allows workloads to authenticate using X.509 client certificates. 
+It validates presented certificates against a trusted CA chain and configurable restrictions, and maps authenticated certificates to Secrets Manager roles based on the request path or SPIFFE IDs.
 
-Certificate authentication requires a **trusted TLS terminator** (such as NGINX or other proxy) in front of Conjur.
+
+### 1.1 TLS termination
+
+Certificate authentication requires a **trusted TLS terminator** (such as NGINX) in front of Conjur.
 The client must present its certificate as part of a **TLS handshake** with that terminator. This handshake is where
 clients prove ownership of the private key associated with the certificate.
 
@@ -72,7 +79,55 @@ A valid deployment must ensure that:
 - Clients present certificates during a TLS handshake with the TLS terminator
 - The TLS terminator proxy injects the client certificate into `X-SSL-Client-Certificate` for the authentication request
 
+### 1.2 Trusted Proxy Configuration
+
+When using certificate authentication with a TLS terminator that forwards client
+certificates via HTTP headers, Conjur must be configured to **trust only specific
+proxy addresses**.
+
+To enforce this trust boundary, Conjur supports a trusted proxy allowlist
+(`TRUSTED_PROXIES` environment variable), which restricts which source IP addresses are permitted to
+supply proxy-injected headers such as `X-SSL-Client-Certificate`.
+
+A valid deployment must ensure that:
+- The TLS terminator’s IP address is included in the trusted proxy allowlist
+- Direct connections from workloads to Conjur are not trusted to supply proxy headers
+- Requests originating from untrusted IPs cannot inject authentication metadata
+
+Without a trusted proxy allowlist in place, Conjur cannot safely distinguish
+proxy‑forwarded authentication metadata from client‑supplied headers.
+In such cases, proxy‑injected headers must not be considered secure.
+
+### 1.3 Certificate Authentication Flow
+
+Authentication is performed by calling the certificate authenticator’s
+`authenticate` endpoint. Requests are forwarded through a trusted TLS terminator,
+which is responsible for establishing cryptographic trust with the client.
+
+The authentication flow consists of the following steps:
+
+1. The workload establishes a TLS connection to a trusted proxy (for example, NGINX)
+   and presents its client certificate during the TLS handshake.
+2. The proxy terminates TLS and extracts the client certificate from the handshake.
+3. The proxy forwards the authentication request to Conjur and injects the extracted
+   certificate into the `X-SSL-Client-Certificate` HTTP header.
+4. Conjur authenticates the request by validating the certificate against the
+   certificate authenticator configuration and policy.
+5. If authentication is successful, Conjur returns an authentication token that the
+   workload can use to retrieve secrets.
+
 ## 2. Configuration Options
+
+The certificate authenticator is configured through a combination of authenticator‑level
+variables and host‑level annotations. Together, these settings define how client
+certificates are validated.
+
+Authenticator variables control global behavior such as trusted certificate authorities,
+revocation handling, and identity mapping mode. Host annotations apply additional
+restrictions to individual workloads and are evaluated during authentication.
+
+This section describes the available configuration options.
+
 
 ### 2.1 Variables
 
@@ -359,18 +414,9 @@ conjur policy load -f cert-workload-grant.yaml -b root
 
 ### 4.5. Authenticate with the Authenticator
 
-Authentication is performed by sending a POST request to the authenticator's endpoint with the client certificate included as a `X-SSL-Client-Certificate` header.
+Authentication follows the common certificate authentication flow described in [Certificate Authentication Flow](#13-certificate-authentication-flow).
 
-> **Important**
->
-> The following request examples are provided **solely to illustrate the authentication flow**
-> and to show **what Conjur receives from a trusted TLS terminator** after a successful TLS handshake with a client certificate.
->
-> In a production deployment:
-> - Workloads authenticate by presenting certificates during a **TLS handshake** with a trusted proxy (such as NGINX).
-> - The proxy should extract the client certificate from the handshake and inject it into the`X-SSL-Client-Certificate` header.
->
-> The steps below are shown to make the HTTP request explicit and reproducible for demonstration and troubleshooting purposes.
+In request (host) mode, the workload identity is provided explicitly in the request path.
 
 **Endpoint format:**
 
@@ -380,25 +426,10 @@ POST <conjur-server-hostname>/authn-cert/<authenticator-id>/<account>/<host-id>/
 
 Where:
 
-- `<conjur-server-hostname>`: Hostname of the Conjur server (e.g., `http://conjur:3000`)
+- `<conjur-server-hostname>`: Hostname of the exposed Conjur server (e.g., `https://conjur:3000`)
 - `<authenticator-id>`: Name of the authenticator (e.g., `my-cert-auth`)
 - `<account>`: Conjur account name (e.g., `cucumber`)
 - `<host-id>`: Workload host ID (e.g., `host/my-workloads/my-workload`)
-
-**CGI/URL-encode the certificate before sending:**
-
-```bash
-CERT_PEM="$(cat my-workload.pem)"
-CERT_ENCODED="$(curl -Gs -o /dev/null -w '%{url_effective}' --data-urlencode "cert=${CERT_PEM}" "" | sed 's/.*cert=//')"
-```
-
-**Send the authentication request:**
-
-```bash
-curl -X POST \
-  -H "X-SSL-Client-Certificate: ${CERT_ENCODED}" \
-  "http://conjur:3000/authn-cert/my-cert-auth/cucumber/host%2Fmy-workloads%2Fmy-workload/authenticate"
-```
 
 **Example successful response:**
 
@@ -455,12 +486,10 @@ Extract the body response from the authentication request
 **Example:**
 
 ```bash
-TOKEN_RAW=$(curl -X POST \
-  -H "X-SSL-Client-Certificate: ${CERT_ENCODED}" \
-  "http://conjur:3000/authn-cert/my-cert-auth/cucumber/host%2Fmy-workloads%2Fmy-workload/authenticate")
+TOKEN_RAW=$(curl -X POST "https://conjur:3000/authn-cert/my-cert-auth/cucumber/host%2Fmy-workloads%2Fmy-workload/authenticate")
 ```
 
-Encode the token in base64 (cross-platform):
+Encode the token in base64:
 
 ```bash
 TOKEN_B64=$(echo -n "$TOKEN_RAW" | base64 | tr -d '\n')
@@ -476,7 +505,7 @@ GET <conjur-server-hostname>/secrets/<account>/<kind>/<identifier><?version>
 
 Where:
 
-- `<conjur-server-hostname>`: Hostname of the Conjur server (e.g., `http://conjur:3000`)
+- `<conjur-server-hostname>`: Hostname of the exposed Conjur server(e.g., `https://conjur:3000`)
 - `<kind>`: The kind of a resource (e.g., `variable`)
 - `<account>`: Conjur account name (e.g., `cucumber`)
 - `<identifier>`: Id of the variable (e.g., `app-secrets/db-password`)
@@ -485,7 +514,7 @@ Where:
 **Example:**
 
 ```bash
-curl -H "Authorization: Token token=\"${TOKEN_B64}\"" http://conjur:3000/secrets/cucumber/variable/app-secrets/db-password
+curl -H "Authorization: Token token=\"${TOKEN_B64}\"" https://conjur:3000/secrets/cucumber/variable/app-secrets/db-password
 ```
 
 ### 4.7. Troubleshooting & Tips
@@ -612,43 +641,25 @@ conjur policy load -f cert-workload-grant-spiffe.yaml -b root
 
 ### 5.5. Authenticate with the Authenticator
 
-Authentication is performed by sending a POST request to the authenticator's endpoint with the client certificate included as a `X-SSL-Client-Certificate` header.
+Authentication follows the common certificate authentication flow described in [Certificate Authentication Flow](#13-certificate-authentication-flow).
 
-> **Important**
->
-> The following request examples are provided **solely to illustrate the authentication flow** and to show **what Conjur receives from a trusted TLS terminator** after a successful
-> TLS handshake with a client certificate.
->
-> In a production deployment:
-> - Workloads authenticate by presenting certificates during a **TLS handshake** with a trusted proxy (such as NGINX).
-> - The proxy should extract the client certificate from the handshake and inject it into the`X-SSL-Client-Certificate` header.
-> 
-> The steps below are shown to make the HTTP request explicit and reproducible for demonstration and troubleshooting purposes.
+In SPIFFE mode, the workload identity is derived from the SPIFFE ID specified in the client's certificate’s SAN URI.
 
-**Endpoint format:**
+**Endpoint format (SPIFFE mode):**
 
 ```
 POST <conjur-server-hostname>/authn-cert/<authenticator-id>/<account>/authenticate
 ```
 Where:
 
-- `<conjur-server-hostname>`: Hostname of the Conjur server (e.g., `http://conjur:3000`)
+- `<conjur-server-hostname>`: Hostname of the exposed Conjur server (e.g., `https://conjur:3000`)
 - `<authenticator-id>`: Name of the authenticator (e.g., `my-spiffe-auth`)
 - `<account>`: Conjur account name (e.g., `cucumber`)
-
-**CGI/URL-encode the certificate before sending:**
-
-```bash
-CERT_PEM="$(cat my-workload.pem)"
-CERT_ENCODED="$(curl -Gs -o /dev/null -w '%{url_effective}' --data-urlencode "cert=${CERT_PEM}" "" | sed 's/.*cert=//')"
-```
 
 **Send the authentication request:**
 
 ```bash
-curl -X POST \
-  -H "X-SSL-Client-Certificate: ${CERT_ENCODED}" \
-  "http://conjur:3000/authn-cert/my-cert-auth/cucumber/authenticate"
+curl -X POST "https://conjur:3000/authn-cert/my-cert-auth/cucumber/authenticate"
 ```
 
 **Example successful response:**
@@ -706,12 +717,10 @@ Extract the body response from the authentication request
 **Example:**
 
 ```bash
-TOKEN_RAW=$(curl -X POST \
-  -H "X-SSL-Client-Certificate: ${CERT_ENCODED}" \
-  "http://conjur:3000/authn-cert/my-cert-auth/cucumber/authenticate")
+TOKEN_RAW=$(curl -X POST "https://conjur:3000/authn-cert/my-cert-auth/cucumber/authenticate")
 ```
 
-Encode the token in base64 (cross-platform):
+Encode the token in base64:
 
 ```bash
 TOKEN_B64=$(echo -n "$TOKEN_RAW" | base64 | tr -d '\n')
@@ -727,7 +736,7 @@ GET <conjur-server-hostname>/secrets/<account>/<kind>/<identifier><?version>
 
 Where:
 
-- `<conjur-server-hostname>`: Hostname of the Conjur server (e.g., `http://conjur:3000`)
+- `<conjur-server-hostname>`: Hostname of the exposed Conjur server (e.g., `https://conjur:3000`)
 - `<kind>`: The kind of a resource (e.g., `variable`)
 - `<account>`: Conjur account name (e.g., `cucumber`)
 - `<identifier>`: Id of the variable (e.g., `app-secrets/db-password`)
@@ -736,7 +745,7 @@ Where:
 **Example:**
 
 ```bash
-curl -H "Authorization: Token token=\"${TOKEN_B64}\"" http://conjur:3000/secrets/cucumber/variable/app-secrets/db-password
+curl -H "Authorization: Token token=\"${TOKEN_B64}\"" https://conjur:3000/secrets/cucumber/variable/app-secrets/db-password
 ```
 
 ### 5.7. Troubleshooting & Tips
