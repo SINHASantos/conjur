@@ -125,9 +125,9 @@ services:
 
 The following table shows the compatibility between Conjur OSS and the Authenticator Service:
 
-| SaaS Authenticator / Conjur OSS | 1.25.0+ |
-|---------------------------------|---------|
-| 1.395.0+                        | ✓       |
+| Authenticator Service / Conjur OSS | 1.25.x |
+|------------------------------------|--------|
+| 1.400.0                            | ✓      |
 
 ## 9. Certificate Authenticator Configuration Guide
 
