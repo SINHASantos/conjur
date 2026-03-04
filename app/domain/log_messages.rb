@@ -32,6 +32,10 @@ module LogMessages
       code: "CONJ00163E"
     )
 
+    DisconnectOnForkFailedWarning = ::Util::TrackableLogMessageClass.new(
+      msg: "Failed to disconnect Sequel databases on fork: {0}: {1}",
+      code: "CONJ00544W"
+    )
   end
 
   module Endpoints
