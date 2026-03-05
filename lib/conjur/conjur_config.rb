@@ -49,7 +49,7 @@ module Conjur
       dynamic_secrets_per_request_max: 10,
       # Host factory operation can be disabled entirely
       host_factories_enabled: true,
-      # URL for external SaaS authenticator service
+      # URL for external authenticator service
       authenticator_service_url: 'http://localhost:5618',
       # Path to CA certificate for verifying HTTPS connections to SaaS Authenticator
       authenticator_service_ca_cert: nil,
