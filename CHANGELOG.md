@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Security
 - Upgrade rack to 3.2.5 to resolve CVE-2026-22860. CONJSE-2081
 
+### Fixed
+- Disconnect all Sequel database connections on fork to prevent sharing connections between forked processes. CNJR-12618
+
 ## [1.24.1] - 2025-11-20
 
 ### Fixed

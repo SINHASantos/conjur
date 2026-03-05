@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 begin
-  workers Integer(ENV['WEB_CONCURRENCY'] || 2)
+  workers(Integer(ENV['WEB_CONCURRENCY'] || 2))
 rescue ArgumentError
   raise(
     "Invalid value for WEB_CONCURRENCY environment variable: " \
@@ -74,11 +74,35 @@ environment ENV['RACK_ENV'] || 'development'
 before_fork do
   Rails.logger.info(LogMessages::Conjur::FipsModeStatus.new(OpenSSL.fips_mode))
 
+  # When `preload_app!` is enabled, the master process can eagerly create DB
+  # connections during application boot (e.g., from engine initializers calling
+  # `Sequel.connect`). Those connections would then be inherited by worker
+  # processes after web concurency fork. When multiple workers are using the same
+  # connections then this could lead to problems like zombie connections.
+  #
+  # Disconnect all Sequel DB handles in the master right before forking so each
+  # worker establishes its own fresh connections.
+  if defined?(Sequel)
+    begin
+      Sequel::DATABASES.each(&:disconnect)
+    rescue => e
+      Rails.logger.warn(LogMessages::Conjur::DisconnectOnForkFailedWarning.new(e.class, e.message))
+    end
+  end
 end
 
 on_worker_boot do
-  # https://groups.google.com/forum/#!topic/sequel-talk/LBAtdstVhWQ
-  Sequel::Model.db.disconnect
+  # At this point db connections should be already disconnected but just in case
+  # we are making sure that workers don't keep any inherited Sequel connection pools.
+  # This covers the primary `Sequel::Model.db` and any secondary DBs opened via
+  # `Sequel.connect` (the audit database).
+  if defined?(Sequel)
+    begin
+      Sequel::DATABASES.each(&:disconnect)
+    rescue => e
+      Rails.logger.warn(LogMessages::Conjur::DisconnectOnForkFailedWarning.new(e.class, e.message))
+    end
+  end
 
   # Reload app configuration. Note that this will not pick up changes to env
   # vars since the main puma process environment is static once it starts.
@@ -86,7 +110,7 @@ on_worker_boot do
   conjur_config.reload
 
   puts "Loaded configuration:"
-  conjur_config.attribute_sources.each do |k,v|
+  conjur_config.attribute_sources.each do |k, v|
     puts "- #{k} from #{v}"
   end
 end
