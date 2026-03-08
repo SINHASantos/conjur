@@ -117,6 +117,8 @@ services:
       CONJUR_AUTHENTICATORS: authn-ldap/test,authn-ldap/secure,authn-oidc/keycloak,authn-oidc,authn-k8s/test,authn-azure/prod,authn-gcp,authn-jwt/raw,authn-jwt/keycloak,authn-oidc/keycloak2,authn-oidc/okta-2,authn-oidc/okta,authn-oidc/keycloak2-long-lived,authn-oidc/identity,authn-iam/prod,authn-cert/spiffe-service,authn-cert/my-service
       CONJUR_FEATURE_DYNAMIC_SECRETS_ENABLED: 'true'
       CONJUR_FEATURE_AUTHENTICATOR_SERVICE_ENABLED: true
+      CONJUR_AUTHENTICATOR_SERVICE_URL: ${CONJUR_AUTHENTICATOR_SERVICE_URL:-http://saas-auth:8080}
+      CONJUR_AUTHENTICATOR_SERVICE_HTTP_ALLOWLIST: ${CONJUR_AUTHENTICATOR_SERVICE_HTTP_ALLOWLIST:-saas-auth}
       LDAP_URI: ldap://ldap-server:389
       LDAP_BASE: dc=conjur,dc=net
       LDAP_FILTER: '(uid=%s)'
