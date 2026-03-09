@@ -9,7 +9,12 @@ set -ex
 # shellcheck disable=SC1091
 . build_utils.sh
 
-TAG="$(version_tag)"
+LOCAL_TAG="$(version_tag)"
+VERSION=$(<VERSION)
+# Normalize version number in the case of '+' included
+VERSION="$(echo -n "${VERSION}" | tr "+" "_")"
+
+TAG="${VERSION}-${LOCAL_TAG}"
 jenkins=false # Running on Jenkins (vs local dev machine)
 
 # Registry and tag of the base image

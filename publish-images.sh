@@ -72,8 +72,8 @@ for arg in "$@"; do
     esac
 done
 
-LOCAL_IMAGE="conjur:${LOCAL_TAG}"
-RH_LOCAL_IMAGE="conjur-ubi:${LOCAL_TAG}"
+LOCAL_IMAGE="conjur:${VERSION}-${LOCAL_TAG}"
+RH_LOCAL_IMAGE="conjur-ubi:${VERSION}-${LOCAL_TAG}"
 IMAGE_NAME="cyberark/conjur"
 
 # Normalize version number in the case of '+' included
@@ -90,15 +90,15 @@ if [[ "${PUBLISH_INTERNAL}" = true ]]; then
   echo "Pushing ${LOCAL_TAG}-${ARCH} tagged images to registry.tld..."
   # Always push SHA versioned images internally
   tag_and_push "${VERSION}-${LOCAL_TAG}-${ARCH}" "${LOCAL_IMAGE}" "registry.tld/conjur"
-  tag_and_push "${VERSION}-${LOCAL_TAG}-${ARCH}" "conjur-test:${LOCAL_TAG}" "registry.tld/conjur-test"
-  tag_and_push "${VERSION}-${LOCAL_TAG}-${ARCH}" "conjur-ubi:${LOCAL_TAG}" "registry.tld/conjur-ubi"
-  tag_and_push "${VERSION}-${LOCAL_TAG}-${ARCH}" "conjur-source:${LOCAL_TAG}" "registry.tld/conjur-source"
+  tag_and_push "${VERSION}-${LOCAL_TAG}-${ARCH}" "conjur-test:${VERSION}-${LOCAL_TAG}" "registry.tld/conjur-test"
+  tag_and_push "${VERSION}-${LOCAL_TAG}-${ARCH}" "conjur-ubi:${VERSION}-${LOCAL_TAG}" "registry.tld/conjur-ubi"
+  tag_and_push "${VERSION}-${LOCAL_TAG}-${ARCH}" "conjur-source:${VERSION}-${LOCAL_TAG}" "registry.tld/conjur-source"
 
   # Push SHA only tagged images to our internal registry
   tag_and_push "${LOCAL_TAG}-${ARCH}" "${LOCAL_IMAGE}" "registry.tld/conjur"
-  tag_and_push "${LOCAL_TAG}-${ARCH}" "conjur-test:${LOCAL_TAG}" "registry.tld/conjur-test"
-  tag_and_push "${LOCAL_TAG}-${ARCH}" "conjur-ubi:${LOCAL_TAG}" "registry.tld/conjur-ubi"
-  tag_and_push "${LOCAL_TAG}-${ARCH}" "conjur-source:${LOCAL_TAG}" "registry.tld/conjur-source"
+  tag_and_push "${LOCAL_TAG}-${ARCH}" "conjur-test:${VERSION}-${LOCAL_TAG}" "registry.tld/conjur-test"
+  tag_and_push "${LOCAL_TAG}-${ARCH}" "conjur-ubi:${VERSION}-${LOCAL_TAG}" "registry.tld/conjur-ubi"
+  tag_and_push "${LOCAL_TAG}-${ARCH}" "conjur-source:${VERSION}-${LOCAL_TAG}" "registry.tld/conjur-source"
 fi
 
 if [[ "${PUBLISH_EDGE}" = true ]]; then
@@ -106,7 +106,7 @@ if [[ "${PUBLISH_EDGE}" = true ]]; then
 
   # Push image to internal registry
   tag_and_push "edge-${ARCH}" "${LOCAL_IMAGE}" "registry.tld/${IMAGE_NAME}"
-  tag_and_push "edge-${ARCH}" "conjur-source:${LOCAL_TAG}" "registry.tld/conjur-source"
+  tag_and_push "edge-${ARCH}" "conjur-source:${VERSION}-${LOCAL_TAG}" "registry.tld/conjur-source"
   tag_and_push "edge-${ARCH}" "${RH_LOCAL_IMAGE}" "registry.tld/conjur-ubi"
 
   # Publish release specific and edge tags to dockerhub
@@ -124,7 +124,7 @@ if [[ "${PUBLISH_RELEASE}" = true ]]; then
   echo "Pushing ${VERSION}-${ARCH} to registry.tld..."
   tag_and_push "${VERSION}-${ARCH}" "${LOCAL_IMAGE}" "registry.tld/${IMAGE_NAME}"
   tag_and_push "${VERSION}-${ARCH}" "${RH_LOCAL_IMAGE}" "registry.tld/conjur-ubi"
-  tag_and_push "${VERSION}-${ARCH}" "conjur-source:${LOCAL_TAG}" "registry.tld/conjur-source"
+  tag_and_push "${VERSION}-${ARCH}" "conjur-source:${VERSION}-${LOCAL_TAG}" "registry.tld/conjur-source"
 
   # Publish release specific and edge tags to dockerhub
   if [[ "${DOCKERHUB}" = true ]]; then

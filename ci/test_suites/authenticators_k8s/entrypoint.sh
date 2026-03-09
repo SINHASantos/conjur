@@ -95,7 +95,8 @@ function fetchSNICertificate() {
 }
 
 function buildDockerImages() {
-  conjur_version=$(echo "$(git rev-parse --short=8 HEAD)")
+  conjur_version="${TAG}"
+
   DOCKER_REGISTRY_PATH="registry.tld"
 
   # If the Conjur images aren't present, attempt to pull them from the registry.
