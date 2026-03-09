@@ -322,3 +322,16 @@ Scenario: Authenticator access control
     Then I receive a count of 2
     When I successfully GET "authenticators/cucumber?type=oidc"
     Then I receive a count of 1
+
+  Scenario: Response headers match OWASP recommended set
+    When I successfully GET "authenticators/cucumber"
+    Then the "X-XSS-Protection" header is "0"
+    Then the "X-Frame-Options" header is "deny"
+    Then the "X-Content-Type-Options" header is "nosniff"
+    Then the "X-Permitted-Cross-Domain-Policies" header is "none"
+    Then the "Referrer-Policy" header is "no-referrer"
+    Then the "Cross-Origin-Embedder-Policy" header is "require-corp"
+    Then the "Cross-Origin-Opener-Policy" header is "same-origin"
+    Then the "Cross-Origin-Resource-Policy" header is "same-origin"
+    Then the "Cache-Control" header is "no-store, max-age=0"
+    Then the "X-DNS-Prefetch-Control" header is "off"
