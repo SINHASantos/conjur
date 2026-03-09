@@ -402,11 +402,14 @@ pipeline {
         }
 
         stage('Run security scans') {
+          environment {
+            VERSION = INFRAPOOL_EXECUTORV2_AGENT_0.agentReadFile('VERSION').trim()
+          }
           parallel {
             stage('AMD64 Ubuntu-based Docker image scans') { 
               steps {
                 runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_0, 
-                  image: "registry.tld/conjur:${TAG_SHA}",
+                  image: "registry.tld/conjur:${VERSION}-${TAG_SHA}",
                   buildMode: MODE,
                   branch: env.BRANCH_NAME,
                   arch: "linux/amd64")
@@ -416,7 +419,7 @@ pipeline {
             stage('ARM64 Ubuntu-based Docker image scans') { 
               steps {
                 runSecurityScans(INFRAPOOL_EXECUTORV2ARM_AGENT_0, 
-                  image: "registry.tld/conjur:${TAG_SHA}",
+                  image: "registry.tld/conjur:${VERSION}-${TAG_SHA}",
                   buildMode: MODE,
                   branch: env.BRANCH_NAME,
                   arch: "linux/arm64")
@@ -426,7 +429,7 @@ pipeline {
             stage('AMD64 UBI-based Docker image scans') {
               steps {
                 runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_1, 
-                  image: "registry.tld/conjur-ubi:${TAG_SHA}",
+                  image: "registry.tld/conjur-ubi:${VERSION}-${TAG_SHA}",
                   buildMode: MODE,
                   branch: env.BRANCH_NAME,
                   arch: "linux/amd64")
@@ -436,7 +439,7 @@ pipeline {
             stage('ARM64 UBI-based Docker image scans') {
               steps {
                 runSecurityScans(INFRAPOOL_EXECUTORV2ARM_AGENT_0, 
-                  image: "registry.tld/conjur-ubi:${TAG_SHA}",
+                  image: "registry.tld/conjur-ubi:${VERSION}-${TAG_SHA}",
                   buildMode: MODE,
                   branch: env.BRANCH_NAME,
                   arch: "linux/arm64")
@@ -446,7 +449,7 @@ pipeline {
             stage('AMD64 Conjur-Test Docker image scans') {
               steps {
                 runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_2, 
-                  image: "registry.tld/conjur-test:${TAG_SHA}",
+                  image: "registry.tld/conjur-test:${VERSION}-${TAG_SHA}",
                   buildMode: MODE,
                   branch: env.BRANCH_NAME,
                   arch: "linux/amd64")
@@ -456,7 +459,7 @@ pipeline {
             stage('ARM64 Conjur-Test Docker image scans') {
               steps {
                 runSecurityScans(INFRAPOOL_EXECUTORV2ARM_AGENT_0, 
-                  image: "registry.tld/conjur-test:${TAG_SHA}",
+                  image: "registry.tld/conjur-test:${VERSION}-${TAG_SHA}",
                   buildMode: MODE,
                   branch: env.BRANCH_NAME,
                   arch: "linux/arm64")              
@@ -531,8 +534,8 @@ pipeline {
 
                   steps {
                     script {
-                      addNewImagesToAgent(INFRAPOOL_EXECUTORV2_RHELEE_AGENT_0)
                       INFRAPOOL_EXECUTORV2_RHELEE_AGENT_0.agentUnstash name: 'version_info'
+                      addNewImagesToAgent(INFRAPOOL_EXECUTORV2_RHELEE_AGENT_0)
                       runConjurTests(
                         INFRAPOOL_EXECUTORV2_RHELEE_AGENT_0,
                         params.RUN_ONLY,
@@ -575,8 +578,8 @@ pipeline {
 
                   steps {
                     script {
-                      addNewImagesToAgent(INFRAPOOL_EXECUTORV2_RHELEE_AGENT_1)
                       INFRAPOOL_EXECUTORV2_RHELEE_AGENT_1.agentUnstash name: 'version_info'
+                      addNewImagesToAgent(INFRAPOOL_EXECUTORV2_RHELEE_AGENT_1)
                       runConjurTests(
                         INFRAPOOL_EXECUTORV2_RHELEE_AGENT_1,
                         params.RUN_ONLY,
@@ -618,8 +621,8 @@ pipeline {
 
                   steps {
                     script {
-                      addNewImagesToAgent(INFRAPOOL_EXECUTORV2_RHELEE_AGENT_2)
                       INFRAPOOL_EXECUTORV2_RHELEE_AGENT_2.agentUnstash name: 'version_info'
+                      addNewImagesToAgent(INFRAPOOL_EXECUTORV2_RHELEE_AGENT_2)
                       runConjurTests(
                         INFRAPOOL_EXECUTORV2_RHELEE_AGENT_2,
                         params.RUN_ONLY,
@@ -765,8 +768,8 @@ pipeline {
 
               steps {
                 script {
-                  addNewImagesToAgent(INFRAPOOL_EXECUTORV2_AGENT_1)
                   INFRAPOOL_EXECUTORV2_AGENT_1.agentUnstash name: 'version_info'
+                  addNewImagesToAgent(INFRAPOOL_EXECUTORV2_AGENT_1)
                   runConjurTests(
                     INFRAPOOL_EXECUTORV2_AGENT_1,
                     params.RUN_ONLY,
@@ -809,8 +812,8 @@ pipeline {
 
               steps {
                 script {
-                  addNewImagesToAgent(INFRAPOOL_EXECUTORV2_AGENT_2)
                   INFRAPOOL_EXECUTORV2_AGENT_2.agentUnstash name: 'version_info'
+                  addNewImagesToAgent(INFRAPOOL_EXECUTORV2_AGENT_2)
                   runConjurTests(
                     INFRAPOOL_EXECUTORV2_AGENT_2,
                     params.RUN_ONLY,
@@ -869,8 +872,8 @@ pipeline {
               steps {
                 script {
                   grantIPAccess(INFRAPOOL_AZURE_EXECUTORV2_AGENT_0)
-                  addNewImagesToAgent(INFRAPOOL_AZURE_EXECUTORV2_AGENT_0)
                   INFRAPOOL_AZURE_EXECUTORV2_AGENT_0.agentUnstash name: 'version_info'
+                  addNewImagesToAgent(INFRAPOOL_AZURE_EXECUTORV2_AGENT_0)
                   // Grant access to this Jenkins agent's IP to AWS security groups
                   // This is required for access to the internal docker registry
                   // from outside EC2.
@@ -1215,15 +1218,16 @@ pipeline {
 
 def addNewImagesToAgent(infrapool) {
   // Pull and retag existing images onto new Jenkins agent
+  VERSION=infrapool.agentReadFile('VERSION').trim()
   infrapool.agentSh """
-    docker pull registry.tld/conjur:${TAG_SHA}
-    docker pull registry.tld/conjur-ubi:${TAG_SHA}
-    docker pull registry.tld/conjur-test:${TAG_SHA}
-    docker pull registry.tld/conjur-source:${TAG_SHA}
-    docker tag registry.tld/conjur:${TAG_SHA} conjur:${TAG_SHA}
-    docker tag registry.tld/conjur-ubi:${TAG_SHA} conjur-ubi:${TAG_SHA}
-    docker tag registry.tld/conjur-test:${TAG_SHA} conjur-test:${TAG_SHA}
-    docker tag registry.tld/conjur-source:${TAG_SHA} conjur-source:${TAG_SHA}
+    docker pull registry.tld/conjur:${VERSION}-${TAG_SHA}
+    docker pull registry.tld/conjur-ubi:${VERSION}-${TAG_SHA}
+    docker pull registry.tld/conjur-test:${VERSION}-${TAG_SHA}
+    docker pull registry.tld/conjur-source:${VERSION}-${TAG_SHA}
+    docker tag registry.tld/conjur:${VERSION}-${TAG_SHA} conjur:${VERSION}-${TAG_SHA}
+    docker tag registry.tld/conjur-ubi:${VERSION}-${TAG_SHA} conjur-ubi:${VERSION}-${TAG_SHA}
+    docker tag registry.tld/conjur-test:${VERSION}-${TAG_SHA} conjur-test:${VERSION}-${TAG_SHA}
+    docker tag registry.tld/conjur-source:${VERSION}-${TAG_SHA} conjur-source:${VERSION}-${TAG_SHA}
   """
 }
 
