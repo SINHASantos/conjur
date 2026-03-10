@@ -170,7 +170,7 @@ _run_cucumber_tests() {
   # ${cucumber_tags_arg} should overwrite the profile tags in a way for @smoke to work correctly
   $COMPOSE run "${run_flags[@]}" "${env_var_flags[@]}" \
     cucumber -ec "\
-      bundle exec parallel_cucumber . -n ${PARALLEL_PROCESSES} \
+      bundle exec parallel_cucumber cucumber -n ${PARALLEL_PROCESSES} \
        -o '--strict --profile \"${profile}\" ${cucumber_tags_arg} \
        --format json --out \"cucumber/$profile/cucumber_results.json\" \
        --format html --out \"cucumber/$profile/cucumber_results.html\" \
