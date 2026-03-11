@@ -43,6 +43,26 @@ RSpec.describe(Memberships::MembershipService, type: :service) do
       expect(membership_record).to have_received(:save)
       expect(result).to eq(member)
     end
+
+    context 'when the member group is the same as the target group' do
+      let(:group_member) { instance_double(Memberships::Member, kind: 'group', id: 'test-group') }
+
+      it 'raises ParameterValueInvalid' do
+        expect do
+          service.add_member(current_user, account, group_identifier, group_member)
+        end.to raise_error(Errors::Conjur::ParameterValueInvalid, /cannot be a member of itself/)
+      end
+    end
+
+    context 'when the member group id has a leading slash matching the group identifier' do
+      let(:group_member) { instance_double(Memberships::Member, kind: 'group', id: '/test-group') }
+
+      it 'raises ParameterValueInvalid' do
+        expect do
+          service.add_member(current_user, account, group_identifier, group_member)
+        end.to raise_error(Errors::Conjur::ParameterValueInvalid, /cannot be a member of itself/)
+      end
+    end
   end
 
   describe '#remove_member' do

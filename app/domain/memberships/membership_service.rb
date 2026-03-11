@@ -83,9 +83,17 @@ module Memberships
     end
 
     def check_group_is_not_own_member(group_identifier, member)
-      return if member.kind != "group" || group_identifier != member.id
+      return unless member.kind == "group"
 
-      raise Errors::Conjur::ParameterValueInvalid.new("Member ID", "The '#{group_identifier}' group cannot be a member of itself")
+      normalized_identifier = group_identifier.start_with?("/") ? group_identifier : "/#{group_identifier}"
+      normalized_member_id  = member.id.start_with?("/")        ? member.id        : "/#{member.id}"
+
+      if normalized_identifier == normalized_member_id
+        raise Errors::Conjur::ParameterValueInvalid.new(
+          "Member ID",
+          "The '#{normalized_identifier}' group cannot be a member of itself"
+        )
+      end
     end
 
     def fetch_membership_db(group_res, member_res)
