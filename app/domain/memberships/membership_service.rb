@@ -8,6 +8,8 @@ module Memberships
     include Domain
     include Logging
 
+    GROUP_DEPTH_LIMIT = 5
+
     def initialize(
       owner_service: Branches::OwnerService.instance,
       annotation_service: Annotations::AnnotationService.instance,
@@ -64,14 +66,26 @@ module Memberships
       raise Errors::Group::DuplicateMember.new(domain_id(identifier(member_res.id)), kind(member_res.id), group_res.id)
     end
 
-    def create_membership_db(group_res, member_res)
-      @role_membership_repo.create(
+    def create_membership_db(group_res, member_res, skip_depth_check: false)
+      db_object = @role_membership_repo.create(
         role_id: group_res.resource_id,
         member_id: member_res.resource_id,
         admin_option: false,
         ownership: false,
         policy_id: group_res.policy_id
-      ).save
+      )
+
+      unless skip_depth_check
+        chain_depth = db_object.longest_membership_chain(GROUP_DEPTH_LIMIT + 1)
+        if chain_depth > GROUP_DEPTH_LIMIT
+          raise ApplicationController::UnprocessableContent.new(
+            "Adding member #{member_res.resource_id} into group #{group_res.resource_id} " \
+            "exceeds depth limit of #{GROUP_DEPTH_LIMIT} or forms a cycle."
+          )
+        end
+      end
+
+      db_object
     end
 
     private

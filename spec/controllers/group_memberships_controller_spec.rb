@@ -361,4 +361,177 @@ describe GroupMembershipsController, type: :request do
       end
     end
   end
+
+  describe "Group depth limit enforcement" do
+    let(:depth_policy) do
+      <<~POLICY
+        - !user alice
+
+        - !policy
+          id: depth
+          body:
+          - !group root
+          - !group g1
+          - !group g2
+          - !group g3
+          - !group g4
+          - !group g5
+          - !group g6
+
+          - !grant
+            role: !group root
+            member: !group g1
+          - !grant
+            role: !group g1
+            member: !group g2
+          - !grant
+            role: !group g2
+            member: !group g3
+          - !grant
+            role: !group g3
+            member: !group g4
+          - !grant
+            role: !group g4
+            member: !group g5
+
+          - !permit
+            resource: !group root
+            privilege: [ read, create, update ]
+            role: !user /alice
+          - !permit
+            resource: !group g1
+            privilege: [ read, create, update ]
+            role: !user /alice
+          - !permit
+            resource: !group g2
+            privilege: [ read, create, update ]
+            role: !user /alice
+          - !permit
+            resource: !group g3
+            privilege: [ read, create, update ]
+            role: !user /alice
+          - !permit
+            resource: !group g4
+            privilege: [ read, create, update ]
+            role: !user /alice
+          - !permit
+            resource: !group g5
+            privilege: [ read, create, update ]
+            role: !user /alice
+          - !permit
+            resource: !group g6
+            privilege: [ read, create, update ]
+            role: !user /alice
+
+        - !permit
+          resource: !policy depth
+          privilege: [ read, execute, create, update ]
+          role: !user alice
+      POLICY
+    end
+
+    before do
+      Slosilo["authn:rspec"] ||= Slosilo::Key.new
+
+      put(
+        '/policies/rspec/policy/root',
+        env: token_auth_header(role: admin_user).merge(
+          { RAW_POST_DATA: depth_policy }
+        )
+      )
+      assert_response :success
+    end
+
+    context "when adding a member would exceed depth limit at the bottom of the chain" do
+      it 'returns 422' do
+        post(
+          "/groups/rspec/depth/g5/members",
+          env: token_auth_header(role: alice_user).merge(v2_beta_api_header).merge(
+            {
+              'RAW_POST_DATA' => '{"kind":"group","id":"/depth/g6"}',
+              'CONTENT_TYPE' => "application/json"
+            }
+          )
+        )
+        assert_response :unprocessable_content
+        expect(response.body).to include("exceeds depth limit of 5 or forms a cycle")
+      end
+    end
+
+    context "when adding a member would exceed depth limit at the top of the chain" do
+      it 'returns 422' do
+        post(
+          "/groups/rspec/depth/g6/members",
+          env: token_auth_header(role: alice_user).merge(v2_beta_api_header).merge(
+            {
+              'RAW_POST_DATA' => '{"kind":"group","id":"/depth/root"}',
+              'CONTENT_TYPE' => "application/json"
+            }
+          )
+        )
+        assert_response :unprocessable_content
+        expect(response.body).to include("exceeds depth limit of 5 or forms a cycle")
+      end
+    end
+
+    context "when adding a member would exceed depth limit when inserting in the middle" do
+      before do
+        post(
+          "/groups/rspec/depth/g3/members",
+          env: token_auth_header(role: alice_user).merge(v2_beta_api_header).merge(
+            {
+              'RAW_POST_DATA' => '{"kind":"group","id":"/depth/g6"}',
+              'CONTENT_TYPE' => "application/json"
+            }
+          )
+        )
+        assert_response :created
+      end
+
+      it 'returns 422 when linking g6 to g4 would create a chain of depth 7' do
+        post(
+          "/groups/rspec/depth/g6/members",
+          env: token_auth_header(role: alice_user).merge(v2_beta_api_header).merge(
+            {
+              'RAW_POST_DATA' => '{"kind":"group","id":"/depth/g4"}',
+              'CONTENT_TYPE' => "application/json"
+            }
+          )
+        )
+        assert_response :unprocessable_content
+        expect(response.body).to include("exceeds depth limit of 5 or forms a cycle")
+      end
+    end
+
+    context "when adding a member would form a cycle" do
+      it 'returns 422' do
+        post(
+          "/groups/rspec/depth/g1/members",
+          env: token_auth_header(role: alice_user).merge(v2_beta_api_header).merge(
+            {
+              'RAW_POST_DATA' => '{"kind":"group","id":"/depth/root"}',
+              'CONTENT_TYPE' => "application/json"
+            }
+          )
+        )
+        assert_response :unprocessable_content
+        expect(response.body).to include("exceeds depth limit of 5 or forms a cycle")
+      end
+    end
+
+    context "when adding a member does not exceed the depth limit and forms no cycle" do
+      it 'returns 201' do
+        post(
+          "/groups/rspec/depth/root/members",
+          env: token_auth_header(role: alice_user).merge(v2_beta_api_header).merge(
+            {
+              'RAW_POST_DATA' => '{"kind":"group","id":"/depth/g6"}',
+              'CONTENT_TYPE' => "application/json"
+            }
+          )
+        )
+        assert_response :created
+      end
+    end
+  end
 end
