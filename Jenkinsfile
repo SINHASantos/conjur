@@ -744,7 +744,8 @@ pipeline {
                         spec/reports/*.xml,
                         spec/reports-audit/*.xml,
                         cucumber/*/features/reports/**/*.xml
-                      '''
+                      ''',
+                      excludes: '**/.*'
                     )
                   }
                 }
@@ -788,7 +789,8 @@ pipeline {
                         spec/reports/*.xml,
                         spec/reports-audit/*.xml,
                         cucumber/*/features/reports/**/*.xml
-                      '''
+                      ''',
+                      excludes: '**/.*'
                     )
                   }
                 }
@@ -833,7 +835,8 @@ pipeline {
                         spec/reports-audit/*.xml,
                         cucumber/*/features/reports/**/*.xml,
                         ci/test_suites/*/output/*
-                      '''
+                      ''',
+                      excludes: '**/.*'
                     )
                   }
                 }
