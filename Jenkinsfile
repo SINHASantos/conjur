@@ -509,8 +509,8 @@ pipeline {
                 script {
                   INFRAPOOL_EXECUTORV2_RHELEE_AGENT_0.agentSh(script: 'cat /etc/os-release', label: 'RHEL version')
                   INFRAPOOL_EXECUTORV2_RHELEE_AGENT_0.agentSh(script: 'docker --version', label: 'Docker version')
-                  addNewImagesToAgent(INFRAPOOL_EXECUTORV2_RHELEE_AGENT_0)
                   INFRAPOOL_EXECUTORV2_RHELEE_AGENT_0.agentUnstash name: 'version_info'
+                  addNewImagesToAgent(INFRAPOOL_EXECUTORV2_RHELEE_AGENT_0)
                   // Catch errors so remaining steps always run.
                   catchError {
                     // Run outside parallel block to avoid external pressure
