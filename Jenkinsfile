@@ -1196,7 +1196,7 @@ pipeline {
             }
 
             // Download and prepare SaaS Authenticator binaries
-            downloadAndPrepareSaasAuthenticatorService(targetDir: 'authenticator', versionBinaries: true)
+            downloadAndPrepareSaasAuthenticatorService('authenticator', true)
 
             // Transfer the extracted binary files to the InfraPool agent
             INFRAPOOL_EXECUTORV2_AGENT_0.agentPut(from: 'authenticator/authenticator_linux_*', to: assetDirectory)
