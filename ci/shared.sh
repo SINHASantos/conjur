@@ -260,8 +260,8 @@ generate_ldap_certs() {
   repo_root=$(git rev-parse --show-toplevel)
   
   # Clone conjur-intro
-  git clone https://github.com/conjurdemos/conjur-intro.git || true
-  pushd conjur-intro/tools/simple-certificates || exit 1
+  git clone https://github.com/conjurdemos/conjur-intro.git /tmp/conjur-intro || true
+  pushd /tmp/conjur-intro/tools/simple-certificates || exit 1
   
   # Generate and copy LDAP certs
   ./generate_certificates 3 ldap-server
@@ -272,7 +272,7 @@ generate_ldap_certs() {
   
   # Cleanup
   popd || exit 1
-  rm -rf conjur-intro
+  rm -rf /tmp/conjur-intro
 }
 
 start_ldap_server() {
