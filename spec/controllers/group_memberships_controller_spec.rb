@@ -314,6 +314,20 @@ describe GroupMembershipsController, type: :request do
       end
     end
 
+    context "When host is NOT a member" do
+      it '404 error returned' do
+        # Validate that host is not a member of group
+        expect(RoleMembership.where(role_id: "rspec:group:data/delegation/consumers",member_id:"rspec:host:data/delegation/host1").all.empty?).to eq true
+        # Try to remove host from group
+        delete("/groups/rspec/data/delegation/consumers/members/host/data/delegation/host1",
+               env: token_auth_header(role: alice_user).merge(v2_beta_api_header))
+        # Correct response code
+        assert_response :not_found
+        # Sanity check, host is still not a member of group
+        expect(RoleMembership.where(role_id: "rspec:group:data/delegation/consumers",member_id:"rspec:host:data/delegation/host1").all.empty?).to eq true
+      end
+    end
+
     context "When member was loaded to group by policy" do
       let(:add_member_policy) do
         <<~POLICY
