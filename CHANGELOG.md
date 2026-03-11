@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [1.25.0] - 2026-01-14
 ### Added
 - Additional debug logging in authn-k8s. CNJR-12870
+- Update response headers to OWASP recommended values. CNJR-2116
 
 ### Changed
 - Previously, environment variables took precedence over policy values for

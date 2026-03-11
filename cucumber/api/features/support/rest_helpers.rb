@@ -130,6 +130,7 @@ module RestHelpers
 
     @content_type = result.headers[:content_type]
     @content_encoding = result.headers[:content_encoding]
+    @response_headers = result.headers # Store all response headers
     if /^application\/json/.match?(@content_type) || @content_type == "application/x.secretsmgr.v2beta+json" && !result.empty?
       @result = JSON.parse(result)
       @response_api_key = @result['api_key'] if @result.is_a?(Hash)
@@ -139,6 +140,10 @@ module RestHelpers
     else
       @result = result
     end
+  end
+
+  def response_headers
+    @response_headers
   end
 
   def set_token_result result

@@ -238,6 +238,15 @@ Then(/^the HTTP response is base64 encoded$/) do
   expect(JSON.parse(@response_body).is_a?(Hash)).to be(true)
 end
 
+def normalize_header_key(header_name)
+  header_name.downcase.gsub('-', '_').to_sym
+end
+
+Then(/^the "([^\"]*)" header is "([^\"]*)"$/) do |header_name, value|
+  key = normalize_header_key(header_name)
+  expect(@response_headers[key].to_s).to eq(value)
+end
+
 Then(/^the result is true$/) do
   expect(@result).to be(true)
 end
