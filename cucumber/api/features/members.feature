@@ -38,6 +38,7 @@ Feature: List direct members of a role
     "bob" appearing in the set of members of "alice".
 
     Given I grant user "alice" to user "bob"
+    And I save my place in the audit log file for remote
     When I successfully GET "/roles/cucumber/user/alice"
     Then the JSON at "members" should be:
     """
@@ -55,4 +56,28 @@ Feature: List direct members of a role
         "role": "cucumber:user:alice"
       }
     ]
+    """
+    And there is an audit record matching:
+    """
+      <86>1 * * conjur * role
+      [auth@43868 user="cucumber:user:admin"]
+      [subject@43868 role="cucumber:user:alice"]
+      [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
+      [action@43868 result="success" operation="get"]
+      cucumber:user:admin successfully fetched role details.
+    """
+
+  @smoke @negative
+  Scenario: Retrieving non existent role returns an error
+    Given I save my place in the audit log file for remote
+    When I GET "/roles/cucumber/user/non-existent"
+    Then the HTTP response status code is 404
+    And there is an audit record matching:
+    """
+      <84>1 * * conjur * role
+      [auth@43868 user="cucumber:user:admin"]
+      [subject@43868 role="cucumber:user:non-existent"]
+      [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
+      [action@43868 result="failure" operation="get"]
+      cucumber:user:admin failed to fetch role details: User 'non-existent' not found in account 'cucumber'
     """
