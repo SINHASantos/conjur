@@ -42,7 +42,7 @@ class SecretsController < RestController
     head(:created)
   ensure
     update_info = error_info.merge(
-      resource: resource,
+      resource_id: resource_id,
       user: @current_user,
       client_ip: request.ip,
       operation: "update"
