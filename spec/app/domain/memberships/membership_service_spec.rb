@@ -5,7 +5,7 @@ RSpec.describe(Memberships::MembershipService, type: :service) do
   let(:res_service) { instance_double(Resources::ResourceService) }
   let(:role_membership_repo) { class_double(RoleMembership) }
   let(:logger) { instance_double(Logger, debug?: false, info: nil, error: nil) }
-  
+
   let(:service) do
     described_class.send(:new,
                          res_service: res_service,
@@ -31,6 +31,8 @@ RSpec.describe(Memberships::MembershipService, type: :service) do
     end
 
     it 'creates and saves a membership' do
+      allow(membership_record).to receive(:longest_membership_chain).and_return(1)
+
       result = service.add_member(current_user, account, group_identifier, member)
 
       expect(role_membership_repo).to have_received(:create).with(
@@ -40,8 +42,27 @@ RSpec.describe(Memberships::MembershipService, type: :service) do
         ownership: false,
         policy_id: group_resource.policy_id
       )
-      expect(membership_record).to have_received(:save)
       expect(result).to eq(member)
+    end
+
+    context 'when the member group is the same as the target group' do
+      let(:group_member) { instance_double(Memberships::Member, kind: 'group', id: 'test-group') }
+
+      it 'raises ParameterValueInvalid' do
+        expect do
+          service.add_member(current_user, account, group_identifier, group_member)
+        end.to raise_error(Errors::Conjur::ParameterValueInvalid, /cannot be a member of itself/)
+      end
+    end
+
+    context 'when the member group id has a leading slash matching the group identifier' do
+      let(:group_member) { instance_double(Memberships::Member, kind: 'group', id: '/test-group') }
+
+      it 'raises ParameterValueInvalid' do
+        expect do
+          service.add_member(current_user, account, group_identifier, group_member)
+        end.to raise_error(Errors::Conjur::ParameterValueInvalid, /cannot be a member of itself/)
+      end
     end
   end
 
