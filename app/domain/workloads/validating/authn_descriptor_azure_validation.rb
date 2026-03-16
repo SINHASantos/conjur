@@ -5,10 +5,8 @@ module Workloads
     module AuthnDescriptorAzureValidation
       include Validation
 
-      AZURE_DATA_KEYS = %i[subscription_id resource_group user_assigned_identity system_assigned_identity].freeze
-
       def validate_azure_data
-        validate_allowed_keys_only(AZURE_DATA_KEYS,
+        validate_allowed_keys_only(AuthnDescriptor::AZURE_DATA_KEYS,
                                    @data.keys,
                                    "unexpected fields in Azure authenticator data:")
 

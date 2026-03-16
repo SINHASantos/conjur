@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'spec_helper_policy'
+require 'parallel'
 
 DatabaseCleaner.allow_remote_database_url = true
 DatabaseCleaner.strategy = :truncation

@@ -5,10 +5,8 @@ module Workloads
     module AuthnDescriptorGcpValidation
       include Validation
 
-      GCP_DATA_KEYS = %i[instance_name project_id service_account_id service_account_email].freeze
-
       def validate_gcp_data
-        validate_allowed_keys_only(GCP_DATA_KEYS,
+        validate_allowed_keys_only(AuthnDescriptor::GCP_DATA_KEYS,
                                    @data.keys,
                                    "Unexpected fields in GCP authenticator data:")
 

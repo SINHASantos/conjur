@@ -1,0 +1,48 @@
+- !policy
+  id: data
+  body:
+    - !host myhost
+    - !policy
+      id: work
+    - !policy
+      id: safe1
+      body:
+        - !user alice
+
+    - !host
+      id: creator-host
+
+- !policy
+  id: conjur
+  body:
+    - !policy
+      id: authn-iam
+      body:
+        - !policy
+          id: authorized-service
+          body:
+            - !group apps
+    - !policy
+      id: authn-jwt
+      body:
+        - !policy
+          id: jwtservice
+          body:
+            - !group apps
+    - !policy
+      id: authn-gcp
+      body:
+        - !group apps
+    - !policy
+      id: authn-cert
+      body:
+        - !policy
+          id: x509-cert-authn
+          body:
+            - !webservice
+            - !group
+              id: apps
+            - !permit
+              role: !group apps
+              privilege: [ read, authenticate ]
+              resource: !webservice

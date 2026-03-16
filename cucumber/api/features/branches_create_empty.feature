@@ -541,7 +541,7 @@ Feature: Branches APIv2 tests - create empty
     And the JSON should be:
     """
     { "code": "400",
-      "message": "CONJ00194W The api belongs to v2 APIs but it missing the version \"application/x.secretsmgr.v2beta+json\" in the Accept header" }
+      "message": "CONJ00194W The api belongs to v2 APIs but it missing the version \"application/x.secretsmgr.v2beta+json\" in the accept header" }
     """
 
   @acceptance
@@ -558,5 +558,5 @@ Feature: Branches APIv2 tests - create empty
     And the JSON should be:
     """
     { "code": "400",
-      "message": "CONJ00194W The api belongs to v2 APIs but it missing the version \"application/x.secretsmgr.v2beta+json\" in the Accept header" }
+      "message": "CONJ00194W The api belongs to v2 APIs but it missing the version \"application/x.secretsmgr.v2beta+json\" in the accept header" }
     """

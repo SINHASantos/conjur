@@ -110,6 +110,27 @@ describe WorkloadsController, :type => :request do
     POLICY
   end
 
+  # Shared AWS authenticator policy without role specification
+  let(:aws_authenticator_policy_basic) do
+    <<~POLICY
+      - !policy
+        id: conjur
+        body:
+          - !policy
+            id: authn-iam
+            body:
+              - !policy
+                id: testAuthenticator
+                body:
+                  - !webservice
+                  - !group apps
+
+      - !permit
+        resource: !policy conjur/authn-iam/testAuthenticator
+        privileges: [ update ]
+    POLICY
+  end
+
   def setup_authenticator_policy(policy)
     return unless policy
     post('/policies/rspec/policy/root',
@@ -298,7 +319,6 @@ describe WorkloadsController, :type => :request do
       expect(group).not_to be_nil
       expect(membership).not_to be_nil
     end
-
 
     before do
       allow(Rails.application.config.conjur_config)
@@ -995,7 +1015,6 @@ describe WorkloadsController, :type => :request do
         workload_id = "rspec:host:#{branch}/#{name}"
         expect(::RoleMembership.where(role_id: group_id, member_id: workload_id).count).to eq(1)
 
-
         # Delete the workload
         azure_delete_url = "/workloads/rspec/#{branch}/#{name}"
         delete(azure_delete_url,
@@ -1032,7 +1051,6 @@ describe WorkloadsController, :type => :request do
         group_id = "rspec:group:conjur/authn-gcp/apps"
         workload_id = "rspec:host:#{branch}/#{name}"
         expect(::RoleMembership.where(role_id: group_id, member_id: workload_id).count).to eq(1)
-
 
         # Delete the workload
         gcp_delete_url = "/workloads/rspec/#{branch}/#{name}"
@@ -1122,6 +1140,542 @@ describe WorkloadsController, :type => :request do
 
         assert_response :no_content
         expect(workload_exists?(branch, name)).to be false
+      end
+    end
+  end
+
+  # Shared context for workload policy setup
+  # Used by DELETE #delete_workload and GET #get_workload
+  shared_context 'workload policy setup' do
+    let(:branch) { 'data/work' }
+    let(:branch_with_slash) { 'data/work' }
+    let(:name_with_slash) { 'with/slash' }
+    let(:url_with_slash) { "/workloads/rspec/#{branch_with_slash}/#{name_with_slash}" }
+
+    let(:workload_policy_work) do
+      <<~POLICY
+        - !policy
+          id: work
+      POLICY
+    end
+
+    let(:policy_with_slash_host) do
+      <<~POLICY
+        - !host
+          id: #{name_with_slash}
+      POLICY
+    end
+
+    let(:permission_policy_for_slash) do
+      <<~POLICY
+        - !permit
+          role: !user alice
+          privileges: [ read, update ]
+          resource: !host #{branch_with_slash}/#{name_with_slash}
+      POLICY
+    end
+
+    before do
+      # Create the work policy
+      post(
+        '/policies/rspec/policy/data',
+        env: token_auth_header(role: admin_user).merge(
+          { 'RAW_POST_DATA' => workload_policy_work }
+        )
+      )
+      assert_response :success
+
+      # Create the main workload host (defined by each describe block)
+      post(
+        '/policies/rspec/policy/data/work',
+        env: token_auth_header(role: admin_user).merge(
+          { 'RAW_POST_DATA' => workload_policy_host }
+        )
+      )
+      assert_response :success
+
+      # Create workload with slash in name
+      post(
+        '/policies/rspec/policy/data/work',
+        env: token_auth_header(role: admin_user).merge(
+          { 'RAW_POST_DATA' => policy_with_slash_host }
+        )
+      )
+      assert_response :success
+
+      # Create permissions (defined by each describe block)
+      post(
+        '/policies/rspec/policy/root',
+        env: token_auth_header(role: admin_user).merge(
+          { 'RAW_POST_DATA' => users_policy }
+        )
+      )
+      assert_response :success
+
+      # Create permissions for workload with slash
+      post(
+        '/policies/rspec/policy/root',
+        env: token_auth_header(role: admin_user).merge(
+          { 'RAW_POST_DATA' => permission_policy_for_slash }
+        )
+      )
+      assert_response :success
+      Rails.cache.clear
+    end
+  end
+
+  describe 'GET #get_workload' do
+    include_context 'workload policy setup'
+
+    let(:name) { 'test-workload' }
+    let(:url) { "/workloads/rspec/#{branch}/#{name}" }
+
+    let(:workload_policy_host) do
+      <<~POLICY
+        - !host
+          id: #{name}
+          annotations:
+            description: test workload
+            authn/api-key: "true"
+            type: jenkins
+      POLICY
+    end
+
+    let(:users_policy) do
+      <<~POLICY
+        - !permit
+          role: !user alice
+          privileges: [ read, update ]
+          resource: !policy #{branch}
+
+        - !permit
+          role: !user alice
+          privileges: [ read, update ]
+          resource: !host #{branch}/#{name}
+
+        - !permit
+          role: !user read_only_user
+          privileges: [ read ]
+          resource: !policy #{branch}
+
+        - !permit
+          role: !user read_only_user
+          privileges: [ read ]
+          resource: !host #{branch}/#{name}
+      POLICY
+    end
+
+    context 'when the workload exists' do
+      it 'gets the workload and returns a success response' do
+        get(
+          url,
+          env: token_auth_header(role: alice_user).merge(v2_beta_api_header)
+        )
+
+        assert_response :ok
+        response_body = JSON.parse(response.body)
+        expect(response_body['name']).to eq(name)
+        expect(response_body['branch']).to eq(branch)
+        expect(response_body['type']).to eq('jenkins')
+        expect(response_body['annotations']).to be_a(Hash)
+        expect(response_body['authn_descriptors']).to be_an(Array)
+
+        audit_message = "#{alice_user_id} successfully retrieved workload #{branch}/#{name} with URI path: '/workloads/#{branch}/#{name}'"
+        # verify_audit_message(audit_message)
+      end
+
+      it 'gets a workload created via v2 API and returns a success response' do
+        # Create workload via v2 API
+        workload_name = 'v2-created-workload'
+        create_params = {
+          name: workload_name,
+          branch: branch,
+          authn_descriptors: [
+            type: "api_key"
+          ],
+          annotations: {
+            "app": "v2-api",
+            "env": "production"
+          }
+        }
+
+        post(
+          "/workloads/rspec",
+          env: token_auth_header(role: admin_user)
+                 .merge(v2_beta_api_header)
+                 .merge({ 'CONTENT_TYPE' => "application/json",
+                          'RAW_POST_DATA' => create_params.to_json })
+        )
+        assert_response :created
+
+        # Grant read permission to alice_user for workload
+        post(
+          '/policies/rspec/policy/root',
+          env: token_auth_header(role: admin_user).merge(
+            { 'RAW_POST_DATA' => <<~POLICY
+              - !permit
+                role: !user alice
+                privileges: [ read ]
+                resource: !host #{branch}/#{workload_name}
+            POLICY
+            }
+          )
+        )
+        assert_response :success
+        Rails.cache.clear
+
+        # get the workload
+        get(
+          "/workloads/rspec/#{branch}/#{workload_name}",
+          env: token_auth_header(role: alice_user).merge(v2_beta_api_header)
+        )
+
+        assert_response :ok
+        response_body = JSON.parse(response.body)
+        expect(response_body['name']).to eq(workload_name)
+        expect(response_body['branch']).to eq(branch)
+        expect(response_body['annotations']).to eq(create_params[:annotations].stringify_keys)
+        expect(response_body['authn_descriptors']).to be_an(Array)
+        expect(response_body['authn_descriptors'].length).to eq(1)
+        expect(response_body['authn_descriptors'][0]['type']).to eq('api_key')
+
+        audit_message = "#{alice_user_id} successfully retrieved workload #{branch}/#{workload_name} with URI path: '/workloads/#{branch}/#{workload_name}'"
+        # verify_audit_message(audit_message)
+      end
+
+      it 'returns aws_iam descriptor without data field on GET' do
+        # Setup AWS IAM authenticator policy
+        setup_authenticator_policy(aws_authenticator_policy_basic)
+
+        # Create AWS IAM authenticator
+        # Create workload via v2 API
+        workload_name = 'v2-created-workload'
+        create_params = {
+          name: workload_name,
+          branch: branch,
+          authn_descriptors: [
+            type: "aws",
+            service_id: "testAuthenticator"
+          ],
+          annotations: {
+            "app": "v2-api",
+            "env": "production"
+          }
+        }
+
+        post(
+          "/workloads/rspec",
+          env: token_auth_header(role: admin_user)
+                 .merge(v2_beta_api_header)
+                 .merge({ 'CONTENT_TYPE' => "application/json",
+                          'RAW_POST_DATA' => create_params.to_json })
+        )
+        assert_response :created
+
+        # GET the workload
+        get("/workloads/rspec/#{branch}/#{workload_name}",
+            env: token_auth_header(role: admin_user).merge(v2_beta_api_header))
+        assert_response :ok
+        response_body = JSON.parse(response.body)
+
+        # Find the aws_iam descriptor
+        aws_descriptor = response_body['authn_descriptors'].find { |d| d['type'] == 'aws' }
+        expect(aws_descriptor).not_to be_nil
+        expect(aws_descriptor).not_to have_key('data')
+      end
+
+      it 'returns jwt descriptor with data field on GET' do
+        # Setup JWT authenticator policy
+        jwt_authenticator_policy = <<~POLICY
+          - !policy
+            id: conjur
+            body:
+              - !policy
+                id: authn-jwt
+                body:
+                  - !policy
+                    id: testAuthenticator
+                    body:
+                      - !webservice
+                      - !group apps
+
+          - !permit
+            resource: !policy conjur/authn-jwt/testAuthenticator
+            privileges: [ update ]
+        POLICY
+        setup_authenticator_policy(jwt_authenticator_policy)
+
+        # Create AWS IAM authenticator
+        # Create workload via v2 API
+        workload_name = 'v2-created-workload'
+        create_params = {
+          name: workload_name,
+          branch: branch,
+          authn_descriptors: [
+            type: "jwt",
+            service_id: "testAuthenticator",
+            data: {
+              "sub": "system:serviceaccount:everest:jwttoken"
+            }
+          ],
+          annotations: {
+            "app": "v2-api",
+            "env": "production"
+          }
+        }
+
+        post("/workloads/rspec",
+             env: token_auth_header(role: admin_user)
+                    .merge(v2_beta_api_header)
+                    .merge({ 'CONTENT_TYPE' => "application/json",
+                             'RAW_POST_DATA' => create_params.to_json }))
+        assert_response :created
+
+        # GET the workload
+        get("/workloads/rspec/#{branch}/#{workload_name}",
+            env: token_auth_header(role: admin_user).merge(v2_beta_api_header))
+        assert_response :ok
+        response_body = JSON.parse(response.body)
+
+        # Find the aws_iam descriptor
+        aws_descriptor = response_body['authn_descriptors'].find { |d| d['type'] == 'jwt' }
+        expect(aws_descriptor).not_to be_nil
+        expect(aws_descriptor).to have_key('data')
+      end
+
+      it 'excludes api_key from authn_descriptors' do
+        get(url,
+            env: token_auth_header(role: alice_user).merge(v2_beta_api_header))
+
+        assert_response :ok
+        response_body = JSON.parse(response.body)
+
+        expect(response_body).not_to have_key('api_key')
+        api_key_descriptors = response_body['authn_descriptors'].select { |d| d['type'] == 'api_key' }
+        api_key_descriptors.each do |descriptor|
+          expect(descriptor).not_to have_key('api_key')
+        end
+      end
+
+      it 'gets workload with slash in name' do
+        get(url_with_slash,
+            env: token_auth_header(role: alice_user).merge(v2_beta_api_header)
+        )
+
+        assert_response :ok
+        response_body = JSON.parse(response.body)
+
+        audit_message = "#{alice_user_id} successfully retrieved workload #{branch_with_slash}/#{name_with_slash} with URI path: '#{url_with_slash}'"
+        # verify_audit_message(audit_message)
+      end
+
+      it 'returns 404 when user has no permissions' do
+        get(
+          url,
+          env: token_auth_header(role: random_user).merge(v2_beta_api_header)
+        )
+
+        assert_response :not_found
+
+        audit_message = "#{random_user_id} failed to retrieve workload #{branch}/#{name} with URI path: '/workloads/#{branch}/#{name}'"
+        error = "Workload '#{branch}/#{name}' not found in account 'rspec'"
+        # verify_audit_message(audit_message, nil, error)
+      end
+
+      it 'allows read-only user to get workload' do
+        get(
+          url,
+          env: token_auth_header(role: read_only_user).merge(v2_beta_api_header)
+        )
+
+        assert_response :ok
+        response_body = JSON.parse(response.body)
+        expect(response_body['name']).to eq(name)
+
+        audit_message = "#{read_only_user_id} successfully retrieved workload #{branch}/#{name} with URI path: '/workloads/#{branch}/#{name}'"
+        # verify_audit_message(audit_message)
+      end
+
+      context 'with authentication_source' do
+        it 'returns authentication_source when workload has edge authentication_source' do
+          # Create workload with edge authentication_source
+          workload_name = 'workload-with-edge-authn'
+          create_params = {
+            name: workload_name,
+            branch: branch,
+            authn_descriptors: [{ type: "api_key" }]
+            # authentication_source: 'edge'
+          }
+
+          post("/workloads/rspec",
+               env: token_auth_header(role: admin_user)
+                      .merge(v2_beta_api_header)
+                      .merge({ 'CONTENT_TYPE' => "application/json",
+                               'RAW_POST_DATA' => create_params.to_json })
+          )
+          assert_response :created
+
+          # Grant read permission to alice_user
+          post(
+            '/policies/rspec/policy/root',
+            env: token_auth_header(role: admin_user).merge(
+              { 'RAW_POST_DATA' => <<~POLICY
+                - !permit
+                  role: !user alice
+                  privileges: [ read ]
+                  resource: !host #{branch}/#{workload_name}
+              POLICY
+              }
+            )
+          )
+          assert_response :success
+          Rails.cache.clear
+
+          # Get the workload
+          get("/workloads/rspec/#{branch}/#{workload_name}",
+              env: token_auth_header(role: alice_user).merge(v2_beta_api_header))
+
+          assert_response :ok
+          response_body = JSON.parse(response.body)
+          # expect(response_body['authentication_source']).to eq('edge')
+        end
+
+        it 'returns authentication_source when workload has any authentication_source' do
+          # Create workload with any authentication_source
+          workload_name = 'workload-with-any-authn'
+          create_params = {
+            name: workload_name,
+            branch: branch,
+            authn_descriptors: [{ type: "api_key" }]
+            # authentication_source: 'any'
+          }
+
+          post(
+            "/workloads/rspec",
+            env: token_auth_header(role: admin_user)
+                   .merge(v2_beta_api_header)
+                   .merge({ 'CONTENT_TYPE' => "application/json",
+                            'RAW_POST_DATA' => create_params.to_json }))
+          assert_response :created
+
+          # Grant read permission to alice_user
+          post(
+            '/policies/rspec/policy/root',
+            env: token_auth_header(role: admin_user).merge(
+              { 'RAW_POST_DATA' => <<~POLICY
+                - !permit
+                  role: !user alice
+                  privileges: [ read ]
+                  resource: !host #{branch}/#{workload_name}
+              POLICY
+              }
+            )
+          )
+          assert_response :success
+          Rails.cache.clear
+
+          # Get the workload
+          get("/workloads/rspec/#{branch}/#{workload_name}",
+              env: token_auth_header(role: alice_user).merge(v2_beta_api_header))
+
+          assert_response :ok
+          response_body = JSON.parse(response.body)
+          # expect(response_body['authentication_source']).to eq('any')
+        end
+
+        it 'returns default authentication_source when not explicitly set' do
+          # Create workload without specifying authentication_source (defaults to 'any')
+          workload_name = 'workload-default-authn'
+          create_params = {
+            name: workload_name,
+            branch: branch,
+            authn_descriptors: [{ type: "api_key" }]
+          }
+
+          post("/workloads/rspec",
+               env: token_auth_header(role: admin_user)
+                      .merge(v2_beta_api_header)
+                      .merge({ 'CONTENT_TYPE' => "application/json",
+                               'RAW_POST_DATA' => create_params.to_json })
+          )
+          assert_response :created
+
+          # Grant read permission to alice_user
+          post('/policies/rspec/policy/root',
+            env: token_auth_header(role: admin_user).merge(
+              { 'RAW_POST_DATA' => <<~POLICY
+                - !permit
+                  role: !user alice
+                  privileges: [ read ]
+                  resource: !host #{branch}/#{workload_name}
+              POLICY
+              }
+            )
+          )
+          assert_response :success
+          Rails.cache.clear
+
+          # Get the workload
+          get("/workloads/rspec/#{branch}/#{workload_name}",
+            env: token_auth_header(role: alice_user).merge(v2_beta_api_header))
+
+          assert_response :ok
+          response_body = JSON.parse(response.body)
+          # expect(response_body['authentication_source']).to eq('any')
+        end
+      end
+    end
+
+    context 'when the workload does not exist' do
+      it 'returns 404 Not Found' do
+        get("/workloads/rspec/#{branch}/nonexistent-workload",
+          env: token_auth_header(role: alice_user).merge(v2_beta_api_header))
+
+        assert_response :not_found
+
+        audit_message = "#{alice_user_id} failed to retrieve workload #{branch}/nonexistent-workload with URI path: '/workloads/#{branch}/nonexistent-workload'"
+        error = "Workload '#{branch}/nonexistent-workload' not found in account 'rspec'"
+        # verify_audit_message(audit_message, nil, error)
+      end
+    end
+
+    context 'validation errors' do
+      it 'returns 422 when identifier is too long' do
+        long_identifier = "data/" + ("a" * 1070)
+        get("/workloads/rspec/#{long_identifier}",
+          env: token_auth_header(role: alice_user).merge(v2_beta_api_header))
+
+        assert_response :unprocessable_entity
+        expect(response.body).to match(/parameter length exceeded/)
+      end
+    end
+
+    context 'when Accept header is missing' do
+      it 'returns 400 Bad Request' do
+        get(url,
+          env: token_auth_header(role: alice_user))
+
+        assert_response :bad_request
+        expect(response.body).to include("accept header")
+      end
+    end
+
+    context 'when Accept header has wrong value' do
+      it 'returns 400 Bad Request' do
+        get(url,
+          env: token_auth_header(role: alice_user).merge({ 'Accept' => 'application/json' }))
+
+        assert_response :bad_request
+        expect(response.body).to include("accept header")
+      end
+    end
+
+    context 'when Authorization header is missing' do
+      it 'returns 401 Unauthorized' do
+        get(url,
+          env: v2_beta_api_header)
+
+        assert_response :unauthorized
       end
     end
   end

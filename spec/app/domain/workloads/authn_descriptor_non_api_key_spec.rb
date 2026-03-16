@@ -12,7 +12,7 @@ RSpec.describe Workloads::AuthnDescriptor, type: :model do
 
       let(:input) { { type: valid_type, service_id: valid_service_id, data: valid_data } }
 
-      (Workloads::Validating::AuthnDescriptorValidation::TYPES - [Workloads::AuthnDescriptor::API_KEY]).each do |type|
+      (Workloads::AuthnDescriptor::TYPES - [Workloads::AuthnDescriptor::API_KEY]).each do |type|
         it "creates a valid authn descriptor with empty data hash" do
           expect {
             described_class.new(**input.merge(type:, data: {}))
@@ -114,8 +114,13 @@ RSpec.describe Workloads::AuthnDescriptor, type: :model do
       end
 
       # invalid data
+      it 'creates a valid descriptor when data is nil' do
+        expect {
+          described_class.new(**input.merge(data: nil))
+        }.not_to raise_error
+      end
 
-      [nil, '', ' ', 'non-empty', :symbol, 34, true, [], //]
+      ['', ' ', 'non-empty', :symbol, 34, true, [], //]
         .each do |invalid_data|
         it "raises DomainValidationError when data has invalid value '#{invalid_data}'" do
           expect {

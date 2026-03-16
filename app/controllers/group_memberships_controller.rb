@@ -17,7 +17,7 @@ class GroupMembershipsController < V2RestController
     input = permit_body_params(%i[kind id])
     log_debug("url_params = #{url_params}, input = #{input}")
 
-    read_and_auth_parent_branch(:create, path_identifier)
+    auth_create(path_identifier)
 
     member = Memberships::Member.new(**input)
     log_debug("member = #{member}")
@@ -33,7 +33,7 @@ class GroupMembershipsController < V2RestController
     url_params = permit_url_params(URL_REQUIRED_PARAMS_PATH + [:id])
     log_debug("url_params = #{url_params}")
 
-    read_and_auth_parent_branch(:update, path_identifier)
+    auth_del(path_identifier)
 
     member = Memberships::Member.new(**url_params)
     log_debug("member = #{member}")
@@ -47,6 +47,14 @@ class GroupMembershipsController < V2RestController
   end
 
   private
+
+  def auth_create(identifier)
+    auth_action(:update, 'policy', parent_of(identifier), 'branch')
+  end
+
+  def auth_del(identifier)
+    auth_action(:update, 'policy', parent_of(identifier), 'branch')
+  end
 
   # create
   def add_member(group_identifier, member)

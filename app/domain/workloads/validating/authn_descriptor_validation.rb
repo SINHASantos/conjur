@@ -10,19 +10,12 @@ module Workloads
       include Workloads::Validating::AuthnDescriptorGcpValidation
       include Workloads::Validating::AuthnDescriptorLdapValidation
 
-      API_KEY = "api_key"
-      CERT = "cert"
-      JWT = "jwt"
-      AWS = "aws"
-
-      TYPES = %w[api_key gcp jwt cert aws azure ldap].freeze
-
       def type?(type)
         @type == type
       end
 
       def api_key?
-        type?(API_KEY)
+        type?(AuthnDescriptor::API_KEY)
       end
 
       def not_api_key?
@@ -30,7 +23,7 @@ module Workloads
       end
 
       def in_types?
-        TYPES.include?(type)
+        AuthnDescriptor::TYPES.include?(type)
       end
 
       def not_api_key_type?

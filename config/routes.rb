@@ -92,6 +92,7 @@ Rails.application.routes.draw do
 
         # workload
         post "workloads/:account" => "workloads#create"
+        get "/workloads/:account/*identifier" => "workloads#show"
         delete "workloads/:account/*identifier" => "workloads#destroy"
 
         constraints kind: /user|host|layer|group|policy|host_factory/ do
