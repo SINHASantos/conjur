@@ -51,8 +51,8 @@ services:
       CONJUR_LOG_LEVEL: debug
       CONJUR_AUTHN_LOGIN: admin
       CONJUR_FEATURE_AUTHENTICATOR_SERVICE_ENABLED: true
-      CONJUR_AUTHENTICATOR_SERVICE_URL: ${CONJUR_AUTHENTICATOR_SERVICE_URL:-http://host.docker.internal:8080}
-      CONJUR_AUTHENTICATOR_SERVICE_HTTP_ALLOWLIST: ${CONJUR_AUTHENTICATOR_SERVICE_HTTP_ALLOWLIST:-}
+      CONJUR_AUTHENTICATOR_SERVICE_URL: ${CONJUR_AUTHENTICATOR_SERVICE_URL:-http://auth-service:8080}
+      CONJUR_AUTHENTICATOR_SERVICE_HTTP_ALLOWLIST: ${CONJUR_AUTHENTICATOR_SERVICE_HTTP_ALLOWLIST:-auth-service}
       CONJUR_AUTHENTICATORS: ${CONJUR_AUTHENTICATORS:-}
       AUDIT_DATABASE_URL:
       # TODO: Where should we be running rspec tests from, ideally?
@@ -235,6 +235,12 @@ services:
   # host machine.
   node-exporter:
     image: quay.io/prometheus/node-exporter:latest
+
+  auth-service:
+    image: local/auth-service:latest
+    user: "1001:1001"
+    volumes:
+      - ./files/authn-cert/saas-auth-service-config.json:/etc/config/config.json:ro
 
 volumes:
   authn-local:
