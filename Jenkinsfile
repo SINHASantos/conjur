@@ -268,8 +268,7 @@ pipeline {
           // Break the total number of tests into a subset of tests.
           // This will give 3 nested lists of tests to run, which is
           // distributed over 3 jenkins agents.
-          NESTED_ARRAY_OF_TESTS_TO_RUN = collateTests(INFRAPOOL_EXECUTORV2_AGENT_0)
-
+          NESTED_ARRAY_OF_TESTS_TO_RUN = collateTests(INFRAPOOL_EXECUTORV2_AGENT_0, 5)
         }
       }
     }
