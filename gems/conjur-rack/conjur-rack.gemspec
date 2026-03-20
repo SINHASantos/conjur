@@ -14,11 +14,15 @@ Gem::Specification.new do |spec|
   spec.require_paths          = ['lib']
   spec.required_ruby_version  = '>= 2.5'
 
+  spec.add_dependency('base64', '~> 0.3.0')
+  spec.add_dependency('bigdecimal')
+  spec.add_dependency('concurrent-ruby', '~> 1.3.6')
   spec.add_dependency('conjur-api', '> 6')
+  spec.add_dependency('mutex_m')
   spec.add_dependency('rack', '> 3')
   spec.add_dependency('slosilo', '~> 3.0')
 
-  spec.add_development_dependency('activesupport', '< 7')
+  spec.add_development_dependency('activesupport', '~> 8')
   spec.add_development_dependency('ci_reporter_rspec')
   spec.add_development_dependency('pry-byebug')
   spec.add_development_dependency('rake')

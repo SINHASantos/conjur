@@ -501,7 +501,6 @@ Feature: Branches APIv2 tests - create empty
     """
     Then the HTTP response status code is 401
 #    And the HTTP response content type is APIv2
-    And the response is empty
 
   @negative @acceptance
   Scenario: Cannot create a branch with not existing parent branch

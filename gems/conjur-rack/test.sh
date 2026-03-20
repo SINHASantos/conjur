@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-TEST_IMAGE='ruby:3.0'
+TEST_IMAGE='ruby:3.4'
 
 rm -f Gemfile.lock
 

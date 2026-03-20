@@ -241,7 +241,7 @@ describe Conjur::Rack::Authenticator do
     it "rejects JWT tokens with unrecognized claims" do
       mock_jwt extra: 'field'
       expect { subject.send :verify_authorization_and_get_identity }.to raise_error \
-          Conjur::Rack::Authenticators::AuthorizationError
+          Conjur::Rack::Authenticator::AuthorizationError
     end
 
     def mock_jwt claims
