@@ -4,7 +4,7 @@ PATH
     conjur-rack (5.0.0)
       base64 (~> 0.3.0)
       bigdecimal
-      concurrent-ruby (= 1.3.4)
+      concurrent-ruby (~> 1.3.6)
       conjur-api (> 6)
       mutex_m
       rack (> 3)
@@ -108,7 +108,7 @@ GEM
     ast (2.4.3)
     attr_required (1.0.2)
     aws-eventstream (1.4.0)
-    aws-partitions (1.1228.0)
+    aws-partitions (1.1229.0)
     aws-sdk-core (3.244.0)
       aws-eventstream (~> 1, >= 1.3.0)
       aws-partitions (~> 1, >= 1.992.0)
@@ -149,7 +149,7 @@ GEM
       rspec (>= 2.14, < 4)
     coderay (1.1.3)
     command_class (0.0.2)
-    concurrent-ruby (1.3.4)
+    concurrent-ruby (1.3.6)
     conjur-api (6.1.0)
       activesupport (>= 4.2)
       addressable (~> 2.0)
@@ -260,6 +260,7 @@ GEM
     faye-websocket (0.12.0)
       eventmachine (>= 0.12.0)
       websocket-driver (>= 0.8.0)
+    ffi (1.17.3-aarch64-linux-gnu)
     ffi (1.17.3-arm64-darwin)
     ffi (1.17.3-x86_64-darwin)
     ffi-compiler (1.3.2)
@@ -302,9 +303,6 @@ GEM
       bindata
       faraday (~> 2.0)
       faraday-follow_redirects
-    json-schema (6.2.0)
-      addressable (~> 2.8)
-      bigdecimal (>= 3.1, < 5)
     json_schemer (2.5.0)
       bigdecimal
       hana (~> 1.3)
@@ -339,8 +337,6 @@ GEM
       net-smtp
     marcel (1.1.0)
     matrix (0.4.3)
-    mcp (0.9.0)
-      json-schema (>= 4.1)
     memoist3 (1.0.0)
     method_source (1.1.0)
     mime-types (3.7.0)
@@ -369,24 +365,15 @@ GEM
       timeout
     net-smtp (0.5.1)
       net-protocol
-    net-ssh (7.3.1)
+    net-ssh (7.3.2)
     netrc (0.11.0)
     nio4r (2.7.5)
-<<<<<<< HEAD
     nokogiri (1.19.2-aarch64-linux-gnu)
       racc (~> 1.4)
     nokogiri (1.19.2-arm64-darwin)
-=======
-    nokogiri (1.19.1-arm64-darwin)
->>>>>>> 63a901477 (Fix conjur rack gem)
       racc (~> 1.4)
     nokogiri (1.19.2-x86_64-darwin)
       racc (~> 1.4)
-<<<<<<< HEAD
-    nokogiri (1.19.2-x86_64-linux-gnu)
-      racc (~> 1.4)
-=======
->>>>>>> 63a901477 (Fix conjur rack gem)
     openid_connect (2.3.1)
       activemodel
       attr_required (>= 1.0.0)
@@ -407,6 +394,7 @@ GEM
     parser (3.3.10.2)
       ast (~> 2.4.1)
       racc
+    pg (1.6.3-aarch64-linux)
     pg (1.6.3-arm64-darwin)
     pg (1.6.3-x86_64-darwin)
     pp (0.6.3)
@@ -530,11 +518,10 @@ GEM
       rspec-mocks (>= 3.13.0, < 5.0.0)
       rspec-support (>= 3.13.0, < 5.0.0)
     rspec-support (3.13.7)
-    rubocop (1.85.1)
+    rubocop (1.86.0)
       json (~> 2.3)
       language_server-protocol (~> 3.17.0.2)
       lint_roller (~> 1.1.0)
-      mcp (~> 0.6)
       parallel (~> 1.10)
       parser (>= 3.3.0.2)
       rainbow (>= 2.2.2, < 4.0)
@@ -623,6 +610,7 @@ GEM
     zeitwerk (2.7.5)
 
 PLATFORMS
+  aarch64-linux
   arm64-darwin-22
   arm64-darwin-24
   arm64-darwin-25
