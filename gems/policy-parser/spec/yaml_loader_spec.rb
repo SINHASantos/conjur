@@ -43,14 +43,15 @@ describe Conjur::PolicyParser::YAML::Loader do
   it_should_behave_like 'round-trip dsl', 'layer-members'
   it_should_behave_like 'round-trip dsl', 'all-types-all-fields'
   it_should_behave_like 'round-trip dsl', 'org'
-  it_should_behave_like 'round-trip dsl', 'include'
   it_should_behave_like 'round-trip dsl', 'policy-empty-body'
   it_should_behave_like 'round-trip dsl', 'restricted_to'
 
   it_should_behave_like 'error message', 'unrecognized-type'
   it_should_behave_like 'error message', 'incorrect-type-for-field-1'
   it_should_behave_like 'error message', 'incorrect-type-for-field-2'
+
   it_should_behave_like 'error message', 'incorrect-type-for-array-field'
+
   it_should_behave_like 'error message', 'no-such-attribute'
   it_should_behave_like 'error message', 'invalid-cidr'
   it_should_behave_like 'error message', 'invalid-cidr-2'

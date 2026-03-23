@@ -2,7 +2,7 @@ module Conjur
   module PolicyParser
 
     class Invalid < RuntimeError
-      attr_reader :message, :filename, :detail_message, :line, :column
+      attr_reader :filename, :detail_message, :line, :column
 
       def initialize(message:, filename:, line: -1, column: -1)
         super(
