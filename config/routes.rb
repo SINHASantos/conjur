@@ -135,7 +135,6 @@ Rails.application.routes.draw do
         get     "/secrets"                            => 'secrets#batch'
         post    "/secrets/:account/values" => 'secrets_batch#batch_read_values'
 
-
         get     "/policies/:account/:kind/*identifier" => 'policies#get', constraints: { kind: /policy/ }
         put     "/policies/:account/:kind/*identifier" => 'policies#put', constraints: { kind: /policy/ }
         patch   "/policies/:account/:kind/*identifier" => 'policies#patch', constraints: { kind: /policy/ }
