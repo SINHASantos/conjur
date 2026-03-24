@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing should go in this section, please add to the latest unreleased version
   (and update the corresponding date), or add a new version.
 
-## [1.25.0] - 2026-01-14
+## [1.25.0] - 2026-03-19
 ### Added
 - Endpoint for getting a workload. CNJR-12890
 - Additional debug logging in authn-k8s. CNJR-12870
@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - Disconnect all Sequel database connections on fork to prevent sharing connections between forked processes. CNJR-12618
+- Fix resource ID parsing in dry run response. CNJR-13269
 
 ## [1.24.1] - 2025-11-20
 

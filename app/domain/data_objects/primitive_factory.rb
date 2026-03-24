@@ -66,7 +66,7 @@ module DataObjects
     def from_hash(hash:)
       validate(hash)
 
-      _, type, id = hash[:resource_id].split(':')
+      _, type, id = hash[:resource_id].split(':', 3)
 
       identifier = censor_resource_id(hash[:resource_id])
       owner = censor_resource_id(hash[:owner_id])
@@ -189,7 +189,7 @@ module DataObjects
       return resource_id if resource_id.nil? || resource_id.empty?
       return resource_id unless @is_sensitive
 
-      account, type, id = resource_id.split(':')
+      account, type, id = resource_id.split(':', 3)
       id = resource_visible?(resource_id) ? id : '[REDACTED]'
       "#{account}:#{type}:#{id}"
     end

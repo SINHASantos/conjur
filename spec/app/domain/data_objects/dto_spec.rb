@@ -1169,4 +1169,76 @@ describe 'DataObjects::PrimitiveFactory' do
       end
     end
   end
+
+  # Regression tests for: resource IDs whose identifier segment contains
+  # one or more colon characters (e.g. a host named "my:service:host").
+  # Before the fix, split(':') without a limit caused everything after the
+  # third token to be silently dropped.
+  context 'when the resource identifier contains colons' do
+    # A host whose id contains colons: "my:service:host"
+    # Fully-qualified resource_id: "cucumber:host:my:service:host"
+    let(:host_with_colons) do
+      {
+        resource_id: "cucumber:host:my:service:host",
+        owner_id: "cucumber:policy:root:branch",
+        created_at: "2024-09-19T21:27:33.052+00:00",
+        policy_id: "cucumber:policy:root:branch",
+        annotations: [
+          {
+            resource_id: "cucumber:host:my:service:host",
+            name: "key",
+            value: "value",
+            policy_id: "cucumber:policy:root:branch"
+          }
+        ],
+        members: [
+          {
+            role_id: "cucumber:host:my:service:host",
+            member_id: "cucumber:policy:root:branch",
+            admin_option: true,
+            ownership: true,
+            policy_id: "cucumber:policy:root:branch"
+          }
+        ]
+      }
+    end
+
+    context 'when is_sensitive is false' do
+      let(:subject) { DataObjects::PrimitiveFactory.new(is_sensitive: false) }
+
+      it 'preserves the full host id including colons in the id field' do
+        dto = subject.from_hash(hash: host_with_colons)
+        expect(dto.class).to be(DataObjects::Role)
+        expect(dto.id).to eq("my:service:host")
+        expect(dto.type).to eq("host")
+        expect(dto.identifier).to eq("cucumber:host:my:service:host")
+        expect(dto.owner).to eq("cucumber:policy:root:branch")
+        expect(dto.policy).to eq("cucumber:policy:root:branch")
+      end
+    end
+
+    context 'when is_sensitive is true' do
+      context 'when the resource with colons in its id is visible' do
+        let(:subject) do
+          DataObjects::PrimitiveFactory.new(
+            is_sensitive: true,
+            visible_resources: {
+              "cucumber:host:my:service:host" => true,
+              "cucumber:policy:root:branch" => true
+            }
+          )
+        end
+
+        it 'returns the full identifier and id without truncation' do
+          dto = subject.from_hash(hash: host_with_colons)
+          expect(dto.class).to be(DataObjects::Role)
+          expect(dto.identifier).to eq("cucumber:host:my:service:host")
+          expect(dto.id).to eq("my:service:host")
+          expect(dto.owner).to eq("cucumber:policy:root:branch")
+          expect(dto.policy).to eq("cucumber:policy:root:branch")
+        end
+      end
+
+    end
+  end
 end
