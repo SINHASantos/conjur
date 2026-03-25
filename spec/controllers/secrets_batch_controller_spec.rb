@@ -237,6 +237,32 @@ describe(SecretsBatchController, type: :request) do
     end
   end
 
+  context 'with multiple secret versions' do
+    it 'returns only the latest version, not one entry per version' do
+      # Update var1 twice more so it has 3 versions total
+      post("/secrets/rspec/variable/data/var1",
+           env: token_auth_header(role: admin_user).merge(
+             { 'RAW_POST_DATA' => 'secret_value1_v2', 'CONTENT_TYPE' => 'text/plain' }
+           ))
+      assert_response :created
+      post("/secrets/rspec/variable/data/var1",
+           env: token_auth_header(role: admin_user).merge(
+             { 'RAW_POST_DATA' => 'secret_value1_v3', 'CONTENT_TYPE' => 'text/plain' }
+           ))
+      assert_response :created
+
+      post_payload('{"ids":["data/var1"]}')
+
+      assert_response :multi_status
+      response_data = JSON.parse(response.body)['secrets']
+
+      expect(response_data.length).to eq(1)
+      expect(response_data[0]['id']).to eq('data/var1')
+      expect(response_data[0]['status']).to eq(200)
+      expect(response_data[0]['value']).to eq('secret_value1_v3')
+    end
+  end
+
   context 'invalid input' do
     it 'returns error when request body is empty - handled by body parser' do
       post_payload(nil)
