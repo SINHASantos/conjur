@@ -2,4 +2,5 @@
 
 class RestController < ApplicationController
   include CurrentUser
+  include QueryParamValidation
 end
