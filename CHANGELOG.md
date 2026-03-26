@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing should go in this section, please add to the latest unreleased version
   (and update the corresponding date), or add a new version.
 
+## [1.27.0] - 2026-06-01
+
+### Changed
+- API endpoints now reject requests that include unrecognized query parameters
+  with a 422 Unprocessable Entity response. Legacy v1 endpoints log a warning instead of
+  failing, preserving backward compatibility. CNJR-7246
+
 ## [1.26.1] - 2026-04-30
 
 ### Added
