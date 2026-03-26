@@ -76,6 +76,11 @@ module Errors
       code: "CONJ00194W"
     )
 
+    UnexpectedParameter = ::Util::TrackableErrorClass.new(
+      msg: "Received unexpected query parameter(s): {0-parameter-names}",
+      code: "CONJ00195E"
+    )
+
     KeyRotationNotApplicable = ::Util::TrackableErrorClass.new(
       msg: "Resource '{0-role_to_rotate}' is not applicable for key rotation",
       code: "CONJ00120E"
