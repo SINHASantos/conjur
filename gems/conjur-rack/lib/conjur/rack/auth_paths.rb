@@ -15,38 +15,38 @@ module Conjur
       # (or require none at all) and so cannot demand a prior token.
       EXCEPT = [
         %r{^/$},
-        %r{^/authenticators$},
+        %r{^/authenticators/?$},
         %r{^/assets/},
-        %r{^/host_factories/hosts$},
+        %r{^/host_factories/hosts/?$},
 
         # Every authenticate endpoint — the caller is proving identity here, so
         # there is no pre-existing token to validate.
         # Covers: /authn/:account/:id/authenticate
-        %r{^/authn/.*/authenticate$},
+        %r{^/authn/.*/authenticate/?$},
         # Covers: /authn-{type}/.../:account/authenticate (jwt, oidc, ldap, gcp, k8s, etc.)
-        %r{^/authn-[^/]+/.*/authenticate$},
+        %r{^/authn-[^/]+/.*/authenticate/?$},
 
         # Covers: /authn/:account/login
-        %r{^/authn/.*/login$},
+        %r{^/authn/.*/login/?$},
         # Covers: /authn-{type}/:service_id/:account/login
-        %r{^/authn-[^/]+/.*/login$},
+        %r{^/authn-[^/]+/.*/login/?$},
 
         # OIDC provider discovery — required open for the UI
-        %r{^/authn-oidc/.*/providers}
+        %r{^/authn-oidc/.*/providers/?$}
       ].freeze
 
       # Paths where a token is used if present, but its absence is not an error.
       OPTIONAL = [
         %r{^/public_keys/},
         # API key rotation can use basic auth or an authz token
-        %r{^/authn/.*/api_key$},
-        %r{^/authn-[^/]+/.*/api_key$},
+        %r{^/authn/.*/api_key/?$},
+        %r{^/authn-[^/]+/.*/api_key/?$},
 
         # Password Updates can use basic auth or an authz token
-        %r{^/authn/.*/password$},
+        %r{^/authn/.*/password/?$},
 
         # Cert injection uses mTLS to secure connection so we don't force auth
-        %r{^/authn-k8s/.*/inject_client_cert$}
+        %r{^/authn-k8s/.*/inject_client_cert/?$}
       ].freeze
     end
   end
