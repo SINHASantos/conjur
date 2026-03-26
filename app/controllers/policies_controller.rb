@@ -9,16 +9,25 @@ class PoliciesController < RestController
 
   rescue_from Sequel::UniqueConstraintViolation, with: :concurrent_load
 
+  # Legacy v1 endpoint — unknown params log a warning but do not fail
+  # the request.
+  validate_query_params :get,
+                        %i[account kind identifier depth limit],
+                        strict: false
+  validate_query_params :put,  %i[account kind identifier dryRun], strict: false
+  validate_query_params :patch, %i[account kind identifier dryRun], strict: false
+  validate_query_params :post,  %i[account kind identifier dryRun], strict: false
+
   # Conjur policies are YAML documents, so we assume that if no content-type
   # is provided in the request.
   set_default_content_type_for_path(%r{^/policies}, 'application/x-yaml')
 
   # To avoid unexpected behavior, we check annotation keys for known policy attributes and ouput a warning if there is a match.
   KNOWN_POLICY_ATTRIBUTES = %w[
-      id owner body user annotations restricted_to permit deny role privileges resource
-      grant revoke member host-factory layers layer variable kind mime_type delete record
-      group host webservice
-    ].freeze
+    id owner body user annotations restricted_to permit deny role privileges resource
+    grant revoke member host-factory layers layer variable kind mime_type delete record
+    group host webservice
+  ].freeze
 
   def get
     action = :read
@@ -363,11 +372,11 @@ class PoliciesController < RestController
       rec.respond_to?(:annotations) && rec.annotations ? rec.annotations.keys : []
     end.uniq
     conflicts = annotation_names & KNOWN_POLICY_ATTRIBUTES
-    if conflicts.any?
-      policy_result.warnings ||= []
-      conflicts.each do |conflict|
-        policy_result.warnings << "Annotation '#{conflict}' matches a known policy attribute. This annotation will not be treated as a standard attribute and may not have the intended effect."
-      end
+    return unless conflicts.any?
+
+    policy_result.warnings ||= []
+    conflicts.each do |conflict|
+      policy_result.warnings << "Annotation '#{conflict}' matches a known policy attribute. This annotation will not be treated as a standard attribute and may not have the intended effect."
     end
   end
 

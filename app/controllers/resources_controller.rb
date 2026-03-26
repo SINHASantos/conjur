@@ -4,6 +4,19 @@ class ResourcesController < RestController
   include FindResource
   include AssumedRole
 
+  # Legacy v1 endpoint — unknown params log a warning but do not fail
+  # the request. All known params across every action are listed here.
+  validate_query_params :index,
+                        %i[account kind limit offset search owner role acting_as count],
+                        strict: false
+  validate_query_params :show, %i[account kind identifier], strict: false
+  validate_query_params :permitted_roles,
+                        %i[account kind identifier privilege permission],
+                        strict: false
+  validate_query_params :check_permission,
+                        %i[account kind identifier privilege role],
+                        strict: false
+
   def index
     # Rails 5 requires parameters to be explicitly permitted before converting
     # to Hash.  See: https://stackoverflow.com/a/46029524

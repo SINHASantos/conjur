@@ -8,6 +8,19 @@ class SecretsController < RestController
 
   before_action :current_user
 
+  # Legacy v1 endpoints — unknown params log a warning but do not fail
+  # the request.
+  validate_query_params :create, %i[account kind identifier], strict: false
+  validate_query_params :show,
+                        %i[account kind identifier version],
+                        strict: false
+  validate_query_params :batch,
+                        %i[account variable_ids],
+                        strict: false
+  validate_query_params :expire,
+                        %i[account kind identifier],
+                        strict: false
+
   def initialize(
     *args,
     feature_flags: Rails.application.config.feature_flags,
@@ -198,9 +211,9 @@ class SecretsController < RestController
   private
 
   def validate_public_key(value)
-    unless value.match?(/\Assh-(rsa|ed25519|ecdsa-[a-z0-9-]+) [A-Za-z0-9+\/=]+ ?.*\z/)
-      raise ArgumentError, "Invalid public key format"
-    end
+    return if value.match?(%r{\Assh-(rsa|ed25519|ecdsa-[a-z0-9-]+) [A-Za-z0-9+/=]+ ?.*\z})
+
+    raise ArgumentError, "Invalid public key format"
   end
 
   def variable_ids

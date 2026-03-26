@@ -18,6 +18,12 @@ class IssuersController < RestController
   ISSUER_NOT_FOUND = "Issuer not found"
   SENSITIVE_DATA_MASK = "*****"
 
+  validate_query_params :update,  %i[account identifier], strict: false
+  validate_query_params :create,  %i[account], strict: false
+  validate_query_params :delete,  %i[account identifier], strict: false
+  validate_query_params :get,     %i[account identifier], strict: false
+  validate_query_params :list,    %i[account], strict: false
+
   def initialize(
     *args,
     policy: CommandHandler::Policy.new,
