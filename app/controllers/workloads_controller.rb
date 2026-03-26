@@ -11,6 +11,10 @@ class WorkloadsController < V2RestController
 
   WORKLOAD_OPTIONAL_RESTRICTED_TO_PARAMS = [restricted_to: []]
 
+  validate_query_params :create,  []
+  validate_query_params :show,    []
+  validate_query_params :destroy, []
+
   def initialize(
     *args,
     workload_service: Workloads::WorkloadService.instance,

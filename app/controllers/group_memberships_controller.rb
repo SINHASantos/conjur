@@ -2,6 +2,9 @@
 
 class GroupMembershipsController < V2RestController
 
+  validate_query_params :create, []
+  validate_query_params :delete, []
+
   def initialize(
     *args,
     membership_service: Memberships::MembershipService.instance,
