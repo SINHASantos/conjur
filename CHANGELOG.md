@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   (and update the corresponding date), or add a new version.
 
 ## [1.25.0] - 2026-03-19
+### Fixed
+- Fix APIv2 batch secret retrieval returning all secret versions instead of only the latest. CNJR-13100
+
 ### Added
 - Endpoint for getting a workload. CNJR-12890
 - Additional debug logging in authn-k8s. CNJR-12870

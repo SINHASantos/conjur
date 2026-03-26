@@ -79,21 +79,46 @@ module Secrets
 
     def fetch_secrets(role_id, ids)
       sql = <<~SQL
+        -- Convert the Ruby array of resource IDs into a temporary in-query table
+        -- (CTE = Common Table Expression, defined with WITH). UNNEST expands the
+        -- PostgreSQL array into rows; WITH ORDINALITY adds an "ord" column that
+        -- preserves the original array order so the response matches the request.
         WITH input_ids AS (
           SELECT id, ord
           FROM UNNEST(?::text[]) WITH ORDINALITY AS t(id, ord)
         )
         SELECT
           i.id AS id,
+          -- True when no resources row exists for this ID (variable was never defined)
           (r.resource_id IS NULL) AS not_present,
+          -- True when the variable exists as a resource but has never had a value set
           (s.resource_id IS NULL) AS no_var,
+          -- Permission checks via a stored PL/pgSQL function; negated because the
+          -- column names reflect the *missing* permission (easier to branch on in Ruby)
           NOT is_role_allowed_to(?::text, 'read',    i.id) AS cannot_read,
           NOT is_role_allowed_to(?::text, 'execute', i.id) AS cannot_exec,
           s.value,
           s.expires_at
         FROM input_ids i
+        -- LEFT JOIN keeps the input row even when no matching resource exists,
+        -- producing a NULL r.resource_id that flags the variable as not_present.
         LEFT JOIN resources r ON r.resource_id = i.id
-        LEFT JOIN secrets   s ON s.resource_id = i.id
+        -- LATERAL lets the subquery reference i.id from the outer row, acting like
+        -- a correlated loop: for each input ID, PostgreSQL does one backwards index
+        -- scan on the secrets primary key (resource_id, version), reads the first
+        -- row it finds (highest version), and stops — O(1) per secret regardless of
+        -- how many versions exist.
+        -- LEFT JOIN preserves input rows for secrets with no value (no_var = true).
+        -- ON TRUE is required because the correlation is inside the subquery, not
+        -- expressed as a join condition between two columns.
+        LEFT JOIN LATERAL (
+          SELECT resource_id, value, expires_at
+          FROM secrets
+          WHERE resource_id = i.id
+          ORDER BY version DESC
+          LIMIT 1
+        ) s ON TRUE
+        -- Restore original request order (UNNEST does not guarantee it)
         ORDER BY i.ord;
       SQL
 
