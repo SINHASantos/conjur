@@ -148,6 +148,10 @@ class Resource < Sequel::Model
       check_visible_to(role.id)
     end
 
+    def visible_to_join role
+      join(Sequel.function(:visible_resources, role.id), [:resource_id])
+    end
+
     def numeric? val
       val == val.to_i.to_s
     end

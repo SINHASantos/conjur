@@ -37,7 +37,7 @@ class ResourcesController < RestController
     # for a role other than the current user.
     query_role = params[:role].presence || params[:acting_as].presence
     begin
-      scope = Resource.visible_to(assumed_role(query_role)).search(**options)
+      scope = Resource.visible_to_join(assumed_role(query_role)).search(**options)
     rescue ApplicationController::Forbidden
       audit_list_failure(options, "The authenticated user lacks the necessary privilege")
       raise
