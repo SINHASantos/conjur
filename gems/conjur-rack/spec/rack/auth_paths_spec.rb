@@ -60,6 +60,9 @@ describe Conjur::Rack::AuthPaths do
 
     # OIDC provider discovery
     include_examples "an excepted path", '/authn-oidc/my-oidc/providers'
+
+    # Version endpoint
+    include_examples "an excepted path", '/version'
   end
 
   describe "OPTIONAL paths" do

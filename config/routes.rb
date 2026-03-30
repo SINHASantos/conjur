@@ -23,6 +23,7 @@ end
 Rails.application.routes.draw do
   scope format: false do
     get '/' => 'status#index'
+    get '/version' => 'status#version'
     get '/whoami' => 'whoami#show'
     get '/authenticators' => 'authenticate#index'
 

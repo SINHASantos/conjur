@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 - Endpoint for getting a workload. CNJR-12890
+- Endpoint for getting version. CNJR-12885
 - Additional debug logging in authn-k8s. CNJR-12870
 - Update response headers to OWASP recommended values. CNJR-2116
 - Audit events to role members and graph endpoints. CONJSE-834
