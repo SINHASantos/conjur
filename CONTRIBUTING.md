@@ -14,6 +14,7 @@ For general contribution and community guidelines, please see the [community rep
   - [Set up a development environment](#set-up-a-development-environment)
     - [LDAP Authentication](#ldap-authentication)
     - [Google Cloud Platform (GCP) Authentication](#google-cloud-platform-gcp-authentication)
+    - [Certificate Authentication with an Authenticator Service](#certificate-authentication-with-an-authenticator-service)
     - [Visual Studio Code IDE Debugging](#visual-studio-code-ide-debugging)
     - [Development CLI](#development-cli)
       - [Step into the running Conjur container](#step-into-the-running-conjur-container)
@@ -170,6 +171,37 @@ $ curl -v -k -X POST -d "alice" http://localhost:3000/authn-ldap/test/cucumber/a
 
 To enable a host to log into Conjur using GCP identity token, run `start` with the `--authn-gcp` flag.
 Form more information on how to setup Conjur Google Cloud (GCP) authenticator, follow the official [documentation](https://www.conjur.org/). 
+
+#### Certificate Authentication with an Authenticator Service
+
+To enable certificate authentication in Conjur, you need to have an authenticator service running - either as a container within Docker Compose or as a standalone service.
+
+To start the authenticator service, run the `start` script with the `--authn-cert` flag and, optionally, the `--auth-service-version` flag.
+
+The `start` script will download and set up the authenticator service from JFrog Artifactory, 
+running it as a container in the same Docker Compose network as Conjur.
+
+For the automatic download and setup to work, you need to have the JFrog CLI configured to point to the 
+JFrog Artifactory instance where the authenticator service is published; see the `start` script for more details on the expected configuration.
+
+If you need to use a custom or external authenticator service, you can skip the automatic setup by specifying `local` 
+for the `--auth-service-version` flag and setting the relevant environment variables to point Conjur to the authenticator service.
+
+Check `./start --help` for more information on the usage of these flags.
+
+**Example usages:**
+```bash
+# 1. Start the container using the latest version of the authenticator service downloaded from JFrog
+./start --authn-cert
+
+# 2. Start the container using a specific version (e.g., 333) of the authenticator service downloaded from JFrog
+./start --authn-cert --auth-service-version 333
+
+# 3. Skip the automatic download and authenticator service setup; Conjur will use a custom standalone service defined by environment variables
+./start --authn-cert --auth-service-version local
+```
+
+For more information on how to set up and configure the authenticator service, please refer to [AUTHENTICATOR_SERVICE.md](AUTHENTICATOR_SERVICE.md)
 
 #### Visual Studio Code IDE Debugging
 
@@ -408,6 +440,7 @@ Below is the list of the available Cucumber suites:
   * authenticators_jwt
   * authenticators_ldap
   * authenticators_oidc
+  * authenticators_cert
   * authenticators_status
   * manual-rotators
   * policy

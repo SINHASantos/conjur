@@ -30,6 +30,7 @@ ENABLE_AUTHN_IAM=false
 ENABLE_AUTHN_JWT=false
 ENABLE_AUTHN_LDAP=false
 ENABLE_AUTHN_OIDC=false
+ENABLE_AUTHN_CERT=false
 ENABLE_METRICS=false
 ENABLE_OIDC_ADFS=false
 ENABLE_OIDC_IDENTITY=false
@@ -39,6 +40,7 @@ ENABLE_ROTATORS=false
 IDENTITY_USER=""
 COMPOSE="docker compose"
 NO_ENTER=false
+AUTH_SERVICE_VERSION="latest"
 
 declare -a required_envvars
 required_envvars[identity]="IDENTITY_CLIENT_ID IDENTITY_CLIENT_SECRET IDENTITY_PROVIDER_URI"
@@ -80,6 +82,7 @@ main() {
   init_oidc
   init_rotators
   init_metrics
+  init_auth_service
 
   # Updates CONJUR_AUTHENTICATORS and restarts required services.
   start_auth_services
@@ -106,9 +109,20 @@ Usage: start [options]
     --authn-gcp     Starts with authn-gcp as authenticator
     --authn-iam     Starts with authn-iam/prod as authenticator
     --authn-jwt     Starts with authn-jwt as authenticator
+    --authn-cert    Starts with authn-cert as authenticator.
+                    By default it starts with an authenticator service running.
+                    This requires a successful download of the authenticator service bundle from Artifactory,
+                    which in turn requires JFrog CLI to be configured with a server that has access to the bundle.
+                    Optionally can be paired with --auth-service-version flag.
     --authn-ldap    Starts OpenLDAP server and loads a demo policy to enable
                     authentication via:
                     'curl -X POST -d "alice" http://localhost:3000/authn-ldap/test/cucumber/alice/authenticate'
+    --auth-service-version The version of the authenticator service to use when the --authn-cert option is enabled.
+                    This should be set to a valid version in the Artifactory repository.
+                    If not set, it will fetch the latest available version.
+                    If set to "local" it will skip the download and auth-service image creation and the authenticator service
+                    specified in the CONJUR_AUTHENTICATOR_SERVICE_URL conjur variable will be used.
+                    Must be paired with --authn-cert as an optional flag.
     -h, --help      Shows this help message.
     --identity-user Identity user to create in Conjur
     --metrics       Starts with the prometheus telemetry features enabled
@@ -138,6 +152,8 @@ parse_options() {
       --authn-iam ) ENABLE_AUTHN_IAM=true ; shift ;;
       --authn-jwt ) ENABLE_AUTHN_JWT=true ; ENABLE_OIDC_KEYCLOAK=true ; shift ;;
       --authn-ldap ) ENABLE_AUTHN_LDAP=true ; shift ;;
+      --authn-cert ) ENABLE_AUTHN_CERT=true ; shift ;;
+      --auth-service-version ) AUTH_SERVICE_VERSION="$2" ; shift ; shift ;;
       --metrics ) ENABLE_METRICS=true ; shift ;;
       -h | --help ) print_help ; shift ;;
       --identity-user ) IDENTITY_USER="$2" ; shift ; shift ;;
@@ -522,6 +538,75 @@ init_metrics() {
   fi
   env_args+=(-e "CONJUR_TELEMETRY_ENABLED=true")
   services+=(prometheus node-exporter)
+}
+
+init_auth_service() {
+   if [[ $ENABLE_AUTHN_CERT != true ]]; then
+      return
+   fi
+
+   if [[ $AUTH_SERVICE_VERSION == "local" ]]; then
+     echo "Using local authenticator service build. Make sure to build and run it before running the integration tests."
+     return
+   fi
+
+   props="saas-authenticator-component=bundle"
+
+   if [[ $AUTH_SERVICE_VERSION != "latest" ]]; then
+       props="$props;build.number=$AUTH_SERVICE_VERSION"
+       echo "Using authenticator service bundle with version: $AUTH_SERVICE_VERSION"
+   fi
+
+  services+=(auth-service)
+  enabled_authenticators="$enabled_authenticators,authn-cert/spiffe-service,authn-cert/my-service"
+
+  DOWNLOAD_ROOT="./files/authn-cert/downloads"
+  DOWNLOAD_DIR="./files/authn-cert/downloads/bundle/core"
+  TARGET_DIR="./files/authn-cert/build"
+
+  search_result="$(
+    jf rt search \
+      --props "$props" \
+      --sort-by created \
+      --sort-order desc \
+      --limit 1 \
+      "saas-authenticator-artifactbundler-dist-latest-local"
+  )"
+
+  artifact_path="$(echo "$search_result" | jq -r '.[0].path')"
+  artifact_name="${artifact_path##*/}"
+
+  if [[ -z "$artifact_name" || -z "$artifact_path" || "$artifact_path" == "null" ]]; then
+    echo "No artifact found for authenticator service build version $AUTH_SERVICE_VERSION"
+    exit 1
+  fi
+
+  # make sure target dir exists and is empty
+  rm -rf "$DOWNLOAD_ROOT"
+  rm -rf "$TARGET_DIR"
+  mkdir -p "$DOWNLOAD_ROOT"
+  mkdir -p "$TARGET_DIR"
+
+  jf rt download \
+    "$artifact_path" \
+    "$DOWNLOAD_ROOT/" \
+    >/dev/null
+
+  tar -xjf "$DOWNLOAD_ROOT/${artifact_name}" \
+    -C "$DOWNLOAD_ROOT"
+
+  cp "$DOWNLOAD_DIR/authenticator_linux_arm64" \
+     "$DOWNLOAD_DIR/authenticator_linux_amd64" \
+     "$DOWNLOAD_DIR/Dockerfile" \
+     "$TARGET_DIR/"
+
+  echo "Successfully downloaded authenticator service package: $artifact_name"
+
+  docker build -t local/auth-service:latest "$TARGET_DIR"
+
+  # remove downloads and target dirs after copying
+  rm -rf "$DOWNLOAD_ROOT"
+  rm -rf "$TARGET_DIR"
 }
 
 start_auth_services() {
