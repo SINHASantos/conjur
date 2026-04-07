@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Update remaining Ruby gem dependencies. CNJR-12211
 - Upgrade json gem to resolve CVE-2026-33210. CNJR-13315
 - Upgrade rails to 8.1.2.1 to address CVE-2026-33195, CVE-2026-33174, CVE-2026-33176. CNJR-13329
+- Upgrade rack to 3.2.6 to resolve CVE-2026-34829, CVE-2026-34827, CVE-2026-34785, CVE-2026-34830. CNJR-13606
 
 ### Fixed
 - Disconnect all Sequel database connections on fork to prevent sharing connections between forked processes. CNJR-12618
