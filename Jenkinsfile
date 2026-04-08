@@ -554,7 +554,8 @@ pipeline {
                             spec/reports-audit/*.xml,
                             gems/conjur-rack/spec/reports/*.xml,
                             cucumber/*/features/reports/**/*.xml
-                          '''
+                          ''',
+                          excludes: '**/.*'
                         )
                       }
                     }
@@ -597,7 +598,8 @@ pipeline {
                             spec/reports/*.xml,
                             spec/reports-audit/*.xml,
                             cucumber/*/features/reports/**/*.xml
-                          '''
+                          ''',
+                          excludes: '**/.*'
                         )
                       }
                     }
@@ -640,7 +642,8 @@ pipeline {
                             spec/reports/*.xml,
                             spec/reports-audit/*.xml,
                             cucumber/*/features/reports/**/*.xml
-                          '''
+                          ''',
+                          excludes: '**/.*'
                         )
                       }
                     }
@@ -654,17 +657,17 @@ pipeline {
               script {
                 if (testShouldRunOnAgent(params.RUN_ONLY, runSpecificTestOnAgent(params.RUN_ONLY, NESTED_ARRAY_OF_TESTS_TO_RUN[0]))) {
                   dir('ee-test'){
-                    INFRAPOOL_EXECUTORV2_AGENT_0.agentUnstash 'testResultEE'
+                    unstash 'testResultEE'
                   }
                 }
                 if (testShouldRunOnAgent(params.RUN_ONLY, runSpecificTestOnAgent(params.RUN_ONLY, NESTED_ARRAY_OF_TESTS_TO_RUN[1]))) {
                   dir('ee-test'){
-                    INFRAPOOL_EXECUTORV2_AGENT_0.agentUnstash 'testResultEE2'
+                    unstash 'testResultEE2'
                   }
                 }
                 if (testShouldRunOnAgent(params.RUN_ONLY, runSpecificTestOnAgent(params.RUN_ONLY, NESTED_ARRAY_OF_TESTS_TO_RUN[2]))) {
                   dir('ee-test'){
-                    INFRAPOOL_EXECUTORV2_AGENT_0.agentUnstash 'testResultEE3'
+                    unstash 'testResultEE3'
                   }
                 }
               }
