@@ -249,21 +249,21 @@ pipeline {
     stage('Get InfraPool Agents') {
       steps {
         script {
-          INFRAPOOL_EXECUTORV2_AGENTS = getInfraPoolAgent.connected(type: "ExecutorV2", quantity: 3, duration: 1)
+          INFRAPOOL_EXECUTORV2_AGENTS = getInfraPoolAgent.connected(type: "ExecutorV2", quantity: 3, duration: 2)
           INFRAPOOL_EXECUTORV2_AGENT_0 = INFRAPOOL_EXECUTORV2_AGENTS[0]
           INFRAPOOL_EXECUTORV2_AGENT_1 = INFRAPOOL_EXECUTORV2_AGENTS[1]
           INFRAPOOL_EXECUTORV2_AGENT_2 = INFRAPOOL_EXECUTORV2_AGENTS[2]
 
-          INFRAPOOL_EXECUTORV2ARM_AGENT_0 = getInfraPoolAgent.connected(type: "ExecutorV2ARM", quantity: 1, duration: 1)[0]
+          INFRAPOOL_EXECUTORV2ARM_AGENT_0 = getInfraPoolAgent.connected(type: "ExecutorV2ARM", quantity: 1, duration: 2)[0]
 
-          INFRAPOOL_EXECUTORV2_RHELEE_AGENTS = getInfraPoolAgent.connected(type: "ExecutorV2RHELEE", quantity: 3, duration: 1)
+          INFRAPOOL_EXECUTORV2_RHELEE_AGENTS = getInfraPoolAgent.connected(type: "ExecutorV2RHELEE", quantity: 3, duration: 2)
           INFRAPOOL_EXECUTORV2_RHELEE_AGENT_0 = INFRAPOOL_EXECUTORV2_RHELEE_AGENTS[0]
           INFRAPOOL_EXECUTORV2_RHELEE_AGENT_1 = INFRAPOOL_EXECUTORV2_RHELEE_AGENTS[1]
           INFRAPOOL_EXECUTORV2_RHELEE_AGENT_2 = INFRAPOOL_EXECUTORV2_RHELEE_AGENTS[2]
 
-          INFRAPOOL_AZURE_EXECUTORV2_AGENT_0 = getInfraPoolAgent.connected(type: "AzureExecutorV2", quantity: 1, duration: 1)[0]
+          INFRAPOOL_AZURE_EXECUTORV2_AGENT_0 = getInfraPoolAgent.connected(type: "AzureExecutorV2", quantity: 1, duration: 2)[0]
 
-          INFRAPOOL_GCP_EXECUTORV2_AGENT_0 = getInfraPoolAgent.connected(type: "GcpExecutorV2", quantity: 1, duration: 1)[0]
+          INFRAPOOL_GCP_EXECUTORV2_AGENT_0 = getInfraPoolAgent.connected(type: "GcpExecutorV2", quantity: 1, duration: 2)[0]
 
           // Break the total number of tests into a subset of tests.
           // This will give 3 nested lists of tests to run, which is
