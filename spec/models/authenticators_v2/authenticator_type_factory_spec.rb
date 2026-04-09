@@ -100,7 +100,7 @@ describe AuthenticatorsV2::AuthenticatorTypeFactory do
       it "raises an error for an unsupported type" do
         authenticator = factory.call(authenticator_dict)
         expect(authenticator.success?).to be(false)
-        expect(authenticator.exception).to be(ApplicationController::UnprocessableContent)
+        expect(authenticator.exception.class).to be(ApplicationController::UnprocessableContent)
         expect(authenticator.status).to eq(:unprocessable_content)
       end
     end
@@ -122,7 +122,7 @@ describe AuthenticatorsV2::AuthenticatorTypeFactory do
         it "returns an error" do
           authenticator = factory.call(authenticator_dict)
           expect(authenticator.success?).to be(false)
-          expect(authenticator.exception).to be(ApplicationController::UnprocessableContent)
+          expect(authenticator.exception.class).to be(ApplicationController::UnprocessableContent)
           expect(authenticator.status).to eq(:unprocessable_content)
           expect(authenticator.message).to eq("Authenticator type is required")
         end
@@ -134,7 +134,7 @@ describe AuthenticatorsV2::AuthenticatorTypeFactory do
         it "returns an error" do
           authenticator = factory.call(authenticator_dict)
           expect(authenticator.success?).to be(false)
-          expect(authenticator.exception).to be(ApplicationController::UnprocessableContent)
+          expect(authenticator.exception.class).to be(ApplicationController::UnprocessableContent)
           expect(authenticator.status).to eq(:unprocessable_content)
           expect(authenticator.message).to eq("'authn-bad' authenticators are not supported.")
         end
@@ -146,7 +146,7 @@ describe AuthenticatorsV2::AuthenticatorTypeFactory do
         it "returns an error" do
           authenticator = factory.call(authenticator_dict)
           expect(authenticator.success?).to be(false)
-          expect(authenticator.exception).to be(ApplicationController::UnprocessableContent)
+          expect(authenticator.exception.class).to be(ApplicationController::UnprocessableContent)
           expect(authenticator.status).to eq(:unprocessable_content)
           expect(authenticator.message).to eq("'authn-123' authenticators are not supported.")
         end

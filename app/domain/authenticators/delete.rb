@@ -22,7 +22,7 @@ module Authenticators
           next @failure.new(
             "Unauthorized",
             status: :forbidden,
-            exception: Exceptions::Forbidden
+            exception: Exceptions::Forbidden.new
           )
         end
         policy =  @authn_repo.delete(policy_id: policy_id)

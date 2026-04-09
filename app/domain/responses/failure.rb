@@ -16,7 +16,12 @@ module Responses
       @level = level
       @status = status
       @exception = exception
-      @backtrace = backtrace.nil? ? caller : backtrace # Add stack trace
+      # `caller` is a Ruby built-in that returns the current call stack as an
+      # array of strings. We use it as a last resort so that every Failure has
+      # some traceable origin. When an exception is available its backtrace
+      # points to the original error site, which is more useful. An explicit
+      # backtrace overrides both.
+      @backtrace = backtrace || exception&.backtrace || caller
     end
 
     def success?
