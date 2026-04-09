@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [1.25.0] - 2026-03-19
 ### Fixed
 - Fix APIv2 batch secret retrieval returning all secret versions instead of only the latest. CNJR-13100
+- Log underlying OIDC discovery failure details at DEBUG when the Authn-OIDC provider is unreachable. CNJR-13148
 
 ### Added
 - Endpoint for getting a workload. CNJR-12890
