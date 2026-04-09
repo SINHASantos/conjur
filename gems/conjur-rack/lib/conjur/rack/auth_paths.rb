@@ -32,7 +32,10 @@ module Conjur
         %r{^/authn-[^/]+/.*/login/?$},
 
         # OIDC provider discovery — required open for the UI
-        %r{^/authn-oidc/.*/providers/?$}
+        %r{^/authn-oidc/.*/providers/?$},
+
+        # Version endpoint — queried by the appliance /info endpoint without a token
+        %r{^/version/?$}
       ].freeze
 
       # Paths where a token is used if present, but its absence is not an error.
