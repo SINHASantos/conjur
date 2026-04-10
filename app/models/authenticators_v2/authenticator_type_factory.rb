@@ -56,7 +56,7 @@ module AuthenticatorsV2
         return @failure.new(
           "Authenticator type is required",
           status: :unprocessable_content,
-          exception: ApplicationController::UnprocessableContent
+          exception: ApplicationController::UnprocessableContent.new
         )
       end
       klass = AUTHENTICATOR_CLASSES[type]
@@ -66,7 +66,7 @@ module AuthenticatorsV2
       @failure.new(
         "'#{type}' authenticators are not supported.",
         status: :unprocessable_content,
-        exception: ApplicationController::UnprocessableContent
+        exception: ApplicationController::UnprocessableContent.new
       )
     end
   end

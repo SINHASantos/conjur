@@ -108,9 +108,13 @@ RSpec.describe(Authentication::AuthnOidc::V2::Views::ProviderContext) do
     end
 
     context 'when authenticator discovery endpoint is unreachable' do
+      let(:discovery_exception) { StandardError.new('TLS handshake failed') }
+
       let(:current_client) do
         instance_double(::Authentication::AuthnOidc::V2::OidcClient).tap do |double|
-          allow(double).to receive(:oidc_configuration).and_return(Responses::Failure.new('bad provider'))
+          allow(double).to receive(:oidc_configuration).and_return(
+            Responses::Failure.new('bad provider', exception: discovery_exception)
+          )
         end
       end
       it 'does not cause an exception' do
@@ -119,6 +123,14 @@ RSpec.describe(Authentication::AuthnOidc::V2::Views::ProviderContext) do
         %w[foo bar].each do |authenticator|
           expect(log_output.string).to include("Authn-OIDC '#{authenticator}' provider-uri: 'http://#{authenticator}' is unreachable")
         end
+      end
+
+      it 'logs discovery failure details at debug level' do
+        provider_context.call(authenticators: authenticators)
+        expect(log_output.string).to include('DEBUG')
+        expect(log_output.string).to include('bad provider')
+        expect(log_output.string).to include('Authn-OIDC provider discovery failure')
+        expect(log_output.string).to include("#{discovery_exception.class}: #{discovery_exception.message}")
       end
     end
   end

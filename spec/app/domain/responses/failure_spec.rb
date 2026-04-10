@@ -29,6 +29,53 @@ describe Responses::Failure do
         expect(failure.bind { |response| "foo-#{response}"}).to eq(failure)
       end
     end
+
+    describe '.backtrace' do
+      it 'falls back to the construction-site caller stack' do
+        expect(failure.backtrace).to be_an(Array)
+        expect(failure.backtrace).not_to be_empty
+      end
+    end
+  end
+
+  context 'when initialized with an exception' do
+    let(:exception) do
+      StandardError.new('boom').tap { |err| err.set_backtrace(['file.rb:1:in test']) }
+    end
+    let(:failure) { Responses::Failure.new('msg', exception: exception) }
+
+    describe '.backtrace' do
+      it 'uses the exception backtrace' do
+        expect(failure.backtrace).to eq(exception.backtrace)
+      end
+    end
+  end
+
+  context 'when initialized with an explicit backtrace' do
+    let(:explicit_backtrace) { ['explicit.rb:99:in method'] }
+    let(:failure) { Responses::Failure.new('msg', backtrace: explicit_backtrace) }
+
+    describe '.backtrace' do
+      it 'uses the explicit backtrace' do
+        expect(failure.backtrace).to eq(explicit_backtrace)
+      end
+    end
+  end
+
+  context 'when initialized with both an exception and an explicit backtrace' do
+    let(:exception) do
+      StandardError.new('boom').tap { |err| err.set_backtrace(['exception.rb:1:in test']) }
+    end
+    let(:explicit_backtrace) { ['explicit.rb:99:in method'] }
+    let(:failure) do
+      Responses::Failure.new('msg', exception: exception, backtrace: explicit_backtrace)
+    end
+
+    describe '.backtrace' do
+      it 'prefers the explicit backtrace over the exception backtrace' do
+        expect(failure.backtrace).to eq(explicit_backtrace)
+      end
+    end
   end
 
   context 'when initialized with all options' do

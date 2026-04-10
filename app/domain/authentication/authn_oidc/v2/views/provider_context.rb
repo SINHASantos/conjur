@@ -48,7 +48,9 @@ module Authentication
           end
 
           def generate_redirect_url(client:, authenticator:, nonce:, code_challenge:)
-            client.oidc_configuration.bind do |config|
+            # On success, `return` inside the block exits this method. On failure, `bind` returns
+            # the Failure from `oidc_configuration` so we can log it before building the response.
+            result = client.oidc_configuration.bind do |config|
               params = {
                 client_id: authenticator.client_id,
                 response_type: authenticator.response_type,
@@ -64,7 +66,23 @@ module Authentication
             end
             message = "Authn-OIDC '#{authenticator.service_id}' provider-uri: '#{authenticator.provider_uri}' is unreachable"
             @logger.warn(message)
-            @failure.new(message, exception: Errors::Authentication::OAuth::ProviderDiscoveryFailed)
+            log_oidc_discovery_failure_details(result)
+            @failure.new(message, exception: Errors::Authentication::OAuth::ProviderDiscoveryFailed.new)
+          end
+
+          private
+
+          # Emits diagnostic detail at DEBUG when discovery fails: the Responses::Failure message,
+          # optional domain exception class/message from OidcClient, and a backtrace.
+          # Responses::Failure#backtrace already prefers the domain exception's backtrace when
+          # available, so we log it directly without duplicating that priority logic here.
+          def log_oidc_discovery_failure_details(failure)
+            parts = [failure.message]
+            if failure.exception
+              parts << "#{failure.exception.class}: #{failure.exception.message}"
+            end
+            @logger.debug("Authn-OIDC provider discovery failure: #{parts.compact.join(' | ')}")
+            @logger.debug(failure.backtrace.join("\n")) if failure.backtrace.present?
           end
         end
       end

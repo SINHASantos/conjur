@@ -91,7 +91,7 @@ module Authentication
 
         response
       rescue => e
-        @failure.new(e.message, exception: e, backtrace: e.backtrace)
+        @failure.new(e.message, exception: e)
       end
 
       def params_allowed

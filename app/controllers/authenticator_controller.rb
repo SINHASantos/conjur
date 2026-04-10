@@ -161,7 +161,7 @@ class AuthenticatorController < V2RestController
     Responses::Failure.new(
       "Request JSON is malformed",
       status: :bad_request,
-      exception: BadRequestWithBody
+      exception: BadRequestWithBody.new
     )
   end
 

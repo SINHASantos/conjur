@@ -115,9 +115,12 @@ module DB
               )
             end
           else
+            # All known RoleCredentialValidation implementations use
+            # ActiveModel::Validations, so errors.first will always be an
+            # ActiveModel::Error (handled above). This branch is defensive
+            # fallback for any future non-ActiveModel validation class.
             return @failure.new(
               error.message.to_s,
-              exception: error.type,
               status: :unauthorized
             )
           end
