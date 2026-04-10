@@ -9,7 +9,6 @@ COPY lib/conjur-policy-parser-version.rb lib/conjur-policy-parser-version.rb
 
 # Make sure the expected version of Bundler is available
 ENV BUNDLER_VERSION=2.7.2
+ENV OPENSSL_CONF=/usr/lib/ssl/openssl.cnf
 RUN gem install bundler -v ${BUNDLER_VERSION} && \
     bundle install
-
-ENV OPENSSL_CONF=/usr/lib/ssl/openssl.cnf
