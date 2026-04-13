@@ -407,61 +407,73 @@ pipeline {
           parallel {
             stage('AMD64 Ubuntu-based Docker image scans') { 
               steps {
-                runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_0, 
-                  image: "registry.tld/conjur:${VERSION}-${TAG_SHA}",
-                  buildMode: MODE,
-                  branch: env.BRANCH_NAME,
-                  arch: "linux/amd64")
+                retry(3) {
+                  runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_0, 
+                    image: "registry.tld/conjur:${VERSION}-${TAG_SHA}",
+                    buildMode: MODE,
+                    branch: env.BRANCH_NAME,
+                    arch: "linux/amd64")
+                }
               }
             }
             
             stage('ARM64 Ubuntu-based Docker image scans') { 
               steps {
-                runSecurityScans(INFRAPOOL_EXECUTORV2ARM_AGENT_0, 
-                  image: "registry.tld/conjur:${VERSION}-${TAG_SHA}",
-                  buildMode: MODE,
-                  branch: env.BRANCH_NAME,
-                  arch: "linux/arm64")
+                retry(3) {
+                  runSecurityScans(INFRAPOOL_EXECUTORV2ARM_AGENT_0, 
+                    image: "registry.tld/conjur:${VERSION}-${TAG_SHA}",
+                    buildMode: MODE,
+                    branch: env.BRANCH_NAME,
+                    arch: "linux/arm64")
+                }
               }
             }
             
             stage('AMD64 UBI-based Docker image scans') {
               steps {
-                runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_1, 
-                  image: "registry.tld/conjur-ubi:${VERSION}-${TAG_SHA}",
-                  buildMode: MODE,
-                  branch: env.BRANCH_NAME,
-                  arch: "linux/amd64")
+                retry(3) {
+                  runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_1, 
+                    image: "registry.tld/conjur-ubi:${VERSION}-${TAG_SHA}",
+                    buildMode: MODE,
+                    branch: env.BRANCH_NAME,
+                    arch: "linux/amd64")
+                }
               }
             }
             
             stage('ARM64 UBI-based Docker image scans') {
               steps {
-                runSecurityScans(INFRAPOOL_EXECUTORV2ARM_AGENT_0, 
-                  image: "registry.tld/conjur-ubi:${VERSION}-${TAG_SHA}",
-                  buildMode: MODE,
-                  branch: env.BRANCH_NAME,
-                  arch: "linux/arm64")
+                retry(3) {
+                  runSecurityScans(INFRAPOOL_EXECUTORV2ARM_AGENT_0, 
+                    image: "registry.tld/conjur-ubi:${VERSION}-${TAG_SHA}",
+                    buildMode: MODE,
+                    branch: env.BRANCH_NAME,
+                    arch: "linux/arm64")
+                }
               }
             }
             
             stage('AMD64 Conjur-Test Docker image scans') {
               steps {
-                runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_2, 
-                  image: "registry.tld/conjur-test:${VERSION}-${TAG_SHA}",
-                  buildMode: MODE,
-                  branch: env.BRANCH_NAME,
-                  arch: "linux/amd64")
+                retry(3) {
+                  runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_2, 
+                    image: "registry.tld/conjur-test:${VERSION}-${TAG_SHA}",
+                    buildMode: MODE,
+                    branch: env.BRANCH_NAME,
+                    arch: "linux/amd64")
+                }
               }
             }
             
             stage('ARM64 Conjur-Test Docker image scans') {
               steps {
-                runSecurityScans(INFRAPOOL_EXECUTORV2ARM_AGENT_0, 
-                  image: "registry.tld/conjur-test:${VERSION}-${TAG_SHA}",
-                  buildMode: MODE,
-                  branch: env.BRANCH_NAME,
-                  arch: "linux/arm64")              
+                retry(3) {
+                  runSecurityScans(INFRAPOOL_EXECUTORV2ARM_AGENT_0, 
+                    image: "registry.tld/conjur-test:${VERSION}-${TAG_SHA}",
+                    buildMode: MODE,
+                    branch: env.BRANCH_NAME,
+                    arch: "linux/arm64")
+                }
               }
             }
           }
