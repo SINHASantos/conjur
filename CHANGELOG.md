@@ -36,6 +36,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Upgrade json gem to resolve CVE-2026-33210. CNJR-13315
 - Upgrade rails to 8.1.2.1 to address CVE-2026-33195, CVE-2026-33174, CVE-2026-33176. CNJR-13329
 - Upgrade rack to 3.2.6 to resolve CVE-2026-34829, CVE-2026-34827, CVE-2026-34785, CVE-2026-34830. CNJR-13606
+- Harden authn-k8s inventory base image and dependencies to resolve the
+  following CVEs (Snyk): Critical - CVE-2026-20884, CVE-2026-20889,
+  CVE-2026-20911, CVE-2026-21413, CVE-2026-24450, CVE-2026-24660
 
 ### Fixed
 - Disconnect all Sequel database connections on fork to prevent sharing connections between forked processes. CNJR-12618
