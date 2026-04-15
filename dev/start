@@ -13,7 +13,7 @@ if [ ! -f "../VERSION" ]; then
 fi
 
 # Minimal set of services.  We add to this list based on cmd line flags.
-services=(pg conjur client cucumber)
+services=(pg conjur conjur-tls client cucumber)
 
 # Authenticators to enable.
 default_authenticators="authn,authn-k8s/test,authn-cert/my-service,authn-cert/spiffe-service"
@@ -37,6 +37,7 @@ ENABLE_OIDC_IDENTITY=false
 ENABLE_OIDC_KEYCLOAK=false
 ENABLE_OIDC_OKTA=false
 ENABLE_ROTATORS=false
+ENABLE_HTTPS=true
 IDENTITY_USER=""
 COMPOSE="docker compose"
 NO_ENTER=false
@@ -50,6 +51,7 @@ required_envvars[iam]="AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY"
 main() {
   unset COMPOSE_PROJECT_NAME
   parse_options "$@"
+  configure_https
 
   check_env_vars
 
@@ -89,6 +91,14 @@ main() {
   create_alice
   kill_conjur # so dev's can restart it manually
 
+  echo "Conjur endpoints:"
+  echo "  HTTP : http://localhost:3000"
+  if [[ $ENABLE_HTTPS == true ]]; then
+    echo "  HTTPS: https://localhost:3443"
+  else
+    echo "  HTTPS: disabled (--no-https)"
+  fi
+
   # Copy Gemfile from conjur /base to local base folder for better dev experience
   copy_base_gemfile
   
@@ -103,8 +113,13 @@ Starts Conjur for development. Once setup is complete, the user is dropped into
 the Conjur container.  To start the application server, run:
     # conjurctl server
 
+Endpoints after startup:
+    HTTP : http://localhost:3000
+    HTTPS: https://localhost:3443
+
 Usage: start [options]
     --audit         Starts with the audit engine and database enabled
+    --no-https      Disables TLS proxy startup (HTTPS on https://localhost:3443)
     --authn-azure   Starts with authn-azure/prod as authenticator
     --authn-gcp     Starts with authn-gcp as authenticator
     --authn-iam     Starts with authn-iam/prod as authenticator
@@ -162,6 +177,7 @@ parse_options() {
       --oidc-keycloak ) ENABLE_AUTHN_OIDC=true ; ENABLE_OIDC_KEYCLOAK=true ; shift ;;
       --oidc-okta ) ENABLE_AUTHN_OIDC=true ; ENABLE_OIDC_OKTA=true ; shift ;;
       --rotators ) ENABLE_ROTATORS=true ; shift ;;
+      --no-https ) ENABLE_HTTPS=false ; shift ;;
       --no-enter ) NO_ENTER=true ; shift ;;
        * )
          if [ -z "$1" ]; then
@@ -177,6 +193,22 @@ parse_options() {
     echo "Flag --oidc-identity must be paired with --identity-user. See --help."
     exit 1
   fi
+}
+
+configure_https() {
+  if [[ $ENABLE_HTTPS == true ]]; then
+    return
+  fi
+
+  # Remove TLS proxy service from the startup list when HTTPS is disabled.
+  # Note: "conjur-tls" must match the service name in docker-compose.yml.
+  local filtered_services=()
+  for service in "${services[@]}"; do
+    if [[ "$service" != "conjur-tls" ]]; then
+      filtered_services+=("$service")
+    fi
+  done
+  services=("${filtered_services[@]}")
 }
 
 check_env_vars() {

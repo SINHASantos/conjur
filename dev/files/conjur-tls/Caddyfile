@@ -1,0 +1,10 @@
+{
+	admin off
+}
+
+https://localhost:3443 {
+	tls {
+		issuer internal
+	}
+	reverse_proxy conjur:3000
+}

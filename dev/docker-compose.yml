@@ -98,6 +98,18 @@ services:
     - ldap-server
     - keycloak
 
+  conjur-tls:
+    image: caddy:2.8-alpine
+    depends_on:
+      - conjur
+    ports:
+      # Keep plain HTTP on 3000; expose HTTPS via self-signed cert on 3443.
+      - "3443:3443"
+    volumes:
+      - ./files/conjur-tls/Caddyfile:/etc/caddy/Caddyfile:ro
+      - conjur-tls-data:/data
+      - conjur-tls-config:/config
+
   cucumber:
     image: conjur-dev
     entrypoint: sleep
@@ -246,3 +258,5 @@ services:
 volumes:
   authn-local:
   jwks-volume:
+  conjur-tls-data:
+  conjur-tls-config:

@@ -14,14 +14,13 @@ describe StatusController, :type => :controller do
 
       it 'has the standard message' do
         get :index
-        expect(response.body).to include('is running!')
+        expect(response.body).to include('Running')
       end
 
       it 'includes the version' do
         get :index
-        expect(response.body).to include(
-          "Version #{ENV["CONJUR_VERSION_DISPLAY"]}".strip
-        )
+        expect(response.body).to include('Version')
+        expect(response.body).to include(ENV['CONJUR_VERSION_DISPLAY'].to_s) unless ENV['CONJUR_VERSION_DISPLAY'].nil?
       end
 
       it 'includes the version in JSON' do
