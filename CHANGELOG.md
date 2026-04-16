@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing should go in this section, please add to the latest unreleased version
   (and update the corresponding date), or add a new version.
 
-## [1.25.0] - 2026-03-19
+## [1.27.0] - 2026-06-01
+
+## [1.26.0] - 2026-04-16
 ### Fixed
 - Fix APIv2 batch secret retrieval returning all secret versions instead of only the latest. CNJR-13100
 - Log underlying OIDC discovery failure details at DEBUG when the Authn-OIDC provider is unreachable. CNJR-13148
@@ -44,7 +46,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Disconnect all Sequel database connections on fork to prevent sharing connections between forked processes. CNJR-12618
 - Fix resource ID parsing in dry run response. CNJR-13269
 
-## [1.24.1] - 2025-11-20
+## [1.25.1] - 2025-11-20
 
 ### Fixed
 - Misconfigured OIDC provider denying access to details for properly configured providers. CNJR-11824
