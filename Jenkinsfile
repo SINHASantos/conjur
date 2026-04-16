@@ -317,34 +317,6 @@ pipeline {
      }
 
     stage('Build and test Conjur') {
-      when {
-        // Run tests only when ANY of the following is true:
-        // 1. A non-markdown file has changed.
-        // 2. It's running on the master branch (which includes nightly builds).
-        // 3. It's a tag-triggered build.
-        anyOf {
-          // Note: You cannot use "when"'s changeset condition here because it's
-          // not powerful enough to express "_only_ md files have changed".
-          // Dropping down to a git script was the easiest alternative.
-          expression {
-            0 == sh(
-              returnStatus: true,
-              // A non-markdown file has changed.
-              script: '''
-                git diff origin/master --name-only |
-                grep -v "^.*\\.md$" > /dev/null
-              '''
-            )
-          }
-
-          // Always run the full pipeline on the master branch (which includes
-          // nightly builds)
-          branch "master"
-
-          // Always run the full pipeline on tags
-          buildingTag()
-        }
-      }
 
       stages {
         stage('Build Docker Image') {
