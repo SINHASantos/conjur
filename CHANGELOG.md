@@ -9,7 +9,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing should go in this section, please add to the latest unreleased version
   (and update the corresponding date), or add a new version.
 
-## [1.27.0] - 2026-06-01
+## [1.26.1] - 2026-04-30
+
+### Fixed
+- Host Factory tokens leaking to underprivileged roles from /resources API. CNJR-13782
 
 ## [1.26.0] - 2026-04-16
 ### Fixed
