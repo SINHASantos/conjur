@@ -41,8 +41,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 - Host Factory tokens leaking to underprivileged roles from /resources API. CNJR-13782
 
-## [1.26.0] - 2026-04-16
+## [1.26.1] - 2026-04-30
 
+### Fixed
+- Host Factory tokens leaking to underprivileged roles from /resources API. CNJR-13782
+
+## [1.26.0] - 2026-04-16
 ### Fixed
 - Fix APIv2 batch secret retrieval returning all secret versions instead of only the latest. CNJR-13100
 - Log underlying OIDC discovery failure details at DEBUG when the Authn-OIDC provider is unreachable. CNJR-13148
