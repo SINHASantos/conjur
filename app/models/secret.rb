@@ -9,19 +9,6 @@ class Secret < Sequel::Model
   attr_encrypted :value, aad: :resource_id
   
   class << self
-    def latest_public_keys account, kind, id
-      # Select the most recent value of each secret
-      Secret.with(:max_values, 
-                  Secret.select(:resource_id){ max(:version).as(:version) }.
-                    group_by(:resource_id).
-                    where("account(resource_id)".lit => account).
-                    where("kind(resource_id)".lit => 'public_key').
-                    where(Sequel.like("identifier(resource_id)".lit, "#{kind}/#{id}/%"))).
-        join(:max_values, [ :resource_id, :version ]).
-          order(:resource_id).
-          all.
-          map(&:value)
-    end
 
    # WITH expired_secrets AS (SELECT resource_id FROM secrets GROUP BY resource_id HAVING max(expires_at) < NOW()) SELECT resource_id, value AS ttl FROM annotations NATURAL JOIN expired_secrets WHERE name = 'ttl'
 

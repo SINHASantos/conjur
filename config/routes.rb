@@ -141,8 +141,6 @@ Rails.application.routes.draw do
         patch   "/policies/:account/:kind/*identifier" => 'policies#patch', constraints: { kind: /policy/ }
         post    "/policies/:account/:kind/*identifier" => 'policies#post', constraints: { kind: /policy/ }
 
-        get     "/public_keys/:account/:kind/*identifier" => 'public_keys#show', constraints: { kind: /public_key|user/ }
-
         post     "/ca/:account/:service_id/sign" => 'certificate_authority#sign'
       end
     end
