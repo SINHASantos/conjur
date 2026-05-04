@@ -39,7 +39,7 @@ class HostFactoryTokensController < RestController
     rescue ArgumentError => e
       raise ApplicationController::UnprocessableContent, e.message
     end
-    render(json: tokens)
+    render(json: tokens.map(&:as_creation_json))
   end
 
   def destroy

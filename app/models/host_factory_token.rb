@@ -36,8 +36,11 @@ class HostFactoryToken < Sequel::Model
     super(options.merge(except: [ :token, :token_sha256, :cidr, :expiration, :resource_id ])).tap do |response|
       response[:expiration] = expiration.utc.iso8601
       response[:cidr] = cidr.map(&:to_s)
-      response[:token] = token
     end
+  end
+
+  def as_creation_json
+    as_json.merge(token: token)
   end
 
   def valid? origin: nil
@@ -84,16 +87,16 @@ class HostFactoryToken < Sequel::Model
 
   def validate_cidr
     cidr = self[:cidr]
-    unless cidr.blank?
-      begin
-        Conjur::PolicyParser::Types::Base::expect_array(
-          "cidr",
-          "cidr",
-          cidr
-        )
-      rescue => e
-        raise ArgumentError, e.message
-      end
+    return if cidr.blank?
+
+    begin
+      Conjur::PolicyParser::Types::Base::expect_array(
+        "cidr",
+        "cidr",
+        cidr
+      )
+    rescue => e
+      raise ArgumentError, e.message
     end
   end
 end

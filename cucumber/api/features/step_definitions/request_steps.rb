@@ -242,7 +242,7 @@ def normalize_header_key(header_name)
   header_name.downcase.gsub('-', '_').to_sym
 end
 
-Then(/^the "([^\"]*)" header is "([^\"]*)"$/) do |header_name, value|
+Then(/^the "([^"]*)" header is "([^"]*)"$/) do |header_name, value|
   key = normalize_header_key(header_name)
   expect(@response_headers[key].to_s).to eq(value)
 end
@@ -287,13 +287,19 @@ Then("the host factory JSON should be:") do |json|
   @result.delete('created_at')
   token = @result.dig('tokens', 0)
   if token
-    json = json.gsub("@host_factory_token@", token['token'])
     json = json.gsub(
       "@host_factory_token_expiration@",
       parse_expiration(token['expiration'])
     )
   end
   expect(@result).to eq(JSON.parse(json))
+end
+
+Then(/^the response is an array that contains the resource "([^"]*)"/) do |resource_id|
+  expect(@result).to be_an_instance_of(Array)
+  target_resources = @result.select { |resource| resource['id'] == resource_id }
+  expect(target_resources.length).to eq(1)
+  @result = @result[0]
 end
 
 When(/^I( (?:can|successfully))? POST "([^"]*)" with all files from folder "([^"]*)"/) do |can, path, dirname|
