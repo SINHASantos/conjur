@@ -12,11 +12,10 @@ class PoliciesController < RestController
   # Legacy v1 endpoint — unknown params log a warning but do not fail
   # the request.
   validate_query_params :get,
-                        %i[account kind identifier depth limit],
-                        strict: false
-  validate_query_params :put,  %i[account kind identifier dryRun], strict: false
-  validate_query_params :patch, %i[account kind identifier dryRun], strict: false
-  validate_query_params :post,  %i[account kind identifier dryRun], strict: false
+                        %i[account kind identifier depth limit]
+  validate_query_params :put,  %i[account kind identifier dryRun]
+  validate_query_params :patch, %i[account kind identifier dryRun]
+  validate_query_params :post,  %i[account kind identifier dryRun]
 
   # Conjur policies are YAML documents, so we assume that if no content-type
   # is provided in the request.

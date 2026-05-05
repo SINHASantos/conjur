@@ -8,9 +8,8 @@ class HostFactoryTokensController < RestController
   before_action :find_token, only: [ :destroy ]
 
   validate_query_params :create,
-                        %i[account kind identifier expiration count cidr],
-                        strict: false
-  validate_query_params :destroy, %i[account token], strict: false
+                        %i[account kind identifier expiration count cidr]
+  validate_query_params :destroy, %i[account token]
 
   def create
     raise(ArgumentError, "Invalid resource kind: #{resource.kind}") unless resource.kind == 'host_factory'

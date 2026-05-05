@@ -310,7 +310,7 @@ Feature: Branches APIv2 tests - create empty
     And the JSON should be:
     """
     { "code": "422",
-      "message": "Unexpected parameters: notpermitted" }
+      "message": "CONJ00195E Received unexpected query parameter(s): notpermitted" }
     """
 
   @negative @acceptance

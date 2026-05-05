@@ -5,10 +5,11 @@ require 'spec_helper'
 # Minimal stub controller that includes the concern, allowing tests to
 # control the action name, allowed params, and query string independently.
 class DummyQueryParamController
-  include QueryParamValidation
-
-  # Simulate Rails ActionController::Base class-level storage
+  # Must be defined before `include` so the concern's `included` hook can call
+  # `before_action` (same load order as a real ActionController::Base subclass).
   def self.before_action(*); end
+
+  include QueryParamValidation
 
   attr_reader :action_name, :controller_name
 
@@ -37,6 +38,45 @@ RSpec.describe(QueryParamValidation) do
 
   def run_check(controller)
     controller.send(:check_query_params)
+  end
+
+  def controller_for_default_strict(
+    action:,
+    allowed:,
+    query_params: {},
+    use_v2_rest: false
+  )
+    if use_v2_rest
+      klass = Class.new(DummyQueryParamController) do
+        def self.before_action(*); end
+        def self.v2_rest_controller?
+          true
+        end
+
+        include QueryParamValidation
+        validate_query_params action, allowed
+      end
+    else
+      klass = Class.new(DummyQueryParamController) do
+        def self.before_action(*); end
+        include QueryParamValidation
+        validate_query_params action, allowed
+      end
+    end
+
+    klass.new(action: action, query_params: query_params)
+  end
+
+  def with_config_strict_params(value)
+    previous_config = Rails.application.config.conjur_config
+    config_double = instance_double(
+      Conjur::ConjurConfig,
+      strict_params: value
+    )
+    allow(Rails.application.config).to receive(:conjur_config).and_return(config_double)
+    yield
+  ensure
+    allow(Rails.application.config).to receive(:conjur_config).and_return(previous_config)
   end
 
   context 'when action has no declared allowlist' do
@@ -181,6 +221,58 @@ RSpec.describe(QueryParamValidation) do
       allow(subject.request).to receive(:query_parameters)
         .and_return({ 'account' => 'a', 'controller' => 'dummy', 'action' => 'show', 'format' => 'json' })
       expect { run_check(subject) }.not_to raise_error
+    end
+  end
+
+  context 'when strictness is not explicitly declared' do
+    context 'for V2 controllers' do
+      subject do
+        controller_for_default_strict(
+          action: :show,
+          allowed: %i[account],
+          query_params: { account: 'myaccount', dryRun: 'true' },
+          use_v2_rest: true
+        )
+      end
+
+      it 'defaults to strict and raises on unknown query params' do
+        expect { run_check(subject) }
+          .to raise_error(Errors::Conjur::UnexpectedParameter, /dryRun/)
+      end
+    end
+
+    context 'for V1 controllers when strict_params config is false' do
+      subject do
+        controller_for_default_strict(
+          action: :show,
+          allowed: %i[account],
+          query_params: { account: 'myaccount', dryRun: 'true' }
+        )
+      end
+
+      it 'defaults to permissive and warns on unknown query params' do
+        with_config_strict_params(false) do
+          expect(Rails.logger).to receive(:warn).with(/dryRun/)
+          expect { run_check(subject) }.not_to raise_error
+        end
+      end
+    end
+
+    context 'for V1 controllers when strict_params config is true' do
+      subject do
+        controller_for_default_strict(
+          action: :show,
+          allowed: %i[account],
+          query_params: { account: 'myaccount', dryRun: 'true' }
+        )
+      end
+
+      it 'defaults to strict and raises on unknown query params' do
+        with_config_strict_params(true) do
+          expect { run_check(subject) }
+            .to raise_error(Errors::Conjur::UnexpectedParameter, /dryRun/)
+        end
+      end
     end
   end
 end

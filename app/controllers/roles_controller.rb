@@ -16,19 +16,16 @@ class RolesController < RestController
 
   # Legacy v1 endpoint — unknown params log a warning but do not fail
   # the request.
-  validate_query_params :show, %i[account], strict: false
+  validate_query_params :show, %i[account]
   validate_query_params :all_memberships,
-                        %i[account count filter],
-                        strict: false
+                        %i[account count filter]
   validate_query_params :direct_memberships,
-                        %i[account count search kind filter],
-                        strict: false
+                        %i[account count search kind filter]
   validate_query_params :members,
-                        %i[account count search kind limit offset],
-                        strict: false
-  validate_query_params :add_member, %i[account member], strict: false
-  validate_query_params :delete_member, %i[account member], strict: false
-  validate_query_params :graph, [], strict: false
+                        %i[account count search kind limit offset]
+  validate_query_params :add_member, %i[account member]
+  validate_query_params :delete_member, %i[account member]
+  validate_query_params :graph, []
 
   before_action :current_user
 

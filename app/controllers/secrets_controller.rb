@@ -10,16 +10,13 @@ class SecretsController < RestController
 
   # Legacy v1 endpoints — unknown params log a warning but do not fail
   # the request.
-  validate_query_params :create, %i[account kind identifier], strict: false
+  validate_query_params :create, %i[account kind identifier]
   validate_query_params :show,
-                        %i[account kind identifier version],
-                        strict: false
+                        %i[account kind identifier version]
   validate_query_params :batch,
-                        %i[account variable_ids],
-                        strict: false
+                        %i[account variable_ids]
   validate_query_params :expire,
-                        %i[account kind identifier],
-                        strict: false
+                        %i[account kind identifier]
 
   def initialize(
     *args,

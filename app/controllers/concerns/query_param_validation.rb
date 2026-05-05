@@ -4,18 +4,17 @@
 #
 # Two modes are supported:
 #
-#   strict (default for new V2 endpoints)
+#   strict (default depends on API version)
 #     Any unknown query parameter raises Errors::Conjur::UnexpectedParameter
-#     (400 Bad Request). Controllers opt in by calling:
+#     (rendered as 422 via ApplicationController handling). Controllers opt in by calling:
 #
 #       validate_query_params :action_name, %i[allowed param names]
 #
-#   permissive (for legacy V1 endpoints)
+#   permissive (for legacy V1 endpoints when CONJUR_STRICT_PARAMS is false)
 #     Unknown query parameters are logged as a CONJ00545W warning but the
 #     request continues. Controllers opt in by calling:
 #
-#       validate_query_params :action_name, %i[allowed param names],
-#                             strict: false
+#       validate_query_params :action_name, %i[allowed param names]
 #
 # Actions with no declared allowlist are treated as strict-unknown: an
 # error is raised to force developers to explicitly declare params for
@@ -37,11 +36,22 @@ module QueryParamValidation
     # @param action [Symbol] the controller action this allowlist applies to
     # @param allowed [Array<Symbol>] permitted query parameter names
     # @param strict [Boolean] when false, unknown params warn instead of error
-    def validate_query_params(action, allowed, strict: true)
+    def validate_query_params(action, allowed, strict: strict_query_params?)
       _query_param_allowlists[action] = {
         allowed: allowed.map(&:to_sym),
         strict: strict
       }
+    end
+
+    def strict_query_params?
+      return true if v2_rest_controller?
+
+      Rails.application.config.respond_to?(:conjur_config) &&
+        Rails.application.config.conjur_config.strict_params
+    end
+
+    def v2_rest_controller?
+      defined?(V2RestController) && self <= V2RestController
     end
 
     def _query_param_allowlists
