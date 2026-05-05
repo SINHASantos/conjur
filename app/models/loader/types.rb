@@ -23,7 +23,7 @@ module Loader
       # Wraps a policy object with a corresponding +Loader::Types+ object.
       #
       # +external_handler+ should provide the methods +policy_id+, +handle_password+,
-      # +handle_public_key+. This argument is optional if the policy will not use
+      # +handle_restricted_to+. This argument is optional if the policy will not use
       # that functionality.
       def wrap obj, external_handler = nil
         cls = Types.const_get(obj.class.name.split("::")[-1])
@@ -34,7 +34,7 @@ module Loader
     class Base
       extend Forwardable
 
-      def_delegators :@external_handler, :policy_id, :handle_password, :handle_public_key, :handle_restricted_to
+      def_delegators :@external_handler, :policy_id, :handle_password, :handle_restricted_to
       def_delegators :@policy_object, :owner, :id
 
       attr_reader :policy_object, :external_handler
@@ -279,15 +279,6 @@ module Loader
 
         if password = ENV["CONJUR_PASSWORD_#{id.gsub(/[^a-zA-Z0-9]/, '_').upcase}"]
           handle_password(role.id, password)
-        end
-
-        Array(public_keys).each do |public_key|
-          key_name = PublicKey.key_name(public_key)
-
-          resourceid = [ account, "public_key", "#{self.role_kind}/#{self.id}/#{key_name}" ].join(":")
-          (::Resource[resourceid] || ::Resource.create(resource_id: resourceid, owner_id: find_ownerid)).tap do |resource|
-            handle_public_key(resource.id, public_key)
-          end
         end
 
         handle_restricted_to(self.roleid, restricted_to)
