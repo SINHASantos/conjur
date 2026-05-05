@@ -15,6 +15,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Allow API key authentication to be disabled at runtime with the `authn/api-key: false`
   annotation on users and hosts. CNJR-13871
 
+### Security
+- **BREAKING CHANGE**: The OIDC v1 workload authentication endpoint (`POST /authn-oidc/:service-id/:account/authenticate`)
+  is now **disabled by default** to mitigate a vulnerability where the `iss` (issuer) and `aud`
+  (audience) claims in submitted ID tokens were not verified. Any token signed by the configured
+  IdP -- regardless of its intended audience or application -- was previously accepted.
+  **Workloads** using `POST /authn-oidc/...` to authenticate will receive `404` responses after
+  upgrading. UI and CLI user authentication via `GET /authn-oidc/...` is unaffected.
+  To temporarily restore this workload behaviour, set
+  `CONJUR_FEATURE_OIDC_AUTHENTICATOR_V1_ENABLED=true` and restart the server.
+  Affected workloads should migrate to a machine-to-machine authenticator such as
+  `authn-jwt`. CNJR-13784
+
 ### Fixed
 - Host Factory tokens leaking to underprivileged roles from /resources API. CNJR-13782
 

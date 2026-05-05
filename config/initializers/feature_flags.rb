@@ -49,7 +49,9 @@ Rails.application.configure do
     # it from db for each use.
     slosilo_key_cache: true,
 
-    # When enabled, the v1 OIDC authenticate endpoint is available.
+    # When enabled, the v1 OIDC authenticate endpoint (POST /authn-oidc/...) is available
+    # for workload authentication. Disabled by default because the raw id_token submission path
+    # does not verify iss/aud claims. Prefer authn-jwt, or other authenticators for workloads.
     oidc_authenticator_v1: false,
 
   }.freeze
