@@ -59,4 +59,31 @@ describe 'Feature flag initializer' do
       expect(config.feature_flags.enabled?(:slosilo_key_cache)).to be(false)
     end
   end
+
+  # OIDC v1 authenticator feature
+  context 'when oidc_authenticator_v1 is not set with the environment variable' do
+    around do |example|
+      with_environment('CONJUR_FEATURE_OIDC_AUTHENTICATOR_V1_ENABLED', 'false') do
+        load Rails.root.join('config/initializers/feature_flags.rb')
+        example.run
+      end
+    end
+
+    it 'returns oidc_authenticator_v1 disabled' do
+      expect(config.feature_flags.enabled?(:oidc_authenticator_v1)).to be(false)
+    end
+  end
+
+  context 'when oidc_authenticator_v1 is enabled with the environment variable' do
+    around do |example|
+      with_environment('CONJUR_FEATURE_OIDC_AUTHENTICATOR_V1_ENABLED', 'true') do
+        load Rails.root.join('config/initializers/feature_flags.rb')
+        example.run
+      end
+    end
+
+    it 'returns oidc_authenticator_v1 enabled' do
+      expect(config.feature_flags.enabled?(:oidc_authenticator_v1)).to be(true)
+    end
+  end
 end

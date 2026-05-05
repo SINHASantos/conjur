@@ -59,7 +59,11 @@ Rails.application.routes.draw do
           end
 
           post '/authn-gcp/:account/authenticate' => 'authenticate#authenticate_gcp'
-          post '/authn-oidc(/:service_id)/:account/authenticate' => 'authenticate#authenticate_oidc'
+
+          if Rails.application.config.feature_flags.enabled?(:oidc_authenticator_v1)
+            post '/authn-oidc(/:service_id)/:account/authenticate' => 'authenticate#authenticate_oidc'
+          end
+
           post '/authn-jwt/:service_id/:account(/:id)/authenticate' => 'authenticate#authenticate_jwt'
 
           # Update password is only relevant when using the default authenticator

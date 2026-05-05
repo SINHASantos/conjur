@@ -47,7 +47,10 @@ Rails.application.configure do
 
     # When enabled, slosilo encryption key will be cached to prevent requesting
     # it from db for each use.
-    slosilo_key_cache: true
+    slosilo_key_cache: true,
+
+    # When enabled, the v1 OIDC authenticate endpoint is available.
+    oidc_authenticator_v1: false,
 
   }.freeze
 

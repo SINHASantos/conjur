@@ -163,6 +163,56 @@ describe AuthenticateController, :type => :request do
     end
   end
 
+  context "oidc v1 authenticate endpoint" do
+    let(:oidc_v1_url) { "/authn-oidc/my-service/rspec/authenticate" }
+
+    context "when oidc_authenticator_v1 feature flag is disabled" do
+      before do
+        allow(Rails.application.config.feature_flags)
+          .to receive(:enabled?)
+          .and_call_original
+        allow(Rails.application.config.feature_flags)
+          .to receive(:enabled?)
+          .with(:oidc_authenticator_v1)
+          .and_return(false)
+        Rails.application.reload_routes!
+      end
+
+      after do
+        Rails.application.reload_routes!
+      end
+
+      it "does not route" do
+        expect do
+          Rails.application.routes.recognize_path(oidc_v1_url, method: :post)
+        end.to raise_error(ActionController::RoutingError, /No route matches/)
+      end
+    end
+
+    context "when oidc_authenticator_v1 feature flag is enabled" do
+      before do
+        allow(Rails.application.config.feature_flags)
+          .to receive(:enabled?)
+          .and_call_original
+        allow(Rails.application.config.feature_flags)
+          .to receive(:enabled?)
+          .with(:oidc_authenticator_v1)
+          .and_return(true)
+        Rails.application.reload_routes!
+      end
+
+      after do
+        Rails.application.reload_routes!
+      end
+
+      it "routes to authenticate_oidc" do
+        expect(
+          Rails.application.routes.recognize_path(oidc_v1_url, method: :post)
+        ).to include(controller: 'authenticate', action: 'authenticate_oidc')
+      end
+    end
+  end
+
   context "when incorrectly using GET method" do
     include_context "create user"
 
