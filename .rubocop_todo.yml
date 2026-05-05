@@ -947,7 +947,6 @@ Style/NumericPredicate:
 # Cop supports --auto-correct.
 Style/ParallelAssignment:
   Exclude:
-    - 'app/controllers/public_keys_controller.rb'
     - 'app/domain/authentication/authn_ldap/authenticator.rb'
 
 # Offense count: 2

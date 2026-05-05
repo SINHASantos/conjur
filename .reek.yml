@@ -40,7 +40,6 @@ detectors:
     - HostFactoriesController
     - HostFactoryTokensController
     - PoliciesController
-    - PublicKeysController
     - ResourcesController
     - RestController
     - RolesController

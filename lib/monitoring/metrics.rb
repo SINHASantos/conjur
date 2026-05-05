@@ -143,13 +143,6 @@ module Monitoring
         operation: "updatePolicy"
       },
 
-      # PublicKeysApi
-      {
-        method: "GET",
-        pattern: %r{^(/public_keys)(/[^/]+){3}$},
-        operation: "showPublicKeys"
-      },
-
       # ResourcesApi
       {
         method: "GET",

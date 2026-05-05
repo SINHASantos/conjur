@@ -58,7 +58,6 @@ module Loader
     include Schemata::Helper
     include Handlers::RestrictedTo
     include Handlers::Password
-    include Handlers::PublicKey
 
     attr_reader :policy_parse,
                 :policy_version,
@@ -459,7 +458,6 @@ module Loader
 
       store_passwords
 
-      store_public_keys
 
       # Returns the created restricted_to records
       store_restricted_to(false)
@@ -595,7 +593,6 @@ module Loader
     def store_auxiliary_data
       store_passwords
 
-      store_public_keys
 
       # Returns the created restricted_to records
       store_restricted_to(true)

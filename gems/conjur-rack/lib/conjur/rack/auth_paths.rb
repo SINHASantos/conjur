@@ -40,7 +40,6 @@ module Conjur
 
       # Paths where a token is used if present, but its absence is not an error.
       OPTIONAL = [
-        %r{^/public_keys/},
         # API key rotation can use basic auth or an authz token
         %r{^/authn/.*/api_key/?$},
         %r{^/authn-[^/]+/.*/api_key/?$},

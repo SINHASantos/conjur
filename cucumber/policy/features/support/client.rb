@@ -131,10 +131,6 @@ class Client
     resource(uri('authn-oidc', 'providers')).get
   end
 
-  def fetch_public_keys(username:)
-    resource(uri('public_keys', 'user', username)).get(auth_header)
-  end
-
   def fetch_roles_with_privilege(kind:, id:, privilege:)
     resource(uri('resources', kind, id)).get(
       auth_header.merge(

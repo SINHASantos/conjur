@@ -28,15 +28,4 @@ describe Secret, :type => :model do
     end
   end
     
-  describe "#latest_public_keys" do
-    let(:login) { random_hex }
-    let(:resource) { Resource.create(resource_id: "rspec:public_key:user/#{login}/my-key", owner: the_user) }
-    
-    it "finds only the latest public key of a user" do
-      Secret.create(resource: resource, value: "value-0")
-      Secret.create(resource: resource, value: "value-1")
-      
-      expect(Secret.latest_public_keys("rspec", "user", login)).to eq(["value-1"])
-    end
-  end
 end

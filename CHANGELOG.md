@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 - Host Factory tokens leaking to underprivileged roles from /resources API. CNJR-13782
 
+### Removed
+- Removed the unauthenticated `GET /public_keys` endpoint. CNJR-11339
+
 ## [1.26.0] - 2026-04-16
 ### Fixed
 - Fix APIv2 batch secret retrieval returning all secret versions instead of only the latest. CNJR-13100

@@ -70,7 +70,6 @@ describe Conjur::Rack::AuthPaths do
       allow(app).to receive(:call).and_return([200, {}, ['ok']])
     end
 
-    include_examples "an excepted path", '/public_keys/myaccount/user/alice'
     include_examples "an excepted path", '/authn/myaccount/api_key'
     include_examples "an excepted path", '/authn-jwt/myaccount/api_key'
     include_examples "an excepted path", '/authn/myaccount/password'
