@@ -61,7 +61,7 @@ describe 'Feature flag initializer' do
   end
 
   # OIDC v1 authenticator feature
-  context 'when oidc_authenticator_v1 is not set with the environment variable' do
+  context 'when oidc_authenticator_v1 is explicitly disabled via environment variable' do
     around do |example|
       with_environment('CONJUR_FEATURE_OIDC_AUTHENTICATOR_V1_ENABLED', 'false') do
         load Rails.root.join('config/initializers/feature_flags.rb')
@@ -70,6 +70,19 @@ describe 'Feature flag initializer' do
     end
 
     it 'returns oidc_authenticator_v1 disabled' do
+      expect(config.feature_flags.enabled?(:oidc_authenticator_v1)).to be(false)
+    end
+  end
+
+  context 'when oidc_authenticator_v1 environment variable is not set' do
+    around do |example|
+      with_environment('CONJUR_FEATURE_OIDC_AUTHENTICATOR_V1_ENABLED', nil) do
+        load Rails.root.join('config/initializers/feature_flags.rb')
+        example.run
+      end
+    end
+
+    it 'returns oidc_authenticator_v1 disabled (falls through to default: false)' do
       expect(config.feature_flags.enabled?(:oidc_authenticator_v1)).to be(false)
     end
   end

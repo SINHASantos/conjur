@@ -211,6 +211,28 @@ describe AuthenticateController, :type => :request do
         ).to include(controller: 'authenticate', action: 'authenticate_oidc')
       end
     end
+
+    context "when oidc_authenticator_v1 feature flag is disabled" do
+      before do
+        allow(Rails.application.config.feature_flags)
+          .to receive(:enabled?)
+          .and_call_original
+        allow(Rails.application.config.feature_flags)
+          .to receive(:enabled?)
+          .with(:oidc_authenticator_v1)
+          .and_return(false)
+        Rails.application.reload_routes!
+      end
+
+      after do
+        Rails.application.reload_routes!
+      end
+
+      it "returns 404 for POST to the OIDC v1 endpoint" do
+        post oidc_v1_url
+        expect(response.code).to eq("404")
+      end
+    end
   end
 
   context "when incorrectly using GET method" do
