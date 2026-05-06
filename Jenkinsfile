@@ -50,7 +50,7 @@ These are defined in runConjurTests, and also include the one-offs
 */
 @Library("product-pipelines-shared-library") _
 
-// runSecurityScans uses 2 environment variables to determine where in DefectDojo to 
+// runSecurityScans uses 2 environment variables to determine where in DefectDojo to
 // upload the results of the scans. We have to set those variables in both the regular
 // pipeline and the promote block, so use variables for it to keep them consistent.
 def productName = 'Conjur'
@@ -130,7 +130,7 @@ if (params.MODE == "PROMOTE") {
       # Promote both images for AMD64 and ARM64
       summon -f ./secrets.yml ./publish-images.sh --promote --base-version=${sourceVersion} --version=${targetVersion}
       summon -f ./secrets.yml ./publish-images.sh --promote --base-version=${sourceVersion} --version=${targetVersion} --arch=arm64
-      
+
       # Promote manifest that links above images
       summon -f ./secrets.yml ./publish-manifest.sh --promote --redhat --dockerhub --base-version=${sourceVersion} --version=${targetVersion}
     """
@@ -150,7 +150,7 @@ if (params.MODE == "PROMOTE") {
 
   // Copy Github Enterprise release to Github
   release.copyEnterpriseRelease(params.VERSION_TO_PROMOTE)
-  
+
   return
 }
 
@@ -343,20 +343,24 @@ pipeline {
           parallel {
             stage('Push images AMD64 image') {
               steps {
-                script {
-                  // Push images to the internal registry so that they can be used
-                  // by tests, even if the tests run on a different executor.
-                  INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './publish-images.sh --internal'
+                retry(3) {
+                  script {
+                    // Push images to the internal registry so that they can be used
+                    // by tests, even if the tests run on a different executor.
+                    INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './publish-images.sh --internal'
+                  }
                 }
               }
             }
 
             stage('Push images ARM64 image') {
               steps {
-                script {
-                  // Push images to the internal registry so that they can be used
-                  // by tests, even if the tests run on a different executor.
-                  INFRAPOOL_EXECUTORV2ARM_AGENT_0.agentSh './publish-images.sh --internal --arch=arm64'
+                retry(3) {
+                  script {
+                    // Push images to the internal registry so that they can be used
+                    // by tests, even if the tests run on a different executor.
+                    INFRAPOOL_EXECUTORV2ARM_AGENT_0.agentSh './publish-images.sh --internal --arch=arm64'
+                  }
                 }
               }
             }
@@ -365,9 +369,11 @@ pipeline {
 
         stage('Push multi-arch manifest to internal registry') {
           steps {
-            script {
-              // Push multi-architecture manifest to the internal registry.
-              INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './publish-manifest.sh --internal'
+            retry(3) {
+              script {
+                // Push multi-architecture manifest to the internal registry.
+                INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './publish-manifest.sh --internal'
+              }
             }
           }
         }
@@ -377,10 +383,10 @@ pipeline {
             VERSION = INFRAPOOL_EXECUTORV2_AGENT_0.agentReadFile('VERSION').trim()
           }
           parallel {
-            stage('AMD64 Ubuntu-based Docker image scans') { 
+            stage('AMD64 Ubuntu-based Docker image scans') {
               steps {
                 retry(3) {
-                  runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_0, 
+                  runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_0,
                     image: "registry.tld/conjur:${VERSION}-${TAG_SHA}",
                     buildMode: MODE,
                     branch: env.BRANCH_NAME,
@@ -388,11 +394,11 @@ pipeline {
                 }
               }
             }
-            
-            stage('ARM64 Ubuntu-based Docker image scans') { 
+
+            stage('ARM64 Ubuntu-based Docker image scans') {
               steps {
                 retry(3) {
-                  runSecurityScans(INFRAPOOL_EXECUTORV2ARM_AGENT_0, 
+                  runSecurityScans(INFRAPOOL_EXECUTORV2ARM_AGENT_0,
                     image: "registry.tld/conjur:${VERSION}-${TAG_SHA}",
                     buildMode: MODE,
                     branch: env.BRANCH_NAME,
@@ -400,11 +406,11 @@ pipeline {
                 }
               }
             }
-            
+
             stage('AMD64 UBI-based Docker image scans') {
               steps {
                 retry(3) {
-                  runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_1, 
+                  runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_1,
                     image: "registry.tld/conjur-ubi:${VERSION}-${TAG_SHA}",
                     buildMode: MODE,
                     branch: env.BRANCH_NAME,
@@ -412,11 +418,11 @@ pipeline {
                 }
               }
             }
-            
+
             stage('ARM64 UBI-based Docker image scans') {
               steps {
                 retry(3) {
-                  runSecurityScans(INFRAPOOL_EXECUTORV2ARM_AGENT_0, 
+                  runSecurityScans(INFRAPOOL_EXECUTORV2ARM_AGENT_0,
                     image: "registry.tld/conjur-ubi:${VERSION}-${TAG_SHA}",
                     buildMode: MODE,
                     branch: env.BRANCH_NAME,
@@ -424,11 +430,11 @@ pipeline {
                 }
               }
             }
-            
+
             stage('AMD64 Conjur-Test Docker image scans') {
               steps {
                 retry(3) {
-                  runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_2, 
+                  runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_2,
                     image: "registry.tld/conjur-test:${VERSION}-${TAG_SHA}",
                     buildMode: MODE,
                     branch: env.BRANCH_NAME,
@@ -436,11 +442,11 @@ pipeline {
                 }
               }
             }
-            
+
             stage('ARM64 Conjur-Test Docker image scans') {
               steps {
                 retry(3) {
-                  runSecurityScans(INFRAPOOL_EXECUTORV2ARM_AGENT_0, 
+                  runSecurityScans(INFRAPOOL_EXECUTORV2ARM_AGENT_0,
                     image: "registry.tld/conjur-test:${VERSION}-${TAG_SHA}",
                     buildMode: MODE,
                     branch: env.BRANCH_NAME,
