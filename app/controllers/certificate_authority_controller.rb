@@ -10,7 +10,7 @@ class CertificateAuthorityController < RestController
   before_action :verify_host, only: :sign
   before_action :verify_csr, only: :sign
 
-  validate_query_params :sign, %i[account kind identifier]
+  validate_query_params_for_action :sign, %i[account kind identifier]
 
   def sign
     certificate = certificate_authority.sign_csr(host, csr, ttl)

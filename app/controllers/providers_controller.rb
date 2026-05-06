@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class ProvidersController < ApplicationController
-  validate_query_params :index, []
+  validate_query_params []
 
   def index
     contract = Authentication::AuthnOidc::V2::Validations::AuthenticatorConfiguration

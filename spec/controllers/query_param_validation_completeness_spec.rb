@@ -11,12 +11,12 @@ require 'spec_helper'
 # from RestController. When an action receives a request, check_query_params
 # (a before_action) looks up the allowlist for that action and:
 #
-#   - raises 400 if no allowlist is declared (strict failure)
-#   - raises 400 if an unknown param is present and strict: true (new endpoints)
+#   - raises 422 if no allowlist is declared (strict failure)
+#   - raises 422 if an unknown param is present and strict: true (new endpoints)
 #   - logs a warning if an unknown param is present and strict: false (legacy v1)
 #
 # The problem: that enforcement is runtime-only. A developer could add a new
-# controller action, forget to call validate_query_params, and not discover the
+# controller action, forget to call validate_query_params_for_action, and not discover the
 # error until the endpoint is actually hit in production.
 #
 # == What this spec does ==
@@ -25,17 +25,17 @@ require 'spec_helper'
 # responsible controller includes QueryParamValidation, and asserts that the
 # action has a declared allowlist. If the allowlist is missing, the spec fails
 # with a clear message identifying the exact controller#action that needs a
-# validate_query_params declaration.
+# validate_query_params_for_action declaration.
 #
 # This turns a runtime 400 into a CI failure, making it impossible to ship a
 # new endpoint that bypasses query parameter validation.
 #
 # == Adding a new endpoint ==
 #
-# If this spec fails after you add a new endpoint, fix it by adding:
+# If this spec fails after you add a new endpoint, fix it by adding one of:
 #
-#   validate_query_params :your_action, %i[param1 param2]          # strict (new endpoints)
-#   validate_query_params :your_action, %i[param1 param2], strict: false  # permissive (legacy)
+#   validate_query_params %i[param1 param2]                            # per-controller param allowlist (use empty list for zero-query controllers)
+#   validate_query_params_for_action :your_action, %i[param1 param2]   # per-action param allowlist, overrides controller allowlist
 #
 # to your controller class body. See the existing controllers for examples.
 
@@ -74,14 +74,13 @@ RSpec.describe('QueryParamValidation completeness') do
 
   it 'every routed action in a QueryParamValidation controller has a declared allowlist' do
     missing = routed_validated_actions.reject do |controller_class, action|
-      controller_class._query_param_allowlists.key?(action)
+      controller_class.query_param_allowlist_for(action)
     end
 
     expect(missing).to be_empty,
-      "The following controller actions have no validate_query_params declaration.\n" \
-      "Add one to each controller to prevent query parameter validation from being\n" \
-      "silently bypassed. Use strict: true (default) for new endpoints, or\n" \
-      "strict: false for legacy v1 endpoints that should only warn on unknown params.\n\n" \
+      "The following controller actions have no query-parameter allowlist coverage.\n" \
+      "Add either a per-action validate_query_params_for_action or a controller-level\n" \
+      "validate_query_params declaration.\n\n" \
       "Missing declarations:\n" +
       missing.map { |klass, action| "  #{klass}##{action}" }.join("\n")
   end

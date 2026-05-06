@@ -6,7 +6,7 @@ class HostFactoriesController < ApplicationController
   include BodyParser
   include FindResource
 
-  validate_query_params :create_host, []
+  validate_query_params []
 
   before_action :validate_token
 

@@ -4,7 +4,7 @@ require 'spec_helper'
 RSpec.describe(LoggingConcern, type: :controller) do
   controller(ApplicationController) do
     include LoggingConcern
-    validate_query_params :test_action, []
+    validate_query_params_for_action :test_action, []
 
     def test_action
       log_debug_requested

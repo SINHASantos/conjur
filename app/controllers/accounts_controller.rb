@@ -4,9 +4,7 @@ class AccountsController < ApplicationController
   include AuthorizeResource
   include BodyParser
 
-  validate_query_params :index,  []
-  validate_query_params :create, []
-  validate_query_params :destroy, []
+  validate_query_params []
 
   def index
     authorize(:read)

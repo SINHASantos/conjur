@@ -6,12 +6,12 @@ class ResourcesController < RestController
 
   # Legacy v1 endpoint — unknown params log a warning but do not fail
   # the request. All known params across every action are listed here.
-  validate_query_params :index,
+  validate_query_params_for_action :index,
                         %i[account kind limit offset search owner role acting_as count]
-  validate_query_params :show, %i[account kind identifier]
-  validate_query_params :permitted_roles,
+  validate_query_params_for_action :show, %i[account kind identifier]
+  validate_query_params_for_action :permitted_roles,
                         %i[account kind identifier privilege permission]
-  validate_query_params :check_permission,
+  validate_query_params_for_action :check_permission,
                         %i[account kind identifier privilege role]
 
   def index

@@ -26,17 +26,25 @@ end
 
 RSpec.describe(QueryParamValidation) do
   # Helper that declares an allowlist on the dummy class and runs the check.
-  def controller_for(action:, allowed:, query_params: {}, strict: nil, use_v2_rest: false)
+  def controller_for(action:, allowed:, query_params: {}, strict: nil, use_v2_rest: false, default: nil)
     klass = Class.new(DummyQueryParamController) do
       include QueryParamValidation
       def self.before_action(*); end
 
       define_singleton_method(:v2_rest_controller?) { use_v2_rest }
 
+      if default
+        if strict.nil?
+          validate_query_params default
+        else
+          validate_query_params default, strict: strict
+        end
+      end
+
       if strict.nil?
-        validate_query_params action, allowed
+        validate_query_params_for_action action, allowed
       else
-        validate_query_params action, allowed, strict: strict
+        validate_query_params_for_action action, allowed, strict: strict
       end
     end
     klass.new(action: action, query_params: query_params)
@@ -63,7 +71,7 @@ RSpec.describe(QueryParamValidation) do
       klass = Class.new(DummyQueryParamController) do
         include QueryParamValidation
         def self.before_action(*); end
-        # intentionally no validate_query_params call
+        # intentionally no query-param validation declarations
       end
       klass.new(action: :index, query_params: {})
     end
@@ -71,6 +79,25 @@ RSpec.describe(QueryParamValidation) do
     it 'raises Errors::Conjur::UnexpectedParameter' do
       expect { run_check(subject) }
         .to raise_error(Errors::Conjur::UnexpectedParameter)
+    end
+  end
+
+  context 'when action has no declared allowlist but controller default exists' do
+    subject do
+      klass = Class.new(DummyQueryParamController) do
+        include QueryParamValidation
+        def self.before_action(*); end
+
+        validate_query_params [], strict: false
+      end
+      klass.new(action: :index, query_params: { badParam: 'true' })
+    end
+
+    context 'when default is permissive' do
+      it 'does not raise and logs a warning' do
+        expect(Rails.logger).to receive(:warn).with(/badParam/)
+        expect { run_check(subject) }.not_to raise_error
+      end
     end
   end
 
@@ -261,16 +288,16 @@ end
 # =============================================================================
 #
 # The runtime guard in `check_query_params` raises when a routed action has no
-# `validate_query_params` declaration — but only when that action is actually
-# invoked. A developer could add a new action, skip the declaration, write no
+# query-parameter allowlist — via declaration or controller default — but only when
+# that action is actually invoked. A developer could add a new action, skip the
 # test that hits it, and ship code that would only fail on the first real
 # production request.
 #
 # These examples close that gap. They walk the live Rails route table at spec
 # load time and assert that every action routed to a qualifying controller has
-# a declared allowlist entry. A failure here means exactly one thing:
+# an allowlist entry. A failure here means exactly one thing:
 #
-#   "A routed action was added without calling validate_query_params."
+#   "A routed action was added without query-parameter allowlist coverage."
 #
 # ----- What "qualifying" means -----
 #
@@ -282,12 +309,9 @@ end
 #      strict defaults while V1 uses the CONJUR_STRICT_PARAMS default unless
 #      explicit per-endpoint overrides are provided.
 #
-#   3. The controller has at least one existing validate_query_params
-#      declaration. Brand-new controllers with zero declarations are assumed
-#      to be in the process of being annotated. The runtime guard will surface
-#      the missing annotation immediately when any action is first hit. Once
-#      ANY validate_query_params call lands on a controller, ALL of its routed
-#      actions automatically fall under this completeness check.
+#   3. The controller has either:
+#      - at least one validate_query_params_for_action declaration, or
+#      - one controller-level validate_query_params declaration.
 #
 RSpec.describe 'QueryParamValidation allowlist completeness' do
   # Enumerate unique controller/action pairs from the live route table. Done
@@ -302,7 +326,7 @@ RSpec.describe 'QueryParamValidation allowlist completeness' do
          .uniq
 
   routed_actions.each do |controller_name, action_name|
-    it "#{controller_name}##{action_name} has a validate_query_params declaration" do
+    it "#{controller_name}##{action_name} has query-param validation coverage" do
       # -----------------------------------------------------------------------
       # Resolve the constant. Some routes target engine controllers whose
       # constants live under a namespace or in a gem (e.g. conjur_audit/…).
@@ -322,29 +346,19 @@ RSpec.describe 'QueryParamValidation allowlist completeness' do
       end
 
       # -----------------------------------------------------------------------
-      # Qualification check 2: must have at least one declaration already.
-      # Controllers with zero entries are either brand-new or partially
-      # migrated; the runtime guard handles them until they opt in fully.
+      # The actual assertion: the specific action must resolve an allowlist entry
+      # via action-specific declaration or controller default.
       # -----------------------------------------------------------------------
-      unless controller_class._query_param_allowlists.any?
-        skip "#{controller_class} has no validate_query_params declarations yet " \
-             "(add declarations for all actions when opting this controller in)"
-      end
-
-      # -----------------------------------------------------------------------
-      # The actual assertion: the specific action must have an allowlist entry.
-      # -----------------------------------------------------------------------
-      expect(controller_class._query_param_allowlists).to(
-        have_key(action_name.to_sym),
+      expect(controller_class.query_param_allowlist_for(action_name.to_sym)).to(
+        be_truthy,
         <<~MSG
           #{controller_class}##{action_name} is reachable via a route but has
-          no validate_query_params declaration. Each routed action on a
-          QueryParamValidation-enabled controller must declare its allowed
-          query parameters. Add one of the following to #{controller_class}:
+          no query-parameter allowlist coverage. Add one of the following to #{controller_class}:
 
-            # Returns 422 Unprocessable Entity on unknown params, unless it's a legacy (V1_ endpoint
-            # and CONJUR_STRICT_PARAMS is false (default):
-            validate_query_params :#{action_name}, %i[param1 param2]
+            # Returns 422 Unprocessable Entity on unknown params:
+            validate_query_params_for_action :#{action_name}, %i[param1 param2]
+            # or
+            validate_query_params []
         MSG
       )
     end

@@ -1,24 +1,30 @@
 # frozen_string_literal: true
 
-# QueryParamValidation provides per-action query parameter allowlists.
+# QueryParamValidation provides per-controller or per-action query parameter allowlists.
 #
 # Two modes are supported:
 #
-#   strict (default depends on API version)
+#   - strict (default for V2 endpoints)
 #     Any unknown query parameter raises Errors::Conjur::UnexpectedParameter
 #     (rendered as 422 via ApplicationController handling). Controllers opt in by calling:
-#
-#       validate_query_params :action_name, %i[allowed param names]
-#
-#   permissive (for legacy V1 endpoints when CONJUR_STRICT_PARAMS is false)
-#     Unknown query parameters are logged as a CONJ00545W warning but the
+#   - permissive (default for V1 endpoints, tied to CONJUR_STRICT_PARAMS feature flag)
+#     Any unknown query parameter logs a CONJ00545W warning but the
 #     request continues. Controllers opt in by calling:
+#     validate_query_params [allowed param names]
 #
-#       validate_query_params :action_name, %i[allowed param names]
+# Controllers opt in by calling:
+#     - per-controller:
+#         validate_query_params [allowed param names]
 #
-# Actions with no declared allowlist are treated as strict-unknown: an
-# error is raised to force developers to explicitly declare params for
-# every new endpoint.
+#     - per-action (takes priority over controller default):
+#         validate_query_params_for_action :action_name, %i[allowed param names]
+#
+# An empty list means no query parameters are supported.
+# Appending 'strict: true/false' to the above calls will override the default strictness.
+#
+# Actions without an action-specific declaration and without a controller default
+# are treated as strict-unknown: an error is raised to force developers to
+# explicitly declare query params for every new endpoint.
 #
 # Rails always injects :controller, :action, and route-segment parameters
 # (e.g. :account, :id) into request.parameters. Those are excluded from
@@ -33,11 +39,21 @@ module QueryParamValidation
   end
 
   module ClassMethods
+    # @param allowed [Array<Symbol>] default allowlist for actions without a
+    # explicit per-action declaration.
+    # @param strict [Boolean] when false, unknown params warn instead of error.
+    def validate_query_params(allowed, strict: strict_query_params?)
+      @_default_query_param_allowlist = {
+        allowed: Array(allowed).map(&:to_sym),
+        strict: strict
+      }
+    end
+
     # @param action [Symbol] the controller action this allowlist applies to
     # @param allowed [Array<Symbol>] permitted query parameter names
     # @param strict [Boolean] when false, unknown params warn instead of error
-    def validate_query_params(action, allowed, strict: strict_query_params?)
-      _query_param_allowlists[action] = {
+    def validate_query_params_for_action(action, allowed, strict: strict_query_params?)
+      _query_param_allowlists[action.to_sym] = {
         allowed: allowed.map(&:to_sym),
         strict: strict
       }
@@ -57,18 +73,26 @@ module QueryParamValidation
     def _query_param_allowlists
       @_query_param_allowlists ||= {}
     end
+
+    def _default_query_param_allowlist
+      @_default_query_param_allowlist
+    end
+
+    def query_param_allowlist_for(action_name)
+      _query_param_allowlists[action_name.to_sym] || _default_query_param_allowlist
+    end
   end
 
   private
 
   def check_query_params
     action = action_name.to_sym
-    allowlist_entry = self.class._query_param_allowlists[action]
+    allowlist_entry = self.class.query_param_allowlist_for(action)
 
     if allowlist_entry.nil?
-      # No allowlist declared — this endpoint is not yet annotated.
-      # New endpoints must declare their params explicitly, so raise to
-      # prevent silent omissions during development.
+      # No allowlist declared and no controller default — this endpoint is not
+      # yet annotated. New endpoints must either declare their params directly or
+      # set a default.
       raise Errors::Conjur::UnexpectedParameter,
             "(no allowlist declared for #{controller_name}##{action})"
     end

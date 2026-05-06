@@ -78,7 +78,6 @@ class ApplicationController < ActionController::API
   rescue_from NoMethodError, with: :internal_server_error
   rescue_from ArgumentError, with: :argument_error
   rescue_from ActionController::ParameterMissing, with: :argument_error
-  rescue_from Errors::Conjur::UnexpectedParameter, with: :unprocessable_content
   rescue_from UnprocessableContent, with: :unprocessable_content
   rescue_from Errors::Conjur::BadSecretEncoding, with: :bad_secret_encoding
   rescue_from Errors::Authentication::RoleNotApplicableForKeyRotation, with: :method_not_allowed
@@ -92,6 +91,7 @@ class ApplicationController < ActionController::API
   rescue_from Errors::Conjur::ParameterMissing, with: :unprocessable_content
   rescue_from Errors::Conjur::ParameterValueInvalid, with: :unprocessable_content
   rescue_from Errors::Conjur::ParameterTypeInvalid, with: :unprocessable_content
+  rescue_from Errors::Conjur::UnexpectedParameter, with: :unprocessable_content
   rescue_from OpenSSL::Cipher::CipherError, with: :data_key_invalid
 
   around_action :run_with_transaction
