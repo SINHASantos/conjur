@@ -26,45 +26,24 @@ end
 
 RSpec.describe(QueryParamValidation) do
   # Helper that declares an allowlist on the dummy class and runs the check.
-  def controller_for(action:, allowed:, strict:, query_params: {})
+  def controller_for(action:, allowed:, query_params: {}, strict: nil, use_v2_rest: false)
     klass = Class.new(DummyQueryParamController) do
       include QueryParamValidation
       def self.before_action(*); end
 
-      validate_query_params action, allowed, strict: strict
+      define_singleton_method(:v2_rest_controller?) { use_v2_rest }
+
+      if strict.nil?
+        validate_query_params action, allowed
+      else
+        validate_query_params action, allowed, strict: strict
+      end
     end
     klass.new(action: action, query_params: query_params)
   end
 
   def run_check(controller)
     controller.send(:check_query_params)
-  end
-
-  def controller_for_default_strict(
-    action:,
-    allowed:,
-    query_params: {},
-    use_v2_rest: false
-  )
-    if use_v2_rest
-      klass = Class.new(DummyQueryParamController) do
-        def self.before_action(*); end
-        def self.v2_rest_controller?
-          true
-        end
-
-        include QueryParamValidation
-        validate_query_params action, allowed
-      end
-    else
-      klass = Class.new(DummyQueryParamController) do
-        def self.before_action(*); end
-        include QueryParamValidation
-        validate_query_params action, allowed
-      end
-    end
-
-    klass.new(action: action, query_params: query_params)
   end
 
   def with_config_strict_params(value)
@@ -95,7 +74,7 @@ RSpec.describe(QueryParamValidation) do
     end
   end
 
-  context 'when strict mode is enabled (new endpoints)' do
+  context 'when strict mode is enabled explicitly' do
     context 'when all query params are in the allowlist' do
       subject do
         controller_for(
@@ -118,13 +97,13 @@ RSpec.describe(QueryParamValidation) do
           action: :show,
           allowed: %i[account],
           strict: true,
-          query_params: { account: 'myaccount', dryRun: 'true' }
+          query_params: { account: 'myaccount', badParam: 'true' }
         )
       end
 
       it 'raises Errors::Conjur::UnexpectedParameter' do
         expect { run_check(subject) }
-          .to raise_error(Errors::Conjur::UnexpectedParameter, /dryRun/)
+          .to raise_error(Errors::Conjur::UnexpectedParameter, /badParam/)
       end
     end
 
@@ -144,7 +123,7 @@ RSpec.describe(QueryParamValidation) do
     end
   end
 
-  context 'when permissive mode is enabled (legacy endpoints)' do
+  context 'when permissive mode is enabled explicitly' do
     context 'when all query params are known' do
       subject do
         controller_for(
@@ -227,32 +206,32 @@ RSpec.describe(QueryParamValidation) do
   context 'when strictness is not explicitly declared' do
     context 'for V2 controllers' do
       subject do
-        controller_for_default_strict(
+        controller_for(
           action: :show,
           allowed: %i[account],
-          query_params: { account: 'myaccount', dryRun: 'true' },
+          query_params: { account: 'myaccount', badParam: 'true' },
           use_v2_rest: true
         )
       end
 
       it 'defaults to strict and raises on unknown query params' do
         expect { run_check(subject) }
-          .to raise_error(Errors::Conjur::UnexpectedParameter, /dryRun/)
+          .to raise_error(Errors::Conjur::UnexpectedParameter, /badParam/)
       end
     end
 
-    context 'for V1 controllers when strict_params config is false' do
+    context 'for V1 controllers when strict_params config is false (default)' do
       subject do
-        controller_for_default_strict(
+        controller_for(
           action: :show,
           allowed: %i[account],
-          query_params: { account: 'myaccount', dryRun: 'true' }
+          query_params: { account: 'myaccount', badParam: 'true' }
         )
       end
 
-      it 'defaults to permissive and warns on unknown query params' do
+      it 'is permissive and warns on unknown query params' do
         with_config_strict_params(false) do
-          expect(Rails.logger).to receive(:warn).with(/dryRun/)
+          expect(Rails.logger).to receive(:warn).with(/badParam/)
           expect { run_check(subject) }.not_to raise_error
         end
       end
@@ -260,17 +239,17 @@ RSpec.describe(QueryParamValidation) do
 
     context 'for V1 controllers when strict_params config is true' do
       subject do
-        controller_for_default_strict(
+        controller_for(
           action: :show,
           allowed: %i[account],
-          query_params: { account: 'myaccount', dryRun: 'true' }
+          query_params: { account: 'myaccount', badParam: 'true' }
         )
       end
 
-      it 'defaults to strict and raises on unknown query params' do
+      it 'is strict and raises on unknown query params' do
         with_config_strict_params(true) do
           expect { run_check(subject) }
-            .to raise_error(Errors::Conjur::UnexpectedParameter, /dryRun/)
+            .to raise_error(Errors::Conjur::UnexpectedParameter, /badParam/)
         end
       end
     end
@@ -298,15 +277,10 @@ end
 # A route is checked when ALL of the following apply:
 #
 #   1. The controller class includes QueryParamValidation.
-#      Controllers that inherit directly from ApplicationController
-#      (e.g. AuthenticateController, CredentialsController) manage their
-#      own param handling and are excluded.
-#
-#   2. The controller is NOT a V2RestController subclass.
-#      V2 controllers call `skip_before_action :check_query_params` because
-#      their `permit_url_params` mechanism already raises on unknown params.
-#      They will be added to this check once the v1/v2 validation framework
-#      is fully unified (see the comment in v2_rest_controller.rb).
+#      All API controllers (through ApplicationController) are expected to be
+#      covered by this check. V2 and V1 are both validated here; V2 inherits
+#      strict defaults while V1 uses the CONJUR_STRICT_PARAMS default unless
+#      explicit per-endpoint overrides are provided.
 #
 #   3. The controller has at least one existing validate_query_params
 #      declaration. Brand-new controllers with zero declarations are assumed
@@ -348,17 +322,7 @@ RSpec.describe 'QueryParamValidation allowlist completeness' do
       end
 
       # -----------------------------------------------------------------------
-      # Qualification check 2: must not be a V2RestController subclass.
-      # Remove this guard once skip_before_action is removed from
-      # V2RestController and all v2 actions have declarations.
-      # -----------------------------------------------------------------------
-      if controller_class.ancestors.include?(V2RestController)
-        skip "#{controller_class} is a V2RestController subclass (skip_before_action " \
-             "still in place — will be enforced after v1/v2 unification)"
-      end
-
-      # -----------------------------------------------------------------------
-      # Qualification check 3: must have at least one declaration already.
+      # Qualification check 2: must have at least one declaration already.
       # Controllers with zero entries are either brand-new or partially
       # migrated; the runtime guard handles them until they opt in fully.
       # -----------------------------------------------------------------------
@@ -378,11 +342,9 @@ RSpec.describe 'QueryParamValidation allowlist completeness' do
           QueryParamValidation-enabled controller must declare its allowed
           query parameters. Add one of the following to #{controller_class}:
 
-            # New/strict endpoint — returns 400 Bad Request on unknown params:
+            # Returns 422 Unprocessable Entity on unknown params, unless it's a legacy (V1_ endpoint
+            # and CONJUR_STRICT_PARAMS is false (default):
             validate_query_params :#{action_name}, %i[param1 param2]
-
-            # Legacy/permissive endpoint — logs CONJ00545W, request continues:
-            validate_query_params :#{action_name}, %i[param1 param2], strict: false
         MSG
       )
     end

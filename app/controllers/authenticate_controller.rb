@@ -4,6 +4,18 @@ class AuthenticateController < ApplicationController
   include BasicAuthenticator
   include AuthorizeResource
 
+  validate_query_params :authenticate,              []
+  validate_query_params :authenticate_gcp,          []
+  validate_query_params :authenticate_oidc,         []
+  validate_query_params :authenticate_via_get,      []
+  validate_query_params :authenticate_via_post,     []
+  validate_query_params :authenticate_jwt,          []
+  validate_query_params :authn_jwt_status,          []
+  validate_query_params :index,                     []
+  validate_query_params :k8s_inject_client_cert,    []
+  validate_query_params :login,                     []
+  validate_query_params :status,                    []
+  validate_query_params :update_config,             []
   before_action :check_authn_cert_feature_flag, only: [:authenticate_via_post]
 
   def authenticate_via_get

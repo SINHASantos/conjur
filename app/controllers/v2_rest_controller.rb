@@ -11,11 +11,10 @@ class V2RestController < RestController
   URL_REQUIRED_PARAMS_IDFR = (URL_REQUIRED_PARAMS + [:identifier]).freeze
   URL_REQUIRED_PARAMS_PATH = (URL_REQUIRED_PARAMS_IDFR + [:kind, :id]).freeze
 
-  # V2 controllers declare their query param allowlists via validate_query_params
-  # (strict mode, the default) just like V1 controllers. Unknown query params
-  # raise Errors::Conjur::UnexpectedParameter before the action runs.
-  # permit_url_params / permit_body_params then enforce required params and
-  # extract values inside each action.
+  # V2 controllers declare strict query-param allowlists via validate_query_params
+  # (strict mode by default). check_query_params runs before actions and rejects
+  # unknown query params early. Actions then use permit_url_params / permit_body_params
+  # to enforce required/allowed params and extract values.
 
   before_action :validate_header, :log_debug_requested
   after_action :update_response_header, :log_debug_finished

@@ -2,6 +2,7 @@
 
 class ApplicationController < ActionController::API
   include Authenticates
+  include QueryParamValidation
 
   class Unauthorized < RuntimeError
     attr_reader :return_message_in_response
