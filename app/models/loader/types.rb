@@ -112,6 +112,8 @@ module Loader
       include CreateResource
       include AuthorizeResource
 
+      AUTHN_API_KEY_ANNOTATION_NAME = 'authn/api-key'
+
       def verify
         message = "Verify method for entity #{self} does not exist"
         raise Exceptions::InvalidPolicyObject.new(self.id, message: message)
@@ -134,6 +136,20 @@ module Loader
         calculate_defaults!
         create_role! if policy_object.respond_to?(:roleid)
         create_resource! if policy_object.respond_to?(:resourceid)
+      end
+
+      protected
+
+      def verify_authn_api_key_annotation_value!
+        annotation_value = annotations&.[](AUTHN_API_KEY_ANNOTATION_NAME)
+        return if annotation_value.nil?
+
+        normalized_annotation_value = annotation_value.to_s.strip.downcase
+        return if %w[true false].include?(normalized_annotation_value)
+
+        message = "Invalid annotation '#{AUTHN_API_KEY_ANNOTATION_NAME}' value '#{annotation_value}'. " \
+                  "Expected 'true' or 'false' (case-insensitive)."
+        raise Exceptions::InvalidPolicyObject.new(self.id, message: message)
       end
     end
 
@@ -169,6 +185,8 @@ module Loader
       end
 
       def verify
+        verify_authn_api_key_annotation_value!
+
         # If policy contains a host with annotation authn/api-key effectively false, either by explicit
         # value or by default value, then policy load is blocked.
         if future_api_key_auth_will_fail?
@@ -257,6 +275,7 @@ module Loader
       # Below is a sample method verifying policy data validity
       def verify
         check_user_creation_allowed(resource_id: resourceid)
+        verify_authn_api_key_annotation_value!
 
         # if self.uidnumber == 8
         #  message = "User '#{self.id}' has wrong params"

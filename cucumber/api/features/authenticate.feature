@@ -165,6 +165,54 @@ Feature: Exchange a role's API key for a signed authentication token
     """
 
   @negative @acceptance
+  Scenario: User cannot authenticate with API key when authn/api-key annotation is false
+    Given I save my place in the audit log file for remote
+    And I annotate the user "alice" with key "authn/api-key" and value "false"
+    When I POST "/authn/cucumber/alice/authenticate" with plain text body ":cucumber:user:alice_api_key"
+    Then the HTTP response status code is 401
+    And there is an audit record matching:
+    """
+      <84>1 * * conjur * authn
+      [subject@43868 role="cucumber:user:alice"]
+      [auth@43868 user="cucumber:user:alice" authenticator="authn" service="cucumber:webservice:conjur/authn"]
+      [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
+      [action@43868 result="failure" operation="authenticate"]
+      cucumber:user:alice failed to authenticate with authenticator authn service cucumber:webservice:conjur/authn: CONJ00195E Authentication is disabled for 'alice'
+    """
+
+  @negative @acceptance
+  Scenario: Host cannot authenticate with API key when authn/api-key annotation is false
+    Given I save my place in the audit log file for remote
+    And I annotate the host "app" with key "authn/api-key" and value "false"
+    When I POST "/authn/cucumber/host%2Fapp/authenticate" with plain text body ":cucumber:host:app_api_key"
+    Then the HTTP response status code is 401
+    And there is an audit record matching:
+    """
+      <84>1 * * conjur * authn
+      [subject@43868 role="cucumber:host:app"]
+      [auth@43868 user="cucumber:host:app" authenticator="authn" service="cucumber:webservice:conjur/authn"]
+      [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
+      [action@43868 result="failure" operation="authenticate"]
+      cucumber:host:app failed to authenticate with authenticator authn service cucumber:webservice:conjur/authn: CONJ00195E Authentication is disabled for 'host/app'
+    """
+
+  @acceptance
+  Scenario: Host can authenticate with API key when authn/api-key annotation is true
+    Given I save my place in the audit log file for remote
+    And I annotate the host "app" with key "authn/api-key" and value "true"
+    Then I can POST "/authn/cucumber/host%2Fapp/authenticate" with plain text body ":cucumber:host:app_api_key"
+    And the HTTP response status code is 200
+    And there is an audit record matching:
+    """
+      <86>1 * * conjur * authn
+      [subject@43868 role="cucumber:host:app"]
+      [auth@43868 user="cucumber:host:app" authenticator="authn" service="cucumber:webservice:conjur/authn"]
+      [client@43868 ip="\d+\.\d+\.\d+\.\d+"]
+      [action@43868 result="success" operation="authenticate"]
+      cucumber:host:app successfully authenticated with authenticator authn service cucumber:webservice:conjur/authn
+    """
+
+  @negative @acceptance
   Scenario: Attempting to use an invalid API key to authenticate with Accept-Encoding base64 result in 401 error
     Given I save my place in the audit log file for remote
     When I authenticate Alice with Accept-Encoding header "base64" with plain text body "wrong-api-key"

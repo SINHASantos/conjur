@@ -151,6 +151,11 @@ module Errors
       code: "CONJ00126E"
     )
 
+    AuthenticationDisabled = ::Util::TrackableErrorClass.new(
+      msg: "Authentication is disabled for '{0-role}'",
+      code: "CONJ00195E"
+    )
+
     module DataObjects
 
       InvalidTokenTTL = ::Util::TrackableErrorClass.new(

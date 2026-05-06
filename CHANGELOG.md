@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [1.26.1] - 2026-04-30
 
+### Added
+- Allow API key authentication to be disabled at runtime with the `authn/api-key: false`
+  annotation on users and hosts. CNJR-13871
+
 ### Fixed
 - Host Factory tokens leaking to underprivileged roles from /resources API. CNJR-13782
 
