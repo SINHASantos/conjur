@@ -14,6 +14,34 @@ describe Loader::Types::User do
   end
 
   describe '.verify' do
+    context "when user has an invalid authn/api-key annotation value" do
+      let(:resource_id) { 'alice@cyberark' }
+      let(:role_kind) { 'user' }
+      let(:role_id) { 'admin' }
+
+      before do
+        user.annotations = { 'authn/api-key' => 'maybe' }
+      end
+
+      it 'raises an invalid policy object error' do
+        expect { user.verify }.to raise_error(Exceptions::InvalidPolicyObject)
+      end
+    end
+
+    context "when user has a case-variant authn/api-key annotation value" do
+      let(:resource_id) { 'alice@cyberark' }
+      let(:role_kind) { 'user' }
+      let(:role_id) { 'admin' }
+
+      before do
+        user.annotations = { 'authn/api-key' => 'TRUE' }
+      end
+
+      it 'does not raise an error' do
+        expect { user.verify }.to_not raise_error
+      end
+    end
+
     context 'when CONJUR_USERS_IN_ROOT_POLICY_ONLY is true' do
       before do
         allow(ENV).to receive(:[]).with('CONJUR_USERS_IN_ROOT_POLICY_ONLY').and_return('true')
@@ -114,6 +142,18 @@ describe Loader::Types::Host do
         it { expect { host.verify }.to_not raise_error }
       end
 
+      context 'when creating host with api-key annotation FALSE' do
+        let(:resource_id) { 'myhost@cyberark' }
+        let(:api_key) { 'FALSE' }
+        it { expect { host.verify }.to_not raise_error }
+      end
+
+      context 'when creating host with invalid api-key annotation value' do
+        let(:resource_id) { 'myhost@cyberark' }
+        let(:api_key) { 'nope' }
+        it { expect { host.verify }.to raise_error(Exceptions::InvalidPolicyObject) }
+      end
+
       context 'when creating host without api-key annotation' do
         let(:resource_id) { 'myhost@cyberark' }
         let(:api_key) { '' }
@@ -141,6 +181,12 @@ describe Loader::Types::Host do
       context 'when creating host without api-key annotation' do
         let(:resource_id) { 'alice@cyberark' }
         let(:api_key) { '' }
+        it { expect { host.verify }.to raise_error(Exceptions::InvalidPolicyObject) }
+      end
+
+      context 'when creating host with invalid api-key annotation value' do
+        let(:resource_id) { 'alice@cyberark' }
+        let(:api_key) { 'nope' }
         it { expect { host.verify }.to raise_error(Exceptions::InvalidPolicyObject) }
       end
     end

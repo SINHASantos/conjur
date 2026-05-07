@@ -63,6 +63,18 @@ Given("I set the password for {string} to {string}") do |login, password|
   role.save
 end
 
+Given("I annotate the user {string} with key {string} and value {string}") do |login, key, value|
+  role = lookup_user(login)
+  resource = Resource.with_pk!(role.role_id)
+  Annotation.create(resource_id: resource.resource_id, name: key, value: value)
+end
+
+Given("I annotate the host {string} with key {string} and value {string}") do |login, key, value|
+  role = lookup_host(login)
+  resource = Resource.with_pk!(role.role_id)
+  Annotation.create(resource_id: resource.resource_id, name: key, value: value)
+end
+
 private
 
 # Determines if login string represents a host, namely prefixed with 'host/'
