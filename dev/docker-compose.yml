@@ -54,6 +54,7 @@ services:
       CONJUR_AUTHENTICATOR_SERVICE_URL: ${CONJUR_AUTHENTICATOR_SERVICE_URL:-http://auth-service:8080}
       CONJUR_AUTHENTICATOR_SERVICE_HTTP_ALLOWLIST: ${CONJUR_AUTHENTICATOR_SERVICE_HTTP_ALLOWLIST:-auth-service}
       CONJUR_AUTHENTICATORS: ${CONJUR_AUTHENTICATORS:-}
+      CONJUR_FEATURE_OIDC_AUTHENTICATOR_V1_ENABLED: true
       AUDIT_DATABASE_URL:
       # TODO: Where should we be running rspec tests from, ideally?
       # See https://github.com/DatabaseCleaner/database_cleaner#safeguards

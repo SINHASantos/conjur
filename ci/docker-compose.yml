@@ -77,6 +77,7 @@ services:
       CONJUR_FEATURE_AUTHENTICATOR_SERVICE_ENABLED: true
       CONJUR_AUTHENTICATOR_SERVICE_URL: ${CONJUR_AUTHENTICATOR_SERVICE_URL:-http://saas-auth:8080}
       CONJUR_AUTHENTICATOR_SERVICE_HTTP_ALLOWLIST: ${CONJUR_AUTHENTICATOR_SERVICE_HTTP_ALLOWLIST:-saas-auth}
+      CONJUR_FEATURE_OIDC_AUTHENTICATOR_V1_ENABLED: true
       LDAP_URI: ldap://ldap-server:389
       LDAP_BASE: dc=conjur,dc=net
       LDAP_FILTER: '(uid=%s)'
@@ -119,6 +120,7 @@ services:
       CONJUR_FEATURE_AUTHENTICATOR_SERVICE_ENABLED: true
       CONJUR_AUTHENTICATOR_SERVICE_URL: ${CONJUR_AUTHENTICATOR_SERVICE_URL:-http://saas-auth:8080}
       CONJUR_AUTHENTICATOR_SERVICE_HTTP_ALLOWLIST: ${CONJUR_AUTHENTICATOR_SERVICE_HTTP_ALLOWLIST:-saas-auth}
+      CONJUR_FEATURE_OIDC_AUTHENTICATOR_V1_ENABLED: true
       LDAP_URI: ldap://ldap-server:389
       LDAP_BASE: dc=conjur,dc=net
       LDAP_FILTER: '(uid=%s)'
@@ -294,6 +296,7 @@ services:
       REQUIRE_SIMPLECOV: "true"
       CONJUR_LOG_LEVEL: debug
       CONJUR_AUTHENTICATORS: authn,authn-oidc/keycloak,authn-oidc,authn-k8s/test,authn-jwt/raw,authn-jwt/keycloak,authn-oidc/keycloak2
+      CONJUR_FEATURE_OIDC_AUTHENTICATOR_V1_ENABLED: true
       WEB_CONCURRENCY: 0
       RAILS_MAX_THREADS: 10
     command: server
