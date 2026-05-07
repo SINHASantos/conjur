@@ -1178,14 +1178,14 @@ pipeline {
           release(INFRAPOOL_EXECUTORV2_AGENT_0) { billOfMaterialsDirectory, assetDirectory ->
             // Only push edge images when on master branch. This is to avoid patch releases from being the current edge image.
             if (env.BRANCH_NAME == 'master') {
-              INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './publish-images.sh --edge --release'
-              INFRAPOOL_EXECUTORV2ARM_AGENT_0.agentSh './publish-images.sh --edge --release --arch=arm64'
-              INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './publish-manifest.sh --edge'
+              retry(3) { INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './publish-images.sh --edge --release' }
+              retry(3) { INFRAPOOL_EXECUTORV2ARM_AGENT_0.agentSh './publish-images.sh --edge --release --arch=arm64' }
+              retry(3) { INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './publish-manifest.sh --edge' }
             } else {
               echo "Skipping edge image publishing - not on default branch (current branch: ${env.BRANCH_NAME})"
-              INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './publish-images.sh --release'
-              INFRAPOOL_EXECUTORV2ARM_AGENT_0.agentSh './publish-images.sh --release --arch=arm64'
-              INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './publish-manifest.sh'
+              retry(3) { INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './publish-images.sh --release' }
+              retry(3) { INFRAPOOL_EXECUTORV2ARM_AGENT_0.agentSh './publish-images.sh --release --arch=arm64' }
+              retry(3) { INFRAPOOL_EXECUTORV2_AGENT_0.agentSh './publish-manifest.sh' }
             }
 
             // Download and prepare SaaS Authenticator binaries
