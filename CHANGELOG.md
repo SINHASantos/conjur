@@ -36,8 +36,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - API endpoints now reject requests that include unrecognized query parameters
   with a 422 Unprocessable Entity response. Legacy v1 endpoints log a warning instead of
-  failing. This behavior is controlled by the Conjur configuration key `strict_params`
-  (or `CONJUR_STRICT_PARAMS`), with V2 endpoints remaining strict by default. CNJR-7246
+  failing. This behavior is controlled by the feature flag CONJUR_FEATURE_STRICT_PARAMS_ENABLED,
+  with V2 endpoints remaining strict by default. CNJR-7246
 
 ## [1.26.0] - 2026-04-16
 

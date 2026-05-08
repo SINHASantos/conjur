@@ -26,26 +26,12 @@ end
 
 RSpec.describe(QueryParamValidation) do
   # Helper that declares an allowlist on the dummy class and runs the check.
-  def controller_for(action:, allowed:, query_params: {}, strict: nil, use_v2_rest: false, default: nil)
+  def controller_for(action:, allowed:, query_params: {}, use_v2_rest: false, default: nil)
     klass = Class.new(DummyQueryParamController) do
-      include QueryParamValidation
-      def self.before_action(*); end
-
       define_singleton_method(:v2_rest_controller?) { use_v2_rest }
 
-      if default
-        if strict.nil?
-          validate_query_params default
-        else
-          validate_query_params default, strict: strict
-        end
-      end
-
-      if strict.nil?
-        validate_query_params_for_action action, allowed
-      else
-        validate_query_params_for_action action, allowed, strict: strict
-      end
+      validate_query_params default if default
+      validate_query_params_for_action action, allowed
     end
     klass.new(action: action, query_params: query_params)
   end
@@ -55,22 +41,18 @@ RSpec.describe(QueryParamValidation) do
   end
 
   def with_config_strict_params(value)
-    previous_config = Rails.application.config.conjur_config
-    config_double = instance_double(
-      Conjur::ConjurConfig,
-      strict_params: value
-    )
-    allow(Rails.application.config).to receive(:conjur_config).and_return(config_double)
+    previous_flags = Rails.application.config.feature_flags
+    flags_double = instance_double(Conjur::FeatureFlags::Features)
+    allow(flags_double).to receive(:enabled?).with(:strict_params).and_return(value)
+    allow(Rails.application.config).to receive(:feature_flags).and_return(flags_double)
     yield
   ensure
-    allow(Rails.application.config).to receive(:conjur_config).and_return(previous_config)
+    allow(Rails.application.config).to receive(:feature_flags).and_return(previous_flags)
   end
 
   context 'when action has no declared allowlist' do
     subject do
       klass = Class.new(DummyQueryParamController) do
-        include QueryParamValidation
-        def self.before_action(*); end
         # intentionally no query-param validation declarations
       end
       klass.new(action: :index, query_params: {})
@@ -85,29 +67,29 @@ RSpec.describe(QueryParamValidation) do
   context 'when action has no declared allowlist but controller default exists' do
     subject do
       klass = Class.new(DummyQueryParamController) do
-        include QueryParamValidation
-        def self.before_action(*); end
-
-        validate_query_params [], strict: false
+        define_singleton_method(:v2_rest_controller?) { false }
+        validate_query_params []
       end
       klass.new(action: :index, query_params: { badParam: 'true' })
     end
 
-    context 'when default is permissive' do
+    context 'when default is permissive (feature flag disabled)' do
       it 'does not raise and logs a warning' do
-        expect(Rails.logger).to receive(:warn).with(/badParam/)
-        expect { run_check(subject) }.not_to raise_error
+        with_config_strict_params(false) do
+          expect(Rails.logger).to receive(:warn).with(/badParam/)
+          expect { run_check(subject) }.not_to raise_error
+        end
       end
     end
   end
 
-  context 'when strict mode is enabled explicitly' do
+  context 'when strict mode is active (V2 controller)' do
     context 'when all query params are in the allowlist' do
       subject do
         controller_for(
           action: :show,
           allowed: %i[account kind],
-          strict: true,
+          use_v2_rest: true,
           query_params: { account: 'myaccount', kind: 'variable' }
         )
       end
@@ -123,7 +105,7 @@ RSpec.describe(QueryParamValidation) do
         controller_for(
           action: :show,
           allowed: %i[account],
-          strict: true,
+          use_v2_rest: true,
           query_params: { account: 'myaccount', badParam: 'true' }
         )
       end
@@ -139,7 +121,7 @@ RSpec.describe(QueryParamValidation) do
         controller_for(
           action: :index,
           allowed: [],
-          strict: true,
+          use_v2_rest: true,
           query_params: {}
         )
       end
@@ -150,20 +132,21 @@ RSpec.describe(QueryParamValidation) do
     end
   end
 
-  context 'when permissive mode is enabled explicitly' do
+  context 'when permissive mode is active (feature flag disabled)' do
     context 'when all query params are known' do
       subject do
         controller_for(
           action: :index,
           allowed: %i[account kind limit],
-          strict: false,
           query_params: { account: 'a', kind: 'variable', limit: '10' }
         )
       end
 
       it 'does not raise and does not warn' do
-        expect(Rails.logger).not_to receive(:warn)
-        expect { run_check(subject) }.not_to raise_error
+        with_config_strict_params(false) do
+          expect(Rails.logger).not_to receive(:warn)
+          expect { run_check(subject) }.not_to raise_error
+        end
       end
     end
 
@@ -172,23 +155,28 @@ RSpec.describe(QueryParamValidation) do
         controller_for(
           action: :index,
           allowed: %i[account kind],
-          strict: false,
           query_params: { account: 'a', unknownThing: 'x' }
         )
       end
 
       it 'does not raise' do
-        expect { run_check(subject) }.not_to raise_error
+        with_config_strict_params(false) do
+          expect { run_check(subject) }.not_to raise_error
+        end
       end
 
       it 'logs a warning containing the unknown parameter name' do
-        expect(Rails.logger).to receive(:warn).with(/unknownThing/)
-        run_check(subject)
+        with_config_strict_params(false) do
+          expect(Rails.logger).to receive(:warn).with(/unknownThing/)
+          run_check(subject)
+        end
       end
 
       it 'logs CONJ00545W in the warning message' do
-        expect(Rails.logger).to receive(:warn).with(/CONJ00545W/)
-        run_check(subject)
+        with_config_strict_params(false) do
+          expect(Rails.logger).to receive(:warn).with(/CONJ00545W/)
+          run_check(subject)
+        end
       end
     end
 
@@ -197,36 +185,16 @@ RSpec.describe(QueryParamValidation) do
         controller_for(
           action: :index,
           allowed: %i[account],
-          strict: false,
           query_params: { account: 'a', foo: 'x', bar: 'y' }
         )
       end
 
       it 'includes all unknown param names in a single warning' do
-        expect(Rails.logger).to receive(:warn).once.with(/foo.*bar|bar.*foo/)
-        run_check(subject)
+        with_config_strict_params(false) do
+          expect(Rails.logger).to receive(:warn).once.with(/foo.*bar|bar.*foo/)
+          run_check(subject)
+        end
       end
-    end
-  end
-
-  describe 'RAILS_INTERNAL_PARAMS exclusion' do
-    # Rails injects :controller, :action, :format into parameters.
-    # These must never be treated as unknown even in strict mode.
-    subject do
-      controller_for(
-        action: :show,
-        allowed: %i[account],
-        strict: true,
-        query_params: { account: 'a' }
-      )
-    end
-
-    it 'does not raise for Rails internal params in the query string' do
-      # Simulate them being present in query_parameters keys by overriding
-      # the request stub.
-      allow(subject.request).to receive(:query_parameters)
-        .and_return({ 'account' => 'a', 'controller' => 'dummy', 'action' => 'show', 'format' => 'json' })
-      expect { run_check(subject) }.not_to raise_error
     end
   end
 
@@ -247,7 +215,7 @@ RSpec.describe(QueryParamValidation) do
       end
     end
 
-    context 'for V1 controllers when strict_params config is false (default)' do
+    context 'for V1 controllers when strict_params feature flag is false (default)' do
       subject do
         controller_for(
           action: :show,
@@ -264,7 +232,7 @@ RSpec.describe(QueryParamValidation) do
       end
     end
 
-    context 'for V1 controllers when strict_params config is true' do
+    context 'for V1 controllers when strict_params feature flag is true' do
       subject do
         controller_for(
           action: :show,
@@ -355,9 +323,9 @@ RSpec.describe 'QueryParamValidation allowlist completeness' do
           #{controller_class}##{action_name} is reachable via a route but has
           no query-parameter allowlist coverage. Add one of the following to #{controller_class}:
 
-            # Returns 422 Unprocessable Entity on unknown params:
+            # Returns 422 Unprocessable Entity params not in the allowlist:
             validate_query_params_for_action :#{action_name}, %i[param1 param2]
-            # or
+            # or use a controller-level default (no query parameters allowed):
             validate_query_params []
         MSG
       )

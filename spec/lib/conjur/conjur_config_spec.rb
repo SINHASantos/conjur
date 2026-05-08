@@ -24,7 +24,6 @@ describe Conjur::ConjurConfig do
     expect(subject.authn_jwt_ignore_missing_issuer_claim).to eq(false)
     expect(subject.dynamic_secrets_per_request_max).to eq(10)
     expect(subject.host_factories_enabled).to eq(true)
-    expect(subject.strict_params).to eq(false)
     expect(subject.authenticator_service_ca_cert).to eq(nil)
     expect(subject.authenticator_service_http_allowlist).to eq(['localhost', '127.0.0.1', '::1', 'host.docker.internal'])
   end
@@ -39,8 +38,6 @@ describe Conjur::ConjurConfig do
     expect(subject.attribute_sources[:dynamic_secrets_per_request_max])
       .to eq(:defaults)
     expect(subject.attribute_sources[:host_factories_enabled])
-      .to eq(:defaults)
-    expect(subject.attribute_sources[:strict_params])
       .to eq(:defaults)
     expect(subject.attribute_sources[:authenticator_service_ca_cert])
       .to eq(:defaults)
@@ -57,7 +54,6 @@ describe Conjur::ConjurConfig do
         authn_jwt_ignore_missing_issuer_claim: true
         dynamic_secrets_per_request_max: 100
         host_factories_enabled: true
-        strict_params: true
         authenticator_service_ca_cert: /path/to/ca.pem
         authenticator_service_http_allowlist:
           - localhost
@@ -92,7 +88,6 @@ describe Conjur::ConjurConfig do
       expect(subject.authn_jwt_ignore_missing_issuer_claim).to eq(true)
       expect(subject.dynamic_secrets_per_request_max).to eq(100)
       expect(subject.host_factories_enabled).to eq(true)
-      expect(subject.strict_params).to eq(true)
       expect(subject.authenticator_service_ca_cert).to eq("/path/to/ca.pem")
       expect(subject.authenticator_service_http_allowlist).to eq(["localhost", "internal-service"])
     end
@@ -107,8 +102,6 @@ describe Conjur::ConjurConfig do
       expect(subject.attribute_sources[:dynamic_secrets_per_request_max])
         .to eq(:yml)
       expect(subject.attribute_sources[:host_factories_enabled])
-        .to eq(:yml)
-      expect(subject.attribute_sources[:strict_params])
         .to eq(:yml)
       expect(subject.attribute_sources[:authenticator_service_ca_cert])
         .to eq(:yml)
@@ -178,7 +171,6 @@ describe Conjur::ConjurConfig do
         ENV['CONJUR_HOST_FACTORIES_ENABLED'] = "true"
         ENV['CONJUR_AUTHENTICATOR_SERVICE_CA_CERT'] = "/custom/ca.pem"
         ENV['CONJUR_AUTHENTICATOR_SERVICE_HTTP_ALLOWLIST'] = "localhost,custom-service"
-        ENV['CONJUR_STRICT_PARAMS'] = "true"
 
         # Anyway Config caches prefixed env vars at the class level so we must
         # clear the cache to have it pick up the new var with a reload.
@@ -193,7 +185,6 @@ describe Conjur::ConjurConfig do
         ENV.delete('CONJUR_HOST_FACTORIES_ENABLED')
         ENV.delete('CONJUR_AUTHENTICATOR_SERVICE_CA_CERT')
         ENV.delete('CONJUR_AUTHENTICATOR_SERVICE_HTTP_ALLOWLIST')
-        ENV.delete('CONJUR_STRICT_PARAMS')
 
         # Clear again to make sure we don't affect future tests.
         Anyway.env.clear
@@ -205,7 +196,6 @@ describe Conjur::ConjurConfig do
         expect(subject.authn_jwt_ignore_missing_issuer_claim).to eq(false)
         expect(subject.dynamic_secrets_per_request_max).to eq(50)
         expect(subject.host_factories_enabled).to eq(true)
-        expect(subject.strict_params).to eq(true)
         expect(subject.authenticator_service_ca_cert).to eq("/custom/ca.pem")
         expect(subject.authenticator_service_http_allowlist).to eq(["localhost", "custom-service"])
       end
@@ -220,8 +210,6 @@ describe Conjur::ConjurConfig do
         expect(subject.attribute_sources[:dynamic_secrets_per_request_max])
           .to eq(:env)
         expect(subject.attribute_sources[:host_factories_enabled])
-          .to eq(:env)
-        expect(subject.attribute_sources[:strict_params])
           .to eq(:env)
         expect(subject.attribute_sources[:authenticator_service_ca_cert])
           .to eq(:env)
@@ -259,8 +247,7 @@ describe Conjur::ConjurConfig do
         authenticators: "invalid-authn",
         trusted_proxies: "boop",
         telemetry_enabled: "beep",
-        authn_jwt_ignore_missing_issuer_claim: "boop",
-        strict_params: "boop"
+        authn_jwt_ignore_missing_issuer_claim: "boop"
       }
     end
 
@@ -278,8 +265,6 @@ describe Conjur::ConjurConfig do
         .to raise_error(/telemetry_enabled/)
       expect { subject }
         .to raise_error(/authn_jwt_ignore_missing_issuer_claim/)
-      expect { subject }
-        .to raise_error(/strict_params/)
     end
 
     it "does not include the value that failed validation" do

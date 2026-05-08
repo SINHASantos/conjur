@@ -49,9 +49,6 @@ module Conjur
       dynamic_secrets_per_request_max: 10,
       # Host factory operation can be disabled entirely
       host_factories_enabled: true,
-      # V1 endpoints use this as the default query-param validation mode when
-      # not explicitly set in controller code. V2 endpoints remain strict.
-      strict_params: false,
       # URL for external authenticator service
       authenticator_service_url: 'http://localhost:5618',
       # Path to CA certificate for verifying HTTPS connections to SaaS Authenticator
@@ -114,7 +111,6 @@ module Conjur
       invalid << "trusted_proxies" unless trusted_proxies_valid?
       invalid << "telemetry_enabled" unless telemetry_enabled_valid?
       invalid << "authn_jwt_ignore_missing_issuer_claim" unless authn_jwt_ignore_missing_issuer_claim_valid?
-      invalid << "strict_params" unless strict_params_valid?
       authenticators_invalid = authenticators_error_messages
       invalid << "authenticators: #{authenticators_invalid.join('\n')}" unless authenticators_invalid.empty?
 
@@ -281,8 +277,5 @@ module Conjur
       [true, false].include?(authn_jwt_ignore_missing_issuer_claim)
     end
 
-    def strict_params_valid?
-      [true, false].include?(strict_params)
-    end
   end
 end

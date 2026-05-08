@@ -7,7 +7,7 @@
 #   - strict (default for V2 endpoints)
 #     Any unknown query parameter raises Errors::Conjur::UnexpectedParameter
 #     (rendered as 422 via ApplicationController handling). Controllers opt in by calling:
-#   - permissive (default for V1 endpoints, tied to CONJUR_STRICT_PARAMS feature flag)
+#   - permissive (default for V1 endpoints, tied to CONJUR_FEATURE_STRICT_PARAMS_ENABLED feature flag)
 #     Any unknown query parameter logs a CONJ00545W warning but the
 #     request continues. Controllers opt in by calling:
 #     validate_query_params [allowed param names]
@@ -20,19 +20,13 @@
 #         validate_query_params_for_action :action_name, %i[allowed param names]
 #
 # An empty list means no query parameters are supported.
-# Appending 'strict: true/false' to the above calls will override the default strictness.
 #
 # Actions without an action-specific declaration and without a controller default
 # are treated as strict-unknown: an error is raised to force developers to
 # explicitly declare query params for every new endpoint.
-#
-# Rails always injects :controller, :action, and route-segment parameters
-# (e.g. :account, :id) into request.parameters. Those are excluded from
-# the unknown-param check automatically via RAILS_INTERNAL_PARAMS.
+
 module QueryParamValidation
   extend ActiveSupport::Concern
-
-  RAILS_INTERNAL_PARAMS = %i[controller action format].freeze
 
   included do
     before_action :check_query_params
@@ -41,29 +35,27 @@ module QueryParamValidation
   module ClassMethods
     # @param allowed [Array<Symbol>] default allowlist for actions without a
     # explicit per-action declaration.
-    # @param strict [Boolean] when false, unknown params warn instead of error.
-    def validate_query_params(allowed, strict: strict_query_params?)
+    def validate_query_params(allowed)
       @_default_query_param_allowlist = {
         allowed: Array(allowed).map(&:to_sym),
-        strict: strict
+        strict: strict_query_params?
       }
     end
 
     # @param action [Symbol] the controller action this allowlist applies to
     # @param allowed [Array<Symbol>] permitted query parameter names
-    # @param strict [Boolean] when false, unknown params warn instead of error
-    def validate_query_params_for_action(action, allowed, strict: strict_query_params?)
+    def validate_query_params_for_action(action, allowed)
       _query_param_allowlists[action.to_sym] = {
         allowed: allowed.map(&:to_sym),
-        strict: strict
+        strict: strict_query_params?
       }
     end
 
     def strict_query_params?
       return true if v2_rest_controller?
 
-      Rails.application.config.respond_to?(:conjur_config) &&
-        Rails.application.config.conjur_config.strict_params
+      Rails.application.config.respond_to?(:feature_flags) &&
+        Rails.application.config.feature_flags.enabled?(:strict_params)
     end
 
     def v2_rest_controller?
@@ -102,21 +94,21 @@ module QueryParamValidation
 
     if allowlist_entry[:strict]
       raise Errors::Conjur::UnexpectedParameter, unknown.join(', ')
-    else
-      Rails.logger.warn(
-        LogMessages::Conjur::UnexpectedParameter.new(
-          "#{controller_name}##{action}",
-          unknown.join(', ')
-        ).to_s
-      )
     end
+
+    Rails.logger.warn(
+      LogMessages::Conjur::UnexpectedParameter.new(
+        "#{controller_name}##{action}",
+        unknown.join(', ')
+      ).to_s
+    )
   end
 
-  # Returns query param keys not in the allowlist or Rails internals.
+  # Returns query parameter keys not declared in the allowlist.
   # Route segment params (e.g. :account, :id) appear in request.parameters
   # but not in request.query_parameters, so we use query_parameters here.
   def unknown_query_params(allowed)
     received = request.query_parameters.keys.map(&:to_sym)
-    received - allowed - RAILS_INTERNAL_PARAMS
+    received - allowed
   end
 end
