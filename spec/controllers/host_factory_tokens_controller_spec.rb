@@ -343,10 +343,28 @@ describe HostFactoryTokensController, type: :request do
 
   describe 'query param validation' do
     # Regression: valid requests should never be blocked by query param validation.
+    let(:query_param_expiration) { (DateTime.now + 1).strftime('%Y-%m-%dT%H:%M:%SZ') }
+    let(:query_param_request_env) do
+      token_auth_header(role: current_user).merge(
+        'ACCEPT' => "application/x.secretsmgr.v2beta+json",
+        'RAW_POST_DATA' => create_token_payload,
+        'CONTENT_TYPE' => "application/json"
+      )
+    end
+
     context 'create (POST /host_factory_tokens has no path segments; all params are body/query)' do
       it 'permits declared query params (%i[account kind identifier expiration count cidr])' do
-        post '/host_factory_tokens?account=rspec&kind=host_factory&identifier=test'
+        post '/host_factory_tokens?account=rspec&kind=host_factory&identifier=test&' \
+          "expiration=#{query_param_expiration}&count=2",
+          env: query_param_request_env
         expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+        post '/host_factory_tokens?account=rspec&kind=host_factory&identifier=test&' \
+          "expiration=#{query_param_expiration}&count=2&badParam=true",
+          env: query_param_request_env
+        expect_unknown_query_param_result(response)
       end
     end
 

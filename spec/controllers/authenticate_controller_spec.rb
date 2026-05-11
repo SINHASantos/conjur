@@ -332,14 +332,28 @@ describe AuthenticateController, :type => :request do
 
   describe 'query param validation' do
     # Regression: valid requests should never be blocked by query param validation.
+    include_context "create user"
+    let(:basic_password) { api_key }
+    include_context "authenticate Basic"
+
     it 'does not reject GET /authn/:account/login with no query params' do
-      get '/authn/rspec/login'
+      get '/authn/rspec/login', env: request_env
       expect(response).not_to have_http_status(:unprocessable_content)
+    end
+
+    it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+      get '/authn/rspec/login?badParam=true', env: request_env
+      expect_unknown_query_param_result(response)
     end
 
     it 'does not reject POST /authn/:account/:id/authenticate with no query params' do
       post '/authn/rspec/admin/authenticate'
       expect(response).not_to have_http_status(:unprocessable_content)
+    end
+
+    it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+      post '/authn/rspec/admin/authenticate?badParam=true'
+      expect_unknown_query_param_result(response)
     end
   end
 end

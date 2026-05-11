@@ -517,34 +517,46 @@ describe PoliciesController, type: :request do
   describe 'query param validation', type: :request do
     # Regression: valid requests should never be blocked by query param validation.
     let(:policy_path) { '/policies/rspec/policy/root' }
+    let(:current_user) { Role.find_or_create(role_id: 'rspec:user:admin') }
+    let(:query_param_payload) { '[!variable preexisting]' }
+    let(:query_param_request_env) do
+      token_auth_header(role: current_user).merge(
+        'RAW_POST_DATA' => query_param_payload
+      )
+    end
 
     before { Slosilo["authn:rspec"] ||= Slosilo::Key.new }
 
     context 'get' do
       it 'permits declared query params (%i[depth limit])' do
-        get "#{policy_path}?depth=5&limit=10"
+        get "#{policy_path}?depth=5&limit=10", env: query_param_request_env
         expect(response).not_to have_http_status(:unprocessable_content)
       end
     end
 
     context 'put' do
       it 'permits declared query param (%i[dryRun])' do
-        put "#{policy_path}?dryRun=true"
+        put "#{policy_path}?dryRun=true", env: query_param_request_env
         expect(response).not_to have_http_status(:unprocessable_content)
       end
     end
 
     context 'patch' do
       it 'permits declared query param (%i[dryRun])' do
-        patch "#{policy_path}?dryRun=true"
+        patch "#{policy_path}?dryRun=true", env: query_param_request_env
         expect(response).not_to have_http_status(:unprocessable_content)
       end
     end
 
     context 'post' do
       it 'permits declared query param (%i[dryRun])' do
-        post "#{policy_path}?dryRun=true"
+        post "#{policy_path}?dryRun=true", env: query_param_request_env
         expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+        post "#{policy_path}?badParam=true", env: query_param_request_env
+        expect_unknown_query_param_result(response)
       end
     end
   end

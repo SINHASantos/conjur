@@ -409,31 +409,63 @@ describe ResourcesController, type: :request do
 
   describe 'query param validation' do
     # Regression: valid requests should never be blocked by query param validation.
+  let(:query_param_request_env) do
+    token_auth_header(role: current_user)
+  end
+
     context 'index (account/kind are genuine query params on the path-less GET /resources form)' do
       it 'permits declared query params (%i[account kind limit offset search owner role acting_as count])' do
-        get '/resources/rspec/variable?limit=10&offset=0&count=false'
+        get '/resources/rspec/variable?limit=10&offset=0&count=false',
+          env: query_param_request_env
         expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+        get '/resources/rspec/variable?badParam=true',
+          env: query_param_request_env
+        expect_unknown_query_param_result(response)
       end
     end
 
     context 'show (no query params; account/kind/identifier are path segments)' do
       it 'permits requests with no query params' do
-        get '/resources/rspec/variable/test'
+        get '/resources/rspec/variable/test',
+          env: query_param_request_env
         expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+        get '/resources/rspec/variable/test?badParam=true',
+          env: query_param_request_env
+        expect_unknown_query_param_result(response)
       end
     end
 
     context 'permitted_roles' do
       it 'permits declared query params (%i[privilege permission])' do
-        get '/resources/rspec/variable/test?permitted_roles&privilege=read'
+        get '/resources/rspec/variable/test?permitted_roles&privilege=read',
+          env: query_param_request_env
         expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+        get '/resources/rspec/variable/test?badParam=true',
+          env: query_param_request_env
+        expect_unknown_query_param_result(response)
       end
     end
 
     context 'check_permission' do
       it 'permits declared query params (%i[privilege role])' do
-        get '/resources/rspec/variable/test?check=true&privilege=read&role=rspec:user:admin'
+        get '/resources/rspec/variable/test?check=true&privilege=read&role=rspec:user:admin',
+          env: query_param_request_env
         expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+        get '/resources/rspec/variable/test?check=true&privilege=read&role=rspec:user:admin&badParam=true',
+          env: query_param_request_env
+        expect_unknown_query_param_result(response)
       end
     end
   end

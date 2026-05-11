@@ -1625,38 +1625,67 @@ describe IssuersController, type: :request do
 
   describe 'query param validation' do
     # Regression: valid requests should never be blocked by query param validation.
+  let(:query_param_request_env) do
+    token_auth_header(role: admin_user)
+  end
+
     context 'create (no query params; account is a path segment)' do
       it 'permits requests with no query params' do
-        post '/issuers/rspec'
+        post '/issuers/rspec', env: query_param_request_env
         expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+        post '/issuers/rspec?badParam=true', env: query_param_request_env
+        expect_unknown_query_param_result(response)
       end
     end
 
     context 'list (no query params; account is a path segment)' do
       it 'permits requests with no query params' do
-        get '/issuers/rspec'
+        get '/issuers/rspec', env: query_param_request_env
         expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+        get '/issuers/rspec?badParam=true', env: query_param_request_env
+        expect_unknown_query_param_result(response)
       end
     end
 
     context 'get (no query params; account/identifier are path segments)' do
       it 'permits requests with no query params' do
-        get '/issuers/rspec/test-issuer'
+        get '/issuers/rspec/test-issuer', env: query_param_request_env
         expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+        get '/issuers/rspec/test-issuer?badParam=true', env: query_param_request_env
+        expect_unknown_query_param_result(response)
       end
     end
 
     context 'update (no query params; account/identifier are path segments)' do
       it 'permits requests with no query params' do
-        patch '/issuers/rspec/test-issuer'
+        patch '/issuers/rspec/test-issuer', env: query_param_request_env
         expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+        patch '/issuers/rspec/test-issuer?badParam=true', env: query_param_request_env
+        expect_unknown_query_param_result(response)
       end
     end
 
     context 'delete (no query params; account/identifier are path segments)' do
       it 'permits requests with no query params' do
-        delete '/issuers/rspec/test-issuer'
+        delete '/issuers/rspec/test-issuer', env: query_param_request_env
         expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+        delete '/issuers/rspec/test-issuer?badParam=true', env: query_param_request_env
+        expect_unknown_query_param_result(response)
       end
     end
   end

@@ -822,32 +822,61 @@ describe SecretsController, type: :request do
   describe 'query param validation' do
     # Regression: valid requests should never be blocked by query param validation.
     let(:secret_path) { "/secrets/#{account}/variable/#{secret_id}" }
+    let(:query_param_request_env) do
+      token_auth_header(role: admin_user).merge(
+        'RAW_POST_DATA' => secret_value
+      )
+    end
 
     context 'create (no query params; account/kind/identifier are path segments)' do
       it 'permits requests with no query params' do
-        post secret_path
+        post secret_path, env: query_param_request_env
         expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+        post "#{secret_path}?badParam=true", env: query_param_request_env
+        expect_unknown_query_param_result(response)
       end
     end
 
     context 'show' do
       it 'permits declared query param (%i[version])' do
-        get "#{secret_path}?version=1"
+        get "#{secret_path}?version=1",
+          env: query_param_request_env
         expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+        get "#{secret_path}?version=1&badParam=true", env: query_param_request_env
+        expect_unknown_query_param_result(response)
       end
     end
 
     context 'batch (account/variable_ids are genuine query params on GET /secrets)' do
       it 'permits declared query params (%i[account variable_ids])' do
-        get "/secrets?account=#{account}&variable_ids=#{secret_id}"
+        get "/secrets?account=#{account}&variable_ids=#{secret_id}",
+          env: query_param_request_env
         expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+        get "/secrets?account=#{account}&variable_ids=#{secret_id}&badParam=true",
+          env: query_param_request_env
+        expect_unknown_query_param_result(response)
       end
     end
 
     context 'expire (no query params; account/kind/identifier are path segments)' do
       it 'permits requests with no query params' do
-        post "#{secret_path}?expirations"
+        post "#{secret_path}?expirations", env: query_param_request_env
         expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+        post "#{secret_path}?expirations&badParam=true",
+          env: query_param_request_env
+        expect_unknown_query_param_result(response)
       end
     end
   end

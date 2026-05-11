@@ -121,19 +121,30 @@ describe AccountsController, type: :request do
 
   describe 'query param validation' do
     # Regression: valid requests should never be blocked by query param validation.
+    let(:query_param_request_env) do
+      token_auth_header(role: current_user).merge(
+        'ACCEPT' => "application/x.secretsmgr.v2beta+json"
+      )
+    end
+
     it 'does not reject GET /accounts with no query params' do
-      get '/accounts'
+      get '/accounts', env: query_param_request_env
       expect(response).not_to have_http_status(:unprocessable_content)
     end
 
     it 'does not reject POST /accounts with no query params' do
-      post '/accounts'
+      post '/accounts', env: query_param_request_env
       expect(response).not_to have_http_status(:unprocessable_content)
     end
 
     it 'does not reject DELETE /accounts/:id with no query params' do
-      delete '/accounts/test-account'
+      delete '/accounts/test-account', env: query_param_request_env
       expect(response).not_to have_http_status(:unprocessable_content)
+    end
+
+    it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+      get '/accounts?badParam=true', env: query_param_request_env
+      expect_unknown_query_param_result(response)
     end
   end
 end

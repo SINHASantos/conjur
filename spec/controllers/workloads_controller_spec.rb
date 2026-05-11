@@ -1686,14 +1686,14 @@ describe WorkloadsController, :type => :request do
 
     shared_examples 'rejects unknown query params' do |http_method, url_key|
       context "when #{http_method.upcase} request includes an unknown query param" do
-        it 'returns 422 Unprocessable Entity and names the offending param' do
+        it 'rejects an unknown query param with unprocessable_content' do
           send(
             http_method,
             "#{public_send(url_key)}?badParam=true",
             env: token_auth_header(role: admin_user).merge(v2_beta_api_header)
           )
 
-          assert_response :unprocessable_content
+          expect(response).to have_http_status(:unprocessable_content)
           expect(response.body).to include('badParam')
         end
       end

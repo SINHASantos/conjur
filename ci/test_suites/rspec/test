@@ -16,7 +16,15 @@ $COMPOSE run -T --rm --no-deps cucumber_ipv6 -ec "
   bundle exec rake db:migrate
 
   rm -rf \"$REPORT_ROOT/spec/reports\"
+  mkdir -p \"$REPORT_ROOT/spec/reports\"
 
   bundle exec env \"CI_REPORTS=$REPORT_ROOT/spec/reports\" \
     rspec --format progress --require ci/reporter/rspec \
-    --format CI::Reporter::RSpecFormatter"
+    --format CI::Reporter::RSpecFormatter
+
+  rm -rf \"$REPORT_ROOT/spec/reports-strict-params-controllers\"
+  mkdir -p \"$REPORT_ROOT/spec/reports-strict-params-controllers\"
+  bundle exec env \"CONJUR_FEATURE_STRICT_PARAMS_ENABLED=true\" \
+    \"CI_REPORTS=$REPORT_ROOT/spec/reports-strict-params-controllers\" \
+    rspec --format progress --require ci/reporter/rspec \
+    --format CI::Reporter::RSpecFormatter spec/controllers"

@@ -160,8 +160,19 @@ describe HostFactoriesController, type: :request do
   describe 'query param validation' do
     # Regression: valid requests should never be blocked by query param validation.
     it 'does not reject POST /host_factories/hosts with no query params' do
-      post '/host_factories/hosts'
+      post '/host_factories/hosts',
+        env: token_auth_header(role: current_user).merge(
+          'CONTENT_TYPE' => "application/x-www-form-urlencoded"
+        )
       expect(response).not_to have_http_status(:unprocessable_content)
+    end
+
+    it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+      post '/host_factories/hosts?badParam=true',
+        env: token_auth_header(role: current_user).merge(
+          'CONTENT_TYPE' => "application/x-www-form-urlencoded"
+        )
+      expect_unknown_query_param_result(response)
     end
   end
 end
