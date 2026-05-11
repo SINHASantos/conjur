@@ -1622,4 +1622,42 @@ describe IssuersController, type: :request do
       end
     end
   end
+
+  describe 'query param validation' do
+    # Regression: valid requests should never be blocked by query param validation.
+    context 'create (no query params; account is a path segment)' do
+      it 'permits requests with no query params' do
+        post '/issuers/rspec'
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+
+    context 'list (no query params; account is a path segment)' do
+      it 'permits requests with no query params' do
+        get '/issuers/rspec'
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+
+    context 'get (no query params; account/identifier are path segments)' do
+      it 'permits requests with no query params' do
+        get '/issuers/rspec/test-issuer'
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+
+    context 'update (no query params; account/identifier are path segments)' do
+      it 'permits requests with no query params' do
+        patch '/issuers/rspec/test-issuer'
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+
+    context 'delete (no query params; account/identifier are path segments)' do
+      it 'permits requests with no query params' do
+        delete '/issuers/rspec/test-issuer'
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+  end
 end

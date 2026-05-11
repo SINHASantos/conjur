@@ -9,15 +9,13 @@ describe AccountsController, type: :request do
   before(:all) do
     # Start fresh
     DatabaseCleaner.clean_with(:truncation)
+  end
 
-    # Init Slosilo key
+  before do
     Slosilo["authn:rspec"] ||= Slosilo::Key.new
-    Role.create(role_id: '!:!:root')
-    Role.create(role_id: 'rspec:user:admin')
-    Role['!:!:root'].grant_to(
-      Role['rspec:user:admin'],
-      admin_option: true
-    )
+    Role.find_or_create(role_id: '!:!:root')
+    admin_role = Role.find_or_create(role_id: 'rspec:user:admin')
+    Role['!:!:root'].grant_to(admin_role, admin_option: true)
   end
 
   after(:all) do
@@ -118,6 +116,24 @@ describe AccountsController, type: :request do
         delete_account
         expect(response.code).to eq('403')
       end
+    end
+  end
+
+  describe 'query param validation' do
+    # Regression: valid requests should never be blocked by query param validation.
+    it 'does not reject GET /accounts with no query params' do
+      get '/accounts'
+      expect(response).not_to have_http_status(:unprocessable_content)
+    end
+
+    it 'does not reject POST /accounts with no query params' do
+      post '/accounts'
+      expect(response).not_to have_http_status(:unprocessable_content)
+    end
+
+    it 'does not reject DELETE /accounts/:id with no query params' do
+      delete '/accounts/test-account'
+      expect(response).not_to have_http_status(:unprocessable_content)
     end
   end
 end

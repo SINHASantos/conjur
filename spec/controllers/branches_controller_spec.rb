@@ -47,8 +47,8 @@ describe(BranchesController, type: :request) do
 
   let(:resp_branch) { branch_params.merge(branch: '/') }
 
-  def post_payload(payload)
-    post(branches_url, env: headers_with_auth(payload))
+  def post_payload(payload, url = branches_url)
+    post(url, env: headers_with_auth(payload))
   end
 
   def read_one
@@ -191,6 +191,48 @@ describe(BranchesController, type: :request) do
       delete_one
       assert_response :not_found
       expect(JSON.parse(response.body)).to eq("code" => "404", "message" => "Branch 'test-branch' not found in account 'rspec'")
+    end
+  end
+
+  describe 'query param validation' do
+    # Regression: valid requests should never be blocked by query param validation.
+    context 'index' do
+      it 'permits declared params (%i[offset limit])' do
+        get '/branches/rspec?offset=0&limit=10', env: headers_with_auth
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'blocks an unknown query param and names it in the response' do
+        get '/branches/rspec?badParam=true', env: headers_with_auth
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include('badParam')
+      end
+    end
+
+    context 'create (default allowlist [])' do
+      it 'permits requests with no query params' do
+        post_payload(branch_params.to_json)
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'blocks an unknown query param' do
+        post_payload(branch_params.to_json, "#{branches_url}?badParam=true")
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include('badParam')
+      end
+    end
+
+    context 'show (default allowlist [])' do
+      it 'permits requests with no query params' do
+        get '/branches/rspec/test-branch', env: headers_with_auth
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'blocks an unknown query param' do
+        get '/branches/rspec/test-branch?badParam=true', env: headers_with_auth
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include('badParam')
+      end
     end
   end
 end

@@ -428,4 +428,51 @@ describe RolesController, type: :request do
       end
     end
   end
+
+  describe 'query param validation' do
+    # Regression: valid requests should never be blocked by query param validation.
+    let(:role_path) { '/roles/rspec/user/admin' }
+
+    context 'show (uses controller default []; account/kind/identifier are path segments)' do
+      it 'permits requests with no query params' do
+        get role_path
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+
+    context 'all_memberships' do
+      it 'permits declared query params (%i[count filter])' do
+        get "#{role_path}?all&count=false&filter=user"
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+
+    context 'direct_memberships' do
+      it 'permits declared query params (%i[count search kind filter]) — kind here filters member types, not the role kind path segment' do
+        get "#{role_path}?memberships&count=false"
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+
+    context 'members' do
+      it 'permits declared query params (%i[count search kind limit offset]) — kind filters member types' do
+        get "#{role_path}?members&count=false&limit=10"
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+
+    context 'add_member' do
+      it 'permits declared query param (%i[member])' do
+        post "#{role_path}?members&member=rspec:user:alice"
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+
+    context 'delete_member' do
+      it 'permits declared query param (%i[member])' do
+        delete "#{role_path}?members&member=rspec:user:alice"
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+  end
 end

@@ -9,13 +9,10 @@ class PoliciesController < RestController
 
   rescue_from Sequel::UniqueConstraintViolation, with: :concurrent_load
 
-  # Legacy v1 endpoint — unknown params log a warning but do not fail
-  # the request.
-  validate_query_params_for_action :get,
-                        %i[account kind identifier depth limit]
-  validate_query_params_for_action :put,  %i[account kind identifier dryRun]
-  validate_query_params_for_action :patch, %i[account kind identifier dryRun]
-  validate_query_params_for_action :post,  %i[account kind identifier dryRun]
+  validate_query_params_for_action :get,   %i[depth limit]
+  validate_query_params_for_action :put,   %i[dryRun]
+  validate_query_params_for_action :patch, %i[dryRun]
+  validate_query_params_for_action :post,  %i[dryRun]
 
   # Conjur policies are YAML documents, so we assume that if no content-type
   # is provided in the request.

@@ -513,4 +513,39 @@ describe PoliciesController, type: :request do
       expect(enhanced.additional_context[:offending_lines]).to be_an(Array)
     end
   end
+
+  describe 'query param validation', type: :request do
+    # Regression: valid requests should never be blocked by query param validation.
+    let(:policy_path) { '/policies/rspec/policy/root' }
+
+    before { Slosilo["authn:rspec"] ||= Slosilo::Key.new }
+
+    context 'get' do
+      it 'permits declared query params (%i[depth limit])' do
+        get "#{policy_path}?depth=5&limit=10"
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+
+    context 'put' do
+      it 'permits declared query param (%i[dryRun])' do
+        put "#{policy_path}?dryRun=true"
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+
+    context 'patch' do
+      it 'permits declared query param (%i[dryRun])' do
+        patch "#{policy_path}?dryRun=true"
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+
+    context 'post' do
+      it 'permits declared query param (%i[dryRun])' do
+        post "#{policy_path}?dryRun=true"
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+  end
 end

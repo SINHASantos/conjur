@@ -156,4 +156,12 @@ describe HostFactoriesController, type: :request do
       end
     end
   end
+
+  describe 'query param validation' do
+    # Regression: valid requests should never be blocked by query param validation.
+    it 'does not reject POST /host_factories/hosts with no query params' do
+      post '/host_factories/hosts'
+      expect(response).not_to have_http_status(:unprocessable_content)
+    end
+  end
 end

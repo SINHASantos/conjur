@@ -406,4 +406,35 @@ describe ResourcesController, type: :request do
       end
     end
   end
+
+  describe 'query param validation' do
+    # Regression: valid requests should never be blocked by query param validation.
+    context 'index (account/kind are genuine query params on the path-less GET /resources form)' do
+      it 'permits declared query params (%i[account kind limit offset search owner role acting_as count])' do
+        get '/resources/rspec/variable?limit=10&offset=0&count=false'
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+
+    context 'show (no query params; account/kind/identifier are path segments)' do
+      it 'permits requests with no query params' do
+        get '/resources/rspec/variable/test'
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+
+    context 'permitted_roles' do
+      it 'permits declared query params (%i[privilege permission])' do
+        get '/resources/rspec/variable/test?permitted_roles&privilege=read'
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+
+    context 'check_permission' do
+      it 'permits declared query params (%i[privilege role])' do
+        get '/resources/rspec/variable/test?check=true&privilege=read&role=rspec:user:admin'
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+  end
 end

@@ -340,4 +340,21 @@ describe HostFactoryTokensController, type: :request do
       end
     end
   end
+
+  describe 'query param validation' do
+    # Regression: valid requests should never be blocked by query param validation.
+    context 'create (POST /host_factory_tokens has no path segments; all params are body/query)' do
+      it 'permits declared query params (%i[account kind identifier expiration count cidr])' do
+        post '/host_factory_tokens?account=rspec&kind=host_factory&identifier=test'
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+
+    context 'destroy (no query params; token is identified by :id path segment)' do
+      it 'permits requests with no query params' do
+        delete '/host_factory_tokens/some-token-id'
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+  end
 end

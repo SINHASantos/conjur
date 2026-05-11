@@ -818,4 +818,37 @@ describe SecretsController, type: :request do
       end
     end
   end
+
+  describe 'query param validation' do
+    # Regression: valid requests should never be blocked by query param validation.
+    let(:secret_path) { "/secrets/#{account}/variable/#{secret_id}" }
+
+    context 'create (no query params; account/kind/identifier are path segments)' do
+      it 'permits requests with no query params' do
+        post secret_path
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+
+    context 'show' do
+      it 'permits declared query param (%i[version])' do
+        get "#{secret_path}?version=1"
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+
+    context 'batch (account/variable_ids are genuine query params on GET /secrets)' do
+      it 'permits declared query params (%i[account variable_ids])' do
+        get "/secrets?account=#{account}&variable_ids=#{secret_id}"
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+
+    context 'expire (no query params; account/kind/identifier are path segments)' do
+      it 'permits requests with no query params' do
+        post "#{secret_path}?expirations"
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+    end
+  end
 end

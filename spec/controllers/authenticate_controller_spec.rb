@@ -329,4 +329,17 @@ describe AuthenticateController, :type => :request do
   end
 
   before(:all) { Slosilo["authn:rspec"] ||= Slosilo::Key.new }
+
+  describe 'query param validation' do
+    # Regression: valid requests should never be blocked by query param validation.
+    it 'does not reject GET /authn/:account/login with no query params' do
+      get '/authn/rspec/login'
+      expect(response).not_to have_http_status(:unprocessable_content)
+    end
+
+    it 'does not reject POST /authn/:account/:id/authenticate with no query params' do
+      post '/authn/rspec/admin/authenticate'
+      expect(response).not_to have_http_status(:unprocessable_content)
+    end
+  end
 end

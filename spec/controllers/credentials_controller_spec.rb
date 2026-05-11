@@ -340,4 +340,22 @@ describe CredentialsController, :type => :request do
       end
     end
   end
+
+  describe 'query param validation' do
+    # Regression: valid requests should never be blocked by query param validation.
+    it 'does not reject PUT /authn/:account/password with no query params' do
+      put '/authn/rspec/password'
+      expect(response).not_to have_http_status(:unprocessable_content)
+    end
+
+    it 'does not reject PUT /authn/:account/api_key with no query params' do
+      put '/authn/rspec/api_key'
+      expect(response).not_to have_http_status(:unprocessable_content)
+    end
+
+    it 'does not reject GET /authn/:account/api_key with no query params' do
+      get '/authn/rspec/api_key'
+      expect(response).not_to have_http_status(:unprocessable_content)
+    end
+  end
 end
