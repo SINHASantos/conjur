@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing should go in this section, please add to the latest unreleased version
   (and update the corresponding date), or add a new version.
 
+## [1.27.0] - 2026-05-18
+
+### Removed
+- Removed the unauthenticated `GET /public_keys` endpoint. CNJR-11339
+
+### Changed
+- API endpoints now reject requests that include unrecognized query parameters
+  with a 422 Unprocessable Entity response. Legacy v1 endpoints log a warning instead of
+  failing. This behavior is controlled by the feature flag CONJUR_FEATURE_STRICT_PARAMS_ENABLED,
+  with V2 endpoints remaining strict by default. CNJR-7246
+
 ## [1.26.1] - 2026-04-30
 
 ### Added
@@ -29,15 +40,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - Host Factory tokens leaking to underprivileged roles from /resources API. CNJR-13782
-
-### Removed
-- Removed the unauthenticated `GET /public_keys` endpoint. CNJR-11339
-
-### Changed
-- API endpoints now reject requests that include unrecognized query parameters
-  with a 422 Unprocessable Entity response. Legacy v1 endpoints log a warning instead of
-  failing. This behavior is controlled by the feature flag CONJUR_FEATURE_STRICT_PARAMS_ENABLED,
-  with V2 endpoints remaining strict by default. CNJR-7246
 
 ## [1.26.0] - 2026-04-16
 
