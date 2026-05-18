@@ -428,4 +428,89 @@ describe RolesController, type: :request do
       end
     end
   end
+
+  describe 'query param validation' do
+    # Regression: valid requests should never be blocked by query param validation.
+    let(:role_path) { '/roles/rspec/user/admin' }
+    let(:query_param_request_env) do
+      token_auth_header(role: current_user)
+    end
+
+    context 'show (uses controller default []; account/kind/identifier are path segments)' do
+      it 'permits requests with no query params' do
+        get role_path, env: query_param_request_env
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+        get "#{role_path}?badParam=true", env: query_param_request_env
+        expect_unknown_query_param_result(response)
+      end
+    end
+
+    context 'all_memberships' do
+      it 'permits declared query params (%i[count filter])' do
+        get "#{role_path}?all&count=false&filter=user:admin",
+          env: query_param_request_env
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+        get "#{role_path}?all&badParam=true", env: query_param_request_env
+        expect_unknown_query_param_result(response)
+      end
+    end
+
+    context 'direct_memberships' do
+      it 'permits declared query params (%i[count search kind filter]) — kind here filters member types, not the role kind path segment' do
+        get "#{role_path}?memberships&count=false", env: query_param_request_env
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+        get "#{role_path}?memberships&badParam=true", env: query_param_request_env
+        expect_unknown_query_param_result(response)
+      end
+    end
+
+    context 'members' do
+      it 'permits declared query params (%i[count search kind limit offset]) — kind filters member types' do
+        get "#{role_path}?members&count=false&limit=10", env: query_param_request_env
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+        get "#{role_path}?members&badParam=true", env: query_param_request_env
+        expect_unknown_query_param_result(response)
+      end
+    end
+
+    context 'add_member' do
+      it 'permits declared query param (%i[member])' do
+        post "#{role_path}?members&member=rspec:user:alice",
+          env: query_param_request_env
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+        post "#{role_path}?members&member=rspec:user:alice&badParam=true",
+          env: query_param_request_env
+        expect_unknown_query_param_result(response)
+      end
+    end
+
+    context 'delete_member' do
+      it 'permits declared query param (%i[member])' do
+        delete "#{role_path}?members&member=rspec:user:alice",
+          env: query_param_request_env
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+        delete "#{role_path}?members&member=rspec:user:alice&badParam=true",
+          env: query_param_request_env
+        expect_unknown_query_param_result(response)
+      end
+    end
+  end
 end

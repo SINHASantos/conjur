@@ -1645,7 +1645,7 @@ describe WorkloadsController, :type => :request do
         get("/workloads/rspec/#{long_identifier}",
           env: token_auth_header(role: alice_user).merge(v2_beta_api_header))
 
-        assert_response :unprocessable_entity
+        assert_response :unprocessable_content
         expect(response.body).to match(/parameter length exceeded/)
       end
     end
@@ -1678,5 +1678,29 @@ describe WorkloadsController, :type => :request do
         assert_response :unauthorized
       end
     end
+  end
+
+  describe 'query param validation' do
+    let(:create_url)  { '/workloads/rspec' }
+    let(:resource_url) { '/workloads/rspec/data/work/test-workload' }
+
+    shared_examples 'rejects unknown query params' do |http_method, url_key|
+      context "when #{http_method.upcase} request includes an unknown query param" do
+        it 'rejects an unknown query param with unprocessable_content' do
+          send(
+            http_method,
+            "#{public_send(url_key)}?badParam=true",
+            env: token_auth_header(role: admin_user).merge(v2_beta_api_header)
+          )
+
+          expect(response).to have_http_status(:unprocessable_content)
+          expect(response.body).to include('badParam')
+        end
+      end
+    end
+
+    include_examples 'rejects unknown query params', :post,   :create_url
+    include_examples 'rejects unknown query params', :get,    :resource_url
+    include_examples 'rejects unknown query params', :delete, :resource_url
   end
 end

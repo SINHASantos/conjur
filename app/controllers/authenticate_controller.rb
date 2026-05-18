@@ -4,6 +4,7 @@ class AuthenticateController < ApplicationController
   include BasicAuthenticator
   include AuthorizeResource
 
+  validate_query_params []
   before_action :check_authn_cert_feature_flag, only: [:authenticate_via_post]
 
   def authenticate_via_get

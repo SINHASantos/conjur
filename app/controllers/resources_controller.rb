@@ -4,6 +4,13 @@ class ResourcesController < RestController
   include FindResource
   include AssumedRole
 
+  validate_query_params []
+  validate_query_params_for_action :index,
+                        %i[account kind limit offset search owner role acting_as count]
+  validate_query_params_for_action :show,             %i[owner]
+  validate_query_params_for_action :permitted_roles,  %i[permitted_roles privilege permission]
+  validate_query_params_for_action :check_permission, %i[check privilege role]
+
   def index
     # Rails 5 requires parameters to be explicitly permitted before converting
     # to Hash.  See: https://stackoverflow.com/a/46029524

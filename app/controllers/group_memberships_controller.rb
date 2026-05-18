@@ -2,6 +2,8 @@
 
 class GroupMembershipsController < V2RestController
 
+  validate_query_params []
+
   def initialize(
     *args,
     membership_service: Memberships::MembershipService.instance,

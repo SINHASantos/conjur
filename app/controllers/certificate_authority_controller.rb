@@ -9,8 +9,10 @@ class CertificateAuthorityController < RestController
   before_action :verify_ca
   before_action :verify_host, only: :sign
   before_action :verify_csr, only: :sign
-  
-  def sign    
+
+  validate_query_params []
+
+  def sign
     certificate = certificate_authority.sign_csr(host, csr, ttl)
     render_certificate(certificate)
   end
@@ -33,10 +35,7 @@ class CertificateAuthorityController < RestController
   def render_certificate(certificate)
     respond_to do |format|
       format.json do
-        render(json: {
-          certificate: certificate.to_pem
-        },
-               status: :created)
+        render(json: { certificate: certificate.to_pem }, status: :created)
       end
 
       format.pem do

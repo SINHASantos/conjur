@@ -534,4 +534,37 @@ describe GroupMembershipsController, type: :request do
       end
     end
   end
+
+  describe 'query param validation' do
+    # Regression: valid requests should never be blocked by query param validation.
+    let(:membership_payload) { { kind: 'user', id: '/alice' }.to_json }
+
+    def query_param_headers(http_method)
+      headers = token_auth_header(role: alice_user).merge(v2_beta_api_header)
+      return headers unless http_method == :post
+
+      headers.merge(
+        'RAW_POST_DATA' => membership_payload,
+        'CONTENT_TYPE' => 'application/json'
+      )
+    end
+
+    shared_examples 'rejects unknown query params' do |http_method, path|
+      context "#{http_method.upcase} #{path}" do
+        it 'permits requests with no query params' do
+          send(http_method, path, env: query_param_headers(http_method))
+          expect(response).not_to have_http_status(:unprocessable_content)
+        end
+
+        it 'blocks an unknown query param and names it in the response' do
+          send(http_method, "#{path}?badParam=true", env: query_param_headers(http_method))
+          expect(response).to have_http_status(:unprocessable_content)
+          expect(response.body).to include('badParam')
+        end
+      end
+    end
+
+    include_examples 'rejects unknown query params', :post,   '/groups/rspec/data/some-group/members'
+    include_examples 'rejects unknown query params', :delete, '/groups/rspec/data/some-group/members/user/alice'
+  end
 end

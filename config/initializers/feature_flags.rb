@@ -54,6 +54,10 @@ Rails.application.configure do
     # does not verify iss/aud claims. Prefer authn-jwt, or other authenticators for workloads.
     oidc_authenticator_v1: false,
 
+    # When enabled, V1 endpoints enforce strict query-parameter validation: unknown
+    # parameters raise a 422 instead of logging a warning. V2 endpoints are always strict.
+    strict_params: false,
+
   }.freeze
 
   config.feature_flags = Conjur::FeatureFlags::Features.new(

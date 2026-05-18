@@ -276,5 +276,6 @@ module Conjur
     def authn_jwt_ignore_missing_issuer_claim_valid?
       [true, false].include?(authn_jwt_ignore_missing_issuer_claim)
     end
+
   end
 end

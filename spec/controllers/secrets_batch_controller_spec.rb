@@ -48,6 +48,8 @@ describe(SecretsBatchController, type: :request) do
     POLICY
   end
 
+  let(:batch_read_body) { { ids: ['data/var1'] }.to_json }
+
   before do
     Slosilo["authn:rspec"] ||= Slosilo::Key.new
 
@@ -303,6 +305,22 @@ describe(SecretsBatchController, type: :request) do
       assert_response :unprocessable_content
       response_data = JSON.parse(response.body)
       expect(response_data['message']).to eq("Ids The id '//data/var1' is invalid")
+    end
+  end
+
+  describe 'query param validation' do
+    # Regression: valid requests should never be blocked by query param validation.
+    context 'batch_read_values' do
+      it 'permits the declared encode_values param' do
+        post_payload(batch_read_body, "#{batch_url}?encode_values=base64")
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'blocks an unknown query param and names it in the response' do
+        post_payload(batch_read_body, "#{batch_url}?badParam=true")
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include('badParam')
+      end
     end
   end
 end

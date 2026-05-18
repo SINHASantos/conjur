@@ -340,4 +340,30 @@ describe CredentialsController, :type => :request do
       end
     end
   end
+
+  describe 'query param validation' do
+    # Regression: valid requests should never be blocked by query param validation.
+    include_context "create user"
+    let(:query_param_request_env) { token_auth_header(role: the_user) }
+
+    it 'does not reject PUT /authn/:account/password with no query params' do
+      put '/authn/rspec/password', env: query_param_request_env
+      expect(response).not_to have_http_status(:unprocessable_content)
+    end
+
+    it 'does not reject PUT /authn/:account/api_key with no query params' do
+      put '/authn/rspec/api_key', env: query_param_request_env
+      expect(response).not_to have_http_status(:unprocessable_content)
+    end
+
+    it 'does not reject GET /authn/:account/api_key with no query params' do
+      get '/authn/rspec/api_key', env: query_param_request_env
+      expect(response).not_to have_http_status(:unprocessable_content)
+    end
+
+    it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+      get '/authn/rspec/api_key?badParam=true', env: query_param_request_env
+      expect_unknown_query_param_result(response)
+    end
+  end
 end

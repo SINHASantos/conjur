@@ -9,15 +9,13 @@ describe AccountsController, type: :request do
   before(:all) do
     # Start fresh
     DatabaseCleaner.clean_with(:truncation)
+  end
 
-    # Init Slosilo key
+  before do
     Slosilo["authn:rspec"] ||= Slosilo::Key.new
-    Role.create(role_id: '!:!:root')
-    Role.create(role_id: 'rspec:user:admin')
-    Role['!:!:root'].grant_to(
-      Role['rspec:user:admin'],
-      admin_option: true
-    )
+    Role.find_or_create(role_id: '!:!:root')
+    admin_role = Role.find_or_create(role_id: 'rspec:user:admin')
+    Role['!:!:root'].grant_to(admin_role, admin_option: true)
   end
 
   after(:all) do
@@ -118,6 +116,35 @@ describe AccountsController, type: :request do
         delete_account
         expect(response.code).to eq('403')
       end
+    end
+  end
+
+  describe 'query param validation' do
+    # Regression: valid requests should never be blocked by query param validation.
+    let(:query_param_request_env) do
+      token_auth_header(role: current_user).merge(
+        'ACCEPT' => "application/x.secretsmgr.v2beta+json"
+      )
+    end
+
+    it 'does not reject GET /accounts with no query params' do
+      get '/accounts', env: query_param_request_env
+      expect(response).not_to have_http_status(:unprocessable_content)
+    end
+
+    it 'does not reject POST /accounts with no query params' do
+      post '/accounts', env: query_param_request_env
+      expect(response).not_to have_http_status(:unprocessable_content)
+    end
+
+    it 'does not reject DELETE /accounts/:id with no query params' do
+      delete '/accounts/test-account', env: query_param_request_env
+      expect(response).not_to have_http_status(:unprocessable_content)
+    end
+
+    it 'rejects an unknown query param in strict mode and tolerates it otherwise' do
+      get '/accounts?badParam=true', env: query_param_request_env
+      expect_unknown_query_param_result(response)
     end
   end
 end

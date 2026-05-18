@@ -5,6 +5,9 @@ class BranchesController < V2RestController
   BRANCH_REQUIRED_PARAMS = %i[name branch].freeze
   BRANCH_OPTIONAL_PARAMS = [owner: %i[kind id], annotations: {}].freeze
 
+  validate_query_params []
+  validate_query_params_for_action :index,  %i[offset limit]
+
   def initialize(
     *args,
     branch_service: Branches::BranchService.instance,

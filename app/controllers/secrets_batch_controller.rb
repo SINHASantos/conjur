@@ -6,6 +6,8 @@ class SecretsBatchController < V2RestController
   BATCH_REQUIRED_PARAMS = %i[ids].freeze
   BATCH_OPTIONAL_PARAMS = [{ ids: [] }, :encode_values, { v2_secret: {} }].freeze
 
+  validate_query_params_for_action :batch_read_values, %i[encode_values]
+
   def initialize(
     *args,
     secret_service: Secrets::SecretsBatchService.instance,

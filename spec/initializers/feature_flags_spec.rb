@@ -60,6 +60,24 @@ describe 'Feature flag initializer' do
     end
   end
 
+  # Strict params feature
+  it 'returns strict_params disabled by default' do
+    expect(config.feature_flags.enabled?(:strict_params)).to be(false)
+  end
+
+  context 'when strict_params is enabled with the environment variable' do
+    around do |example|
+      with_environment('CONJUR_FEATURE_STRICT_PARAMS_ENABLED', 'true') do
+        load Rails.root.join('config/initializers/feature_flags.rb')
+        example.run
+      end
+    end
+
+    it 'returns strict_params enabled' do
+      expect(config.feature_flags.enabled?(:strict_params)).to be(true)
+    end
+  end
+
   # OIDC v1 authenticator feature
   context 'when oidc_authenticator_v1 is explicitly disabled via environment variable' do
     around do |example|

@@ -272,8 +272,6 @@ describe Conjur::ConjurConfig do
         .to_not raise_error(/boop/)
       expect { subject }
         .to_not raise_error(/beep/)
-      expect { subject }
-        .to_not raise_error(/boop/)
     end
   end
 

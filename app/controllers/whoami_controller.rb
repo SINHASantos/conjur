@@ -5,6 +5,8 @@ require 'date'
 class WhoamiController < ApplicationController
   include TokenUser
 
+  validate_query_params []
+
   # /whoami returns basic information about the request client and access token
   # that Conjur receives.
   #

@@ -2,6 +2,7 @@
 
 class ApplicationController < ActionController::API
   include Authenticates
+  include QueryParamValidation
 
   class Unauthorized < RuntimeError
     attr_reader :return_message_in_response
@@ -90,6 +91,7 @@ class ApplicationController < ActionController::API
   rescue_from Errors::Conjur::ParameterMissing, with: :unprocessable_content
   rescue_from Errors::Conjur::ParameterValueInvalid, with: :unprocessable_content
   rescue_from Errors::Conjur::ParameterTypeInvalid, with: :unprocessable_content
+  rescue_from Errors::Conjur::UnexpectedParameter, with: :unprocessable_content
   rescue_from OpenSSL::Cipher::CipherError, with: :data_key_invalid
 
   around_action :run_with_transaction

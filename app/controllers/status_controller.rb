@@ -6,6 +6,9 @@ class StatusController < ApplicationController
   include TokenUser
   include ::ActionView::Layouts
 
+  validate_query_params []
+  validate_query_params_for_action :index, %i[format]
+
   def index
     render('index', layout: false)
   end

@@ -33,7 +33,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Removed
 - Removed the unauthenticated `GET /public_keys` endpoint. CNJR-11339
 
+### Changed
+- API endpoints now reject requests that include unrecognized query parameters
+  with a 422 Unprocessable Entity response. Legacy v1 endpoints log a warning instead of
+  failing. This behavior is controlled by the feature flag CONJUR_FEATURE_STRICT_PARAMS_ENABLED,
+  with V2 endpoints remaining strict by default. CNJR-7246
+
 ## [1.26.0] - 2026-04-16
+
 ### Fixed
 - Fix APIv2 batch secret retrieval returning all secret versions instead of only the latest. CNJR-13100
 - Log underlying OIDC discovery failure details at DEBUG when the Authn-OIDC provider is unreachable. CNJR-13148

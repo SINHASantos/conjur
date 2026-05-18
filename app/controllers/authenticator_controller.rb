@@ -4,6 +4,9 @@ class AuthenticatorController < V2RestController
   include BasicAuthenticator
   include AuthorizeResource
 
+  validate_query_params []
+  validate_query_params_for_action :list_authenticators,       %i[limit offset type]
+
   before_action :set_current_attributes
 
   class Current < ActiveSupport::CurrentAttributes

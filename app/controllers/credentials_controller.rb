@@ -6,6 +6,9 @@ class CredentialsController < ApplicationController
   include BasicAuthenticator
   include TokenUser
 
+  validate_query_params []
+  validate_query_params_for_action :api_key_last_rotated, %i[role]
+
   # Read authentication from token, basic, or CAS.
   # Some form of authentication must be provided for all methods except +authenticate+, which
   # expects the API key in the request body.

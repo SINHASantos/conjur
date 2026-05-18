@@ -232,6 +232,26 @@ describe AuthenticatorController, type: :request do
 
   let(:current_user) { Role.find_or_create(role_id: 'rspec:user:tester') }
 
+  let(:query_param_authenticator_body) do
+    create_body('query-param-authenticator', nil).to_json
+  end
+
+  def query_param_auth_headers
+    token_auth_header(role: current_user).merge(
+      'ACCEPT' => "application/x.secretsmgr.v2beta+json"
+    )
+  end
+
+  def create_authenticator_with_query_params(query: '')
+    post(
+      "/authenticators/rspec#{query}",
+      env: query_param_auth_headers.merge(
+        'RAW_POST_DATA' => query_param_authenticator_body,
+        'CONTENT_TYPE' => "application/json"
+      )
+    )
+  end
+
   describe '#find_authenticator' do
     before do
       allow(Audit).to receive(:logger).and_return(Audit::Log::RubyAdapter.new(logger))
@@ -771,6 +791,48 @@ describe AuthenticatorController, type: :request do
             expect(body["count"]).to eq(0)
           end
         end
+      end
+    end
+  end
+
+  describe 'query param validation' do
+    # Regression: valid requests should never be blocked by query param validation.
+    context 'list_authenticators' do
+      it 'permits declared params (%i[limit offset type])' do
+        get '/authenticators/rspec?limit=10&offset=0&type=jwt', env: query_param_auth_headers
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'blocks an unknown query param and names it in the response' do
+        get '/authenticators/rspec?badParam=true', env: query_param_auth_headers
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include('badParam')
+      end
+    end
+
+    context 'find_authenticator (default allowlist [])' do
+      it 'permits requests with no query params' do
+        get '/authenticators/rspec/jwt/test-service', env: query_param_auth_headers
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'blocks an unknown query param' do
+        get '/authenticators/rspec/jwt/test-service?badParam=true', env: query_param_auth_headers
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include('badParam')
+      end
+    end
+
+    context 'create_authenticator (default allowlist [])' do
+      it 'permits requests with no query params' do
+        create_authenticator_with_query_params
+        expect(response).not_to have_http_status(:unprocessable_content)
+      end
+
+      it 'blocks an unknown query param' do
+        create_authenticator_with_query_params(query: '?badParam=true')
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include('badParam')
       end
     end
   end

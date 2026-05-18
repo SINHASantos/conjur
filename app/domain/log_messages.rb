@@ -36,6 +36,11 @@ module LogMessages
       msg: "Failed to disconnect Sequel databases on fork: {0}: {1}",
       code: "CONJ00544W"
     )
+
+    UnexpectedParameter = ::Util::TrackableLogMessageClass.new(
+      msg: "Received unexpected query parameter(s) on {0-endpoint}: {1-parameter-names}",
+      code: "CONJ00545W"
+    )
   end
 
   module Endpoints

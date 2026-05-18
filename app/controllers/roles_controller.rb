@@ -14,6 +14,14 @@ class RolesController < RestController
 
   ROLES_API_EXTENSION_KIND = :roles_api
 
+  validate_query_params []
+  validate_query_params_for_action :all_memberships,    %i[all count filter]
+  validate_query_params_for_action :direct_memberships, %i[memberships count search kind filter]
+  validate_query_params_for_action :members,            %i[members count search kind limit offset]
+  validate_query_params_for_action :graph,              %i[graph]
+  validate_query_params_for_action :add_member,         %i[members member]
+  validate_query_params_for_action :delete_member,      %i[members member]
+
   before_action :current_user
 
   def initialize(
