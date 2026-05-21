@@ -3,83 +3,109 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width">
-
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="stylesheet" href="/css/status-page.css">
     <title>Conjur Status</title>
   </head>
   <body>
-
     <header>
-      <div class="logo-cont">
-        <img src="/img/conjur-logo-all-white.svg"/>
-      </div>
-      <div class="links-cont">
-        <a href="https://discuss.cyberarkcommons.org" target="_blank">Discourse</a>
-        |
-        <a href="https://github.com/cyberark/conjur" target="_blank">Github</a>
+      <div class="container">
+        <div class="logo-section">
+          <img src="/img/logo-idira.svg" alt="IDIRA Logo" class="logo"/>
+          <h1>Conjur</h1>
+        </div>
       </div>
     </header>
 
-    <main>
-      <div class="left-panel">
-        <h1>Status</h1>
-        <p class="status-text">Your Conjur server is running!</p>
+    <main class="container">
+      <div class="content-grid">
+        <div class="info-section">
+          <div class="info-card">
+            <h3>Details</h3>
+            <dl>
+              <dt>Status</dt>
+              <dd><span class="status-badge">✓ Running</span></dd>
 
-        <h2>Security Check:</h2>
-        <p>Does your browser show a green lock icon on the left side of the address bar?</p>
+              <dt>Version</dt>
+              <dd><%= ENV["CONJUR_VERSION_DISPLAY"] %></dd>
 
-        <dl>
-          <dt>Green lock:</dt>
-          <dd>Good, Conjur is secured and authenticated.</dd>
-          <dt>Yellow lock or green with warning sign:</dt>
-          <dd>
-          OK, Conjur is secured but not authenticated. Send your Conjur admin to the
-          <a href="https://www.conjur.org/tutorials/nginx.html" title="Tutorial - NGINX Proxy">
-            Conjur+TLS guide
-          </a>
-          to learn how to use your own certificate &amp; upgrade to green lock.
-          </dd>
-          <dt>Red broken lock or no lock:</dt>
-          <dd>
-          Conjur is running in insecure development mode. Don't put any
-          production secrets in there! Visit the
-          <a href="https://www.conjur.org/tutorials/nginx.html" title="Tutorial - NGINX Proxy">
-            Conjur+TLS guide
-          </a>
-          to learn how to deploy Conjur securely &amp;
-          <a href="https://discuss.cyberarkcommons.org">contact CyberArk</a>
-          with any questions.
-          </dd>
-        </dl>
-      </div>
+              <dt>API Version</dt>
+              <dd><a href="https://github.com/cyberark/conjur-openapi-spec/releases/tag/v<%= ENV["API_VERSION"] %>"><%= ENV["API_VERSION"] %></a></dd>
 
-      <div class="right-panel">
-        <dl>
-          <dt>Details:</dt>
-          <dd>Version <%= ENV["CONJUR_VERSION_DISPLAY"] %></dd>
-          <dd>API Version <a href="https://github.com/cyberark/conjur-openapi-spec/releases/tag/v<%= ENV["API_VERSION"] %>"><%= ENV["API_VERSION"] %></a>
-          <dd>FIPS mode <%= ENV["FIPS_MODE_STATUS"] %></a>
-          <dt>More Info:</dt>
-          <dd>
-            <ul>
-              <li><a href="https://docs.conjur.org/Latest/en/Content/Resources/_TopNav/cc_Home.htm" target="_blank">Documentation</a></li>
-              <li><a href="https://www.cyberark.com/products/privileged-account-security-solution/application-access-manager/" target="_blank">CyberArk Application Access Manager</a></li>
+              <dt>FIPS Mode</dt>
+              <dd><%= ENV["FIPS_MODE_STATUS"] %></dd>
+            </dl>
+          </div>
+
+          <div class="info-card">
+            <h3>Resources</h3>
+            <ul class="links">
+              <li><a href="https://docs.cyberark.com/conjur-open-source/latest/en/content/overview/conjur-oss-suite-overview.html" target="_blank">Documentation</a></li>
+              <li><a href="https://www.cyberark.com/products/secrets-manager-self-hosted/" target="_blank">Secrets Manager Self-Hosted</a></li>
               <li><a href="https://www.conjur.org/" target="_blank">Conjur.org</a></li>
+              <li><a href="https://discuss.cyberarkcommons.org" target="_blank">Community Discourse</a></li>
+              <li><a href="https://github.com/cyberark/conjur" target="_blank">GitHub Repository</a></li>
             </ul>
-          </dd>
-        </dl>
+          </div>
+        </div>
 
+        <div class="artwork-section">
+          <div class="artwork">
+            <img src="/img/image.svg" alt="Conjur Illustration"/>
+          </div>
+
+          <div class="security-card">
+            <h3>🛡 Security Status</h3>
+            <div class="security-levels">
+              <div class="security-level danger">
+                <span class="icon">⚠️</span>
+                <div class="text">
+                  <strong>HTTP (Unencrypted)</strong>
+                  <p>For testing only. Do not use with real secrets.</p>
+                </div>
+              </div>
+              <div class="security-level warning">
+                <span class="icon">⚡</span>
+                <div class="text">
+                  <strong>HTTPS (Untrusted Certificate)</strong>
+                  <p>Only proceed if you are certain about what you are doing.</p>
+                </div>
+              </div>
+              <div class="security-level safe">
+                <span class="icon">🔒</span>
+                <div class="text">
+                  <strong>HTTPS (Trusted Certificate)</strong>
+                  <p>Safe for production use with actual secrets.</p>
+                  <p class="lock-hint">Does your browser show a green lock icon on the left side of the address bar?</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
 
     <footer>
-      <div class="logo-cont">
-        <img src="/img/cyberark-white.png"/>
+      <div class="container">
+        <p>Conjur Open Source Copyright ©<%= ENV["BUILD_YEAR"] %> Palo Alto Networks Ltd. All rights reserved.</p>
       </div>
-      <p class="copyright">
-        Conjur Open Source copyright 2020 CyberArk. All rights reserved.
-      </p>
     </footer>
 
+    <script>
+      (function () {
+        var isHttps = window.location.protocol === 'https:';
+        var activeClass = isHttps ? 'warning' : 'danger';
+
+        document.querySelectorAll('.security-level').forEach(function (el) {
+          var inactive = !el.classList.contains(activeClass) && !(isHttps && el.classList.contains('safe'));
+          el.style.opacity = inactive ? '0.35' : '1';
+        });
+
+        if (isHttps) {
+          var hint = document.querySelector('.security-level.safe .lock-hint');
+          if (hint) hint.classList.add('lock-hint--visible');
+        }
+      })();
+    </script>
   </body>
 </html>
