@@ -62,6 +62,11 @@ RSpec.configure do |config|
 
     DatabaseCleaner.cleaning do
       example.run
+    ensure
+      # Reload feature flags after every example so specs that temporarily set
+      # CONJUR_FEATURE_* and load feature_flags.rb cannot leave strict_params
+      # (or other flags) enabled for later examples in randomized order.
+      load(Rails.root.join('config/initializers/feature_flags.rb'))
     end
   end
 
