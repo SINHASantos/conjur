@@ -6,9 +6,17 @@ DatabaseCleaner.allow_remote_database_url = true
 DatabaseCleaner.strategy = :truncation
 
 describe AuthenticateController, :type => :request do
-  before(:all) do
-    DatabaseCleaner.clean_with(:truncation)
-    Role.create(role_id: 'rspec:user:admin')
+  # Truncate once per file; per-example DB cleaning still runs via spec_helper.
+  before(:all) { DatabaseCleaner.clean_with(:truncation) }
+
+  # spec_helper clears Slosilo.adapter before every example. A before(:all) key
+  # bootstrap does not survive that cache clear or truncation from other specs,
+  # so Slosilo["authn:rspec"] can be nil in later examples when the suite order
+  # changes. Match resources_controller_spec / accounts_controller_spec: recreate
+  # the signing key and admin role before each example.
+  before do
+    Slosilo["authn:rspec"] ||= Slosilo::Key.new
+    Role.find_or_create(role_id: 'rspec:user:admin')
   end
 
   include_context "existing account"
@@ -327,8 +335,6 @@ describe AuthenticateController, :type => :request do
       end
     end
   end
-
-  before(:all) { Slosilo["authn:rspec"] ||= Slosilo::Key.new }
 
   describe 'query param validation' do
     # Regression: valid requests should never be blocked by query param validation.
