@@ -313,6 +313,7 @@
                 {
                    "name":"kube-api-access-p4wqn",
                    "readOnly":true,
+                   "recursiveReadOnly":"Enabled",
                    "mountPath":"/var/run/secrets/kubernetes.io/serviceaccount"
                 }
              ],
