@@ -431,7 +431,12 @@ describe RolesController, type: :request do
 
   describe 'query param validation' do
     # Regression: valid requests should never be blocked by query param validation.
-    let(:role_path) { '/roles/rspec/user/admin' }
+    # Use group/a + host:a (created by test_policy) rather than rspec:user:admin:
+    # this file's after hook deletes the admin resource each example, so admin
+    # role URLs return 404 and mask query-param failures as not-found instead of
+    # 422 vs warn depending on strict_params.
+    let(:role_path) { '/roles/rspec/group/a' }
+    let(:current_user_id) { 'rspec:host:a' }
     let(:query_param_request_env) do
       token_auth_header(role: current_user)
     end

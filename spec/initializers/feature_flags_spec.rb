@@ -3,9 +3,21 @@
 require 'spec_helper'
 
 describe 'Feature flag initializer' do
+  feature_flags_initializer = Rails.root.join('config/initializers/feature_flags.rb')
+
   before do
-    # Reload the initializer
-    load Rails.root.join('config/initializers/feature_flags.rb')
+    load(feature_flags_initializer)
+  end
+
+  # Reload from disk so each example starts from ENV defaults. Several contexts
+  # below temporarily set CONJUR_FEATURE_* and load again inside an around hook;
+  # without resetting afterward, strict_params can remain enabled in
+  # Rails.application.config.feature_flags for later specs. Query-param controller
+  # examples read that live flag (see query_param_validation_helpers) while
+  # controllers keep the strict value captured at class load — the mismatch caused
+  # flaky 422 vs 404/200 failures when feature_flags_spec ran before them.
+  after do
+    load(feature_flags_initializer)
   end
 
   let(:config) { Rails.application.config }
@@ -32,7 +44,7 @@ describe 'Feature flag initializer' do
   context 'when the dynamic secrets is enabled with the environment variable' do
     around do |example|
       with_environment('CONJUR_FEATURE_DYNAMIC_SECRETS_ENABLED', 'true') do
-        load Rails.root.join('config/initializers/feature_flags.rb')
+        load(feature_flags_initializer)
         example.run
       end
     end
@@ -50,7 +62,7 @@ describe 'Feature flag initializer' do
   context 'when the slosilo cache is disabled with the environment variable' do
     around do |example|
       with_environment('CONJUR_FEATURE_SLOSILO_KEY_CACHE_ENABLED', 'false') do
-        load Rails.root.join('config/initializers/feature_flags.rb')
+        load(feature_flags_initializer)
         example.run
       end
     end
@@ -68,7 +80,7 @@ describe 'Feature flag initializer' do
   context 'when strict_params is enabled with the environment variable' do
     around do |example|
       with_environment('CONJUR_FEATURE_STRICT_PARAMS_ENABLED', 'true') do
-        load Rails.root.join('config/initializers/feature_flags.rb')
+        load(feature_flags_initializer)
         example.run
       end
     end
@@ -82,7 +94,7 @@ describe 'Feature flag initializer' do
   context 'when oidc_authenticator_v1 is explicitly disabled via environment variable' do
     around do |example|
       with_environment('CONJUR_FEATURE_OIDC_AUTHENTICATOR_V1_ENABLED', 'false') do
-        load Rails.root.join('config/initializers/feature_flags.rb')
+        load(feature_flags_initializer)
         example.run
       end
     end
@@ -95,7 +107,7 @@ describe 'Feature flag initializer' do
   context 'when oidc_authenticator_v1 environment variable is not set' do
     around do |example|
       with_environment('CONJUR_FEATURE_OIDC_AUTHENTICATOR_V1_ENABLED', nil) do
-        load Rails.root.join('config/initializers/feature_flags.rb')
+        load(feature_flags_initializer)
         example.run
       end
     end
@@ -108,7 +120,7 @@ describe 'Feature flag initializer' do
   context 'when oidc_authenticator_v1 is enabled with the environment variable' do
     around do |example|
       with_environment('CONJUR_FEATURE_OIDC_AUTHENTICATOR_V1_ENABLED', 'true') do
-        load Rails.root.join('config/initializers/feature_flags.rb')
+        load(feature_flags_initializer)
         example.run
       end
     end
