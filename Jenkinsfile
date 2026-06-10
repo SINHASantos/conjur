@@ -117,6 +117,8 @@ if (params.MODE == "PROMOTE") {
     parallel(scans)
 
     infrapool.agentSh """
+      set -euo pipefail
+
       docker pull registry.tld/cyberark/conjur:${sourceVersion}-amd64
       docker tag registry.tld/cyberark/conjur:${sourceVersion}-amd64 conjur:${sourceVersion}-amd64
       docker pull registry.tld/cyberark/conjur:${sourceVersion}-arm64
@@ -127,9 +129,14 @@ if (params.MODE == "PROMOTE") {
       docker pull registry.tld/conjur-ubi:${sourceVersion}-arm64
       docker tag registry.tld/conjur-ubi:${sourceVersion}-arm64 conjur-ubi:${sourceVersion}-arm64
 
+      docker pull registry.tld/conjur-source:${sourceVersion}-amd64
+      docker tag registry.tld/conjur-source:${sourceVersion}-amd64 conjur-source:${sourceVersion}-amd64
+      docker pull registry.tld/conjur-source:${sourceVersion}-arm64
+      docker tag registry.tld/conjur-source:${sourceVersion}-arm64 conjur-source:${sourceVersion}-arm64
+
       # Promote both images for AMD64 and ARM64
       summon -f ./secrets.yml ./publish-images.sh --promote --base-version=${sourceVersion} --version=${targetVersion}
-      summon -f ./secrets.yml ./publish-images.sh --promote --base-version=${sourceVersion} --version=${targetVersion} --arch=arm64
+      DOCKER_DEFAULT_PLATFORM=linux/arm64 summon -f ./secrets.yml ./publish-images.sh --promote --base-version=${sourceVersion} --version=${targetVersion} --arch=arm64
 
       # Promote manifest that links above images
       summon -f ./secrets.yml ./publish-manifest.sh --promote --redhat --dockerhub --base-version=${sourceVersion} --version=${targetVersion}

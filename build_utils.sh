@@ -46,7 +46,12 @@ get_machine_architecture() {
 function tag_and_push() {
   local tag="$1"; shift
   local source="$1"; shift
-  local arch=$(get_machine_architecture)
+  local arch
+  case "${ARCH:-}" in
+    arm64) arch="linux/arm64" ;;
+    amd64) arch="linux/amd64" ;;
+    *)     arch="$(get_machine_architecture)" ;;
+  esac
 
   for image in "$@"; do
     local target=$image:$tag
