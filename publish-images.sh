@@ -147,7 +147,7 @@ if [[ "${PROMOTE}" = true ]]; then
     tag_and_push "${version}-${ARCH}" "registry.tld/conjur-ubi:${LOCAL_TAG}-${ARCH}" "registry.tld/conjur-ubi"
     tag_and_push "${version}-${ARCH}" "registry.tld/conjur-source:${LOCAL_TAG}-${ARCH}" "registry.tld/conjur-source"
 
-    if [[ "${DOCKERHUB}" ]]; then
+    if [[ "${DOCKERHUB}" = true ]]; then
       echo "Pushing to DockerHub"
       
       tag_and_push "${version}-${ARCH}" "${LOCAL_IMAGE}-${ARCH}" "${IMAGE_NAME}"
