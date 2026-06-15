@@ -150,7 +150,7 @@ if [[ "${PROMOTE}" = true ]]; then
     if [[ "${DOCKERHUB}" = true ]]; then
       echo "Pushing to DockerHub"
       
-      tag_and_push "${version}-${ARCH}" "${LOCAL_IMAGE}-${ARCH}" "${IMAGE_NAME}"
+      tag_and_push "${version}-${ARCH}" "conjur:${LOCAL_TAG}-${ARCH}" "${IMAGE_NAME}"
     fi
   done
 fi
