@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Nothing should go in this section, please add to the latest unreleased version
   (and update the corresponding date), or add a new version.
 
+## [1.27.1] - 2026-07-08
+###
+- Remove community health files to use org-wide files
+
 ## [1.27.0] - 2026-05-18
 
 ### Removed
