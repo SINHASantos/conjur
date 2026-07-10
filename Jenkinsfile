@@ -72,49 +72,50 @@ if (params.MODE == "PROMOTE") {
     env.INFRAPOOL_PRODUCT_NAME = "${productName}"
     env.INFRAPOOL_DD_PRODUCT_TYPE_NAME = "${productTypeName}"
 
-    def scans = [:]
+    // Commented out for patch release
+    // def scans = [:]
 
-    scans["Conjur AMD64"] = {
-      stage("Conjur AMD64 scans") {
-        runSecurityScans(infrapool,
-          image: "registry.tld/cyberark/conjur:${sourceVersion}-amd64",
-          buildMode: params.MODE,
-          branch: env.BRANCH_NAME,
-          arch: 'linux/amd64')
-      }
-    }
+    // scans["Conjur AMD64"] = {
+    //   stage("Conjur AMD64 scans") {
+    //     runSecurityScans(infrapool,
+    //       image: "registry.tld/cyberark/conjur:${sourceVersion}-amd64",
+    //       buildMode: params.MODE,
+    //       branch: env.BRANCH_NAME,
+    //       arch: 'linux/amd64')
+    //   }
+    // }
 
-    scans["Conjur ARM64"] = {
-      stage("Conjur ARM64 scans") {
-        runSecurityScans(infrapool,
-          image: "registry.tld/cyberark/conjur:${sourceVersion}-arm64",
-          buildMode: params.MODE,
-          branch: env.BRANCH_NAME,
-          arch: 'linux/arm64')
-      }
-    }
+    // scans["Conjur ARM64"] = {
+    //   stage("Conjur ARM64 scans") {
+    //     runSecurityScans(infrapool,
+    //       image: "registry.tld/cyberark/conjur:${sourceVersion}-arm64",
+    //       buildMode: params.MODE,
+    //       branch: env.BRANCH_NAME,
+    //       arch: 'linux/arm64')
+    //   }
+    // }
 
-    scans["Conjur UBI AMD64"] = {
-      stage("Conjur UBI AMD64 scans") {
-        runSecurityScans(infrapool,
-          image: "registry.tld/conjur-ubi:${sourceVersion}-amd64",
-          buildMode: params.MODE,
-          branch: env.BRANCH_NAME,
-          arch: 'linux/amd64')
-      }
-    }
+    // scans["Conjur UBI AMD64"] = {
+    //   stage("Conjur UBI AMD64 scans") {
+    //     runSecurityScans(infrapool,
+    //       image: "registry.tld/conjur-ubi:${sourceVersion}-amd64",
+    //       buildMode: params.MODE,
+    //       branch: env.BRANCH_NAME,
+    //       arch: 'linux/amd64')
+    //   }
+    // }
 
-    scans["Conjur UBI ARM64"] = {
-      stage("Conjur UBI ARM64 scans") {
-        runSecurityScans(infrapool,
-          image: "registry.tld/conjur-ubi:${sourceVersion}-arm64",
-          buildMode: params.MODE,
-          branch: env.BRANCH_NAME,
-          arch: 'linux/arm64')
-      }
-    }
+    // scans["Conjur UBI ARM64"] = {
+    //   stage("Conjur UBI ARM64 scans") {
+    //     runSecurityScans(infrapool,
+    //       image: "registry.tld/conjur-ubi:${sourceVersion}-arm64",
+    //       buildMode: params.MODE,
+    //       branch: env.BRANCH_NAME,
+    //       arch: 'linux/arm64')
+    //   }
+    // }
 
-    parallel(scans)
+    // parallel(scans)
 
     infrapool.agentSh """
       set -euo pipefail
@@ -385,84 +386,85 @@ pipeline {
           }
         }
 
-        stage('Run security scans') {
-          environment {
-            VERSION = INFRAPOOL_EXECUTORV2_AGENT_0.agentReadFile('VERSION').trim()
-          }
-          parallel {
-            stage('AMD64 Ubuntu-based Docker image scans') {
-              steps {
-                retry(3) {
-                  runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_0,
-                    image: "registry.tld/conjur:${VERSION}-${TAG_SHA}",
-                    buildMode: MODE,
-                    branch: env.BRANCH_NAME,
-                    arch: "linux/amd64")
-                }
-              }
-            }
+        // Commented out for patch release
+        // stage('Run security scans') {
+        //   environment {
+        //     VERSION = INFRAPOOL_EXECUTORV2_AGENT_0.agentReadFile('VERSION').trim()
+        //   }
+        //   parallel {
+        //     stage('AMD64 Ubuntu-based Docker image scans') {
+        //       steps {
+        //         retry(3) {
+        //           runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_0,
+        //             image: "registry.tld/conjur:${VERSION}-${TAG_SHA}",
+        //             buildMode: MODE,
+        //             branch: env.BRANCH_NAME,
+        //             arch: "linux/amd64")
+        //         }
+        //       }
+        //     }
 
-            stage('ARM64 Ubuntu-based Docker image scans') {
-              steps {
-                retry(3) {
-                  runSecurityScans(INFRAPOOL_EXECUTORV2ARM_AGENT_0,
-                    image: "registry.tld/conjur:${VERSION}-${TAG_SHA}",
-                    buildMode: MODE,
-                    branch: env.BRANCH_NAME,
-                    arch: "linux/arm64")
-                }
-              }
-            }
+        //     stage('ARM64 Ubuntu-based Docker image scans') {
+        //       steps {
+        //         retry(3) {
+        //           runSecurityScans(INFRAPOOL_EXECUTORV2ARM_AGENT_0,
+        //             image: "registry.tld/conjur:${VERSION}-${TAG_SHA}",
+        //             buildMode: MODE,
+        //             branch: env.BRANCH_NAME,
+        //             arch: "linux/arm64")
+        //         }
+        //       }
+        //     }
 
-            stage('AMD64 UBI-based Docker image scans') {
-              steps {
-                retry(3) {
-                  runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_1,
-                    image: "registry.tld/conjur-ubi:${VERSION}-${TAG_SHA}",
-                    buildMode: MODE,
-                    branch: env.BRANCH_NAME,
-                    arch: "linux/amd64")
-                }
-              }
-            }
+        //     stage('AMD64 UBI-based Docker image scans') {
+        //       steps {
+        //         retry(3) {
+        //           runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_1,
+        //             image: "registry.tld/conjur-ubi:${VERSION}-${TAG_SHA}",
+        //             buildMode: MODE,
+        //             branch: env.BRANCH_NAME,
+        //             arch: "linux/amd64")
+        //         }
+        //       }
+        //     }
 
-            stage('ARM64 UBI-based Docker image scans') {
-              steps {
-                retry(3) {
-                  runSecurityScans(INFRAPOOL_EXECUTORV2ARM_AGENT_0,
-                    image: "registry.tld/conjur-ubi:${VERSION}-${TAG_SHA}",
-                    buildMode: MODE,
-                    branch: env.BRANCH_NAME,
-                    arch: "linux/arm64")
-                }
-              }
-            }
+        //     stage('ARM64 UBI-based Docker image scans') {
+        //       steps {
+        //         retry(3) {
+        //           runSecurityScans(INFRAPOOL_EXECUTORV2ARM_AGENT_0,
+        //             image: "registry.tld/conjur-ubi:${VERSION}-${TAG_SHA}",
+        //             buildMode: MODE,
+        //             branch: env.BRANCH_NAME,
+        //             arch: "linux/arm64")
+        //         }
+        //       }
+        //     }
 
-            stage('AMD64 Conjur-Test Docker image scans') {
-              steps {
-                retry(3) {
-                  runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_2,
-                    image: "registry.tld/conjur-test:${VERSION}-${TAG_SHA}",
-                    buildMode: MODE,
-                    branch: env.BRANCH_NAME,
-                    arch: "linux/amd64")
-                }
-              }
-            }
+        //     stage('AMD64 Conjur-Test Docker image scans') {
+        //       steps {
+        //         retry(3) {
+        //           runSecurityScans(INFRAPOOL_EXECUTORV2_AGENT_2,
+        //             image: "registry.tld/conjur-test:${VERSION}-${TAG_SHA}",
+        //             buildMode: MODE,
+        //             branch: env.BRANCH_NAME,
+        //             arch: "linux/amd64")
+        //         }
+        //       }
+        //     }
 
-            stage('ARM64 Conjur-Test Docker image scans') {
-              steps {
-                retry(3) {
-                  runSecurityScans(INFRAPOOL_EXECUTORV2ARM_AGENT_0,
-                    image: "registry.tld/conjur-test:${VERSION}-${TAG_SHA}",
-                    buildMode: MODE,
-                    branch: env.BRANCH_NAME,
-                    arch: "linux/arm64")
-                }
-              }
-            }
-          }
-        }
+        //     stage('ARM64 Conjur-Test Docker image scans') {
+        //       steps {
+        //         retry(3) {
+        //           runSecurityScans(INFRAPOOL_EXECUTORV2ARM_AGENT_0,
+        //             image: "registry.tld/conjur-test:${VERSION}-${TAG_SHA}",
+        //             buildMode: MODE,
+        //             branch: env.BRANCH_NAME,
+        //             arch: "linux/arm64")
+        //         }
+        //       }
+        //     }
+        //   }
+        // }
 
         // TODO: Add comments explaining which env vars are set here.
         stage('Prepare For CodeClimate Coverage Report Submission') {
